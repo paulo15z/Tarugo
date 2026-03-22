@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=renara_db
+      - POSTGRES_USER=renara_user
+      - POSTGRES_PASSWORD=renara_pass
+
+  redis:
+    image: redis:7-alpine
+
+  web:
+    build: .
+    command: gunicorn tarugo.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=postgres://renara_user:renara_pass@db:5432/renara_db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  postgres_data:
