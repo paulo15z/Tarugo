@@ -52,8 +52,11 @@ Entregar um sistema funcional com:
 
 ## Movimentação (IMPORTANTE)
 
+- [ ] Implementar transaction.atomic
+- [ ] Implementar select_for_update
+- [ ] Criar histórico de movimentações
+- [ ] Garantir consistência de estoque
 - [ ] Criar model Movimentacao
-
   - produto
   - tipo (entrada/saida)
   - quantidade

@@ -121,3 +121,13 @@ A aplicação será baseada em Django, com arquitetura modular orientada a apps:
 - Priorizar resolver problemas reais antes de expandir features
 - Evitar complexidade desnecessária no MVP
 - Validar com uso real antes de escalar
+
+## 🧠 Arquitetura de Domínio
+
+O sistema utiliza uma abordagem baseada em domínio:
+
+- Estoque é o primeiro domínio crítico
+- Movimentações são eventos rastreáveis
+- Todas as alterações devem ser auditáveis
+
+O sistema deve sempre priorizar consistência de dados.

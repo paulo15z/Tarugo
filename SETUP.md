@@ -362,3 +362,21 @@ Cada decisão deve considerar:
 * Escalabilidade
 * Reuso
 * Integração futura
+
+# 🧠 Padrão de Desenvolvimento (IMPORTANTE)
+
+Toda nova funcionalidade deve seguir:
+
+1. Criar Model (se necessário)
+2. Criar Schema (Pydantic)
+3. Criar Service
+4. Criar Serializer
+5. Criar View
+
+---
+
+# 🔥 Regra de Ouro
+
+Se existir regra de negócio:
+
+👉 Ela DEVE estar no service
