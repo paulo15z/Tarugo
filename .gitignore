@@ -1,0 +1,92 @@
+# 🔐 Python
+
+**pycache**/
+*.py[cod]
+*$py.class
+
+# 🔧 Virtual Environment
+
+venv/
+.env/
+.env
+
+# 🧠 Django
+
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# 📦 Static / Media
+
+/staticfiles/
+/media/
+
+# 🧪 Test / Coverage
+
+.coverage
+htmlcov/
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# 🧰 IDE / Editor
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 🖥️ OS
+
+.DS_Store
+Thumbs.db
+
+# 🔐 Secrets
+
+*.env
+.env.*
+*.key
+*.pem
+
+# 🐳 Docker (futuro)
+
+*.pid
+*.seed
+*.pid.lock
+
+# 📦 Build
+
+dist/
+build/
+*.egg-info/
+
+# 🧾 Logs
+
+logs/
+*.log
+
+# 🔄 Migrations cache (opcional - cuidado)
+
+**/migrations/**pycache**/
+
+# ⚠️ NÃO ignorar migrations (importante)
+
+# apps/*/migrations/*.py  ← manter versionado
+
+# 📁 Arquivos temporários
+
+tmp/
+temp/
+
+# 📊 Banco futuro
+
+*.sqlite3
+
+# 🔌 Celery / Redis (futuro)
+
+celerybeat-schedule
+celerybeat.pid
