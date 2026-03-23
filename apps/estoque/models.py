@@ -1,3 +1,4 @@
-from django.db import models
+from .models.produto import Produto
+from .models.movimentacao import Movimentacao
 
-# Create your models here.
+__all__ = ['Produto', 'Movimentacao']

@@ -13,9 +13,9 @@ def listar_movimentacoes(
         qs = qs.filter(produto_id=produto_id)
 
     if data_inicio:
-        qs = qs.filter(data__gte=data_inicio)
+        qs = qs.filter(criado_em__gte=data_inicio)
 
     if data_fim:
-        qs = qs.filter(data__lte=data_fim)
+        qs = qs.filter(criado_em__lte=data_fim)
 
-    return qs.order_by('-data')
+    return qs.order_by('-criado_em')

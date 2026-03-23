@@ -10,13 +10,19 @@ from apps.estoque.services.movimentacao_services import processar_movimentacao
 from apps.estoque.selectors.movimentacao_selectors import listar_movimentacoes
 from .serializers import MovimentacaoListSerializer
 
+from datetime import datetime
+
+
+
 class ProdutoCreateView(APIView):
     def post(self, request):
         serializer = ProdutoSerializer(data=request.data)
 
         if serializer.is_valid():
             produto = criar_produto(serializer.validated_data)
-            return Response(serializer.errors, status=status.HTTP_HTTP_400_BAD_REQUEST)
+            return Response(ProdutoSerializer(produto).data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
 
 
@@ -41,11 +47,22 @@ class MovimentacaoView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
-class MovimentacaoListView(APIView): #view das listas
+class MovimentacaoListView(APIView):
     def get(self, request):
         produto_id = request.query_params.get("produto_id")
         data_inicio = request.query_params.get("data_inicio")
         data_fim = request.query_params.get("data_fim")
+
+        if produto_id:
+            produto_id = int(produto_id)
+
+        from datetime import datetime #parece loucura, e é, em breve relogio pro sistema
+
+        if data_inicio:
+            data_inicio = datetime.fromisoformat(data_inicio)
+
+        if data_fim:
+            data_fim = datetime.fromisoformat(data_fim)
 
         movimentacoes = listar_movimentacoes(
             produto_id=produto_id,
