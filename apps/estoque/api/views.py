@@ -7,7 +7,8 @@ from rest_framework import status
 from apps.estoque.api.serializers import ProdutoSerializer, MovimentacaoSerializer
 from apps.estoque.services.produto_service import criar_produto
 from apps.estoque.services.movimentacao_services import processar_movimentacao
-
+from apps.estoque.selectors.movimentacao_selectors import listar_movimentacoes
+from .serializers import MovimentacaoListSerializer
 
 class ProdutoCreateView(APIView):
     def post(self, request):
@@ -40,3 +41,17 @@ class MovimentacaoView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
+class MovimentacaoListView(APIView): #view das listas
+    def get(self, request):
+        produto_id = request.query_params.get("produto_id")
+        data_inicio = request.query_params.get("data_inicio")
+        data_fim = request.query_params.get("data_fim")
+
+        movimentacoes = listar_movimentacoes(
+            produto_id=produto_id,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+        )
+
+        serializer = MovimentacaoListSerializer(movimentacoes, many=True)
+        return Response(serializer.data)

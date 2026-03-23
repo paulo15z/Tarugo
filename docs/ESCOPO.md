@@ -88,6 +88,13 @@ A aplicação será baseada em Django, com arquitetura modular orientada a apps:
 
 ---
 
+### 6. Roteiro (assim q os primeiros MVPs forem entregues)
+
+- ferramenta para o PCP gerar os Roteiros das peças;
+- Consumir CSV do Dinabox -> interpretar particularidades -> programar o itinerario 
+
+---
+
 ## 🔗 Integrações Planejadas
 
 - Dinabox (principal)
