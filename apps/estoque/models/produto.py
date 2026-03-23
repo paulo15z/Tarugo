@@ -1,7 +1,5 @@
 from django.db import models
 
-# bora
-
 class Produto(models.Model):
     nome = models.CharField(max_length=255)
     sku = models.CharField(max_length=100, unique=True)
