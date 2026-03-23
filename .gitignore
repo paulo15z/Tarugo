@@ -1,92 +1,119 @@
+# =====================================
 # 🔐 Python
-
-**pycache**/
+# =====================================
+__pycache__/
 *.py[cod]
 *$py.class
+*.so
+*.pyc
+*.pyo
 
-# 🔧 Virtual Environment
-
+# =====================================
+# 🧠 Ambiente Virtual e Segredos
+# =====================================
 venv/
-.env/
+env/
+.venv/
 .env
+.env.*
+*.env
+*.key
+*.pem
+*.secret
 
-# 🧠 Django
-
+# =====================================
+# 🧠 Django Específico
+# =====================================
 *.log
-local_settings.py
+*.pot
+*.sqlite3
+*.sqlite3-journal
 db.sqlite3
 db.sqlite3-journal
+local_settings.py
+media/
+staticfiles/
+collectedstatic/   # ou staticfiles/ — como você preferir chamar
 
-# 📦 Static / Media
-
-/staticfiles/
-/media/
-
-# 🧪 Test / Coverage
-
+# =====================================
+# 📊 Testes, Coverage e Cache
+# =====================================
 .coverage
+coverage.xml
 htmlcov/
 .pytest_cache/
+.cache/
 nosetests.xml
-coverage.xml
 *.cover
 *.py,cover
 
-# 🧰 IDE / Editor
-
+# =====================================
+# 🧰 Editores / IDEs
+# =====================================
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.project
+.pydevproject
+.ropeproject
 
-# 🖥️ OS
-
+# =====================================
+# 🖥️ Sistema Operacional
+# =====================================
 .DS_Store
 Thumbs.db
+ehthumbs.db
+desktop.ini
 
-# 🔐 Secrets
+# =====================================
+# 📦 Builds e Pacotes
+# =====================================
+dist/
+build/
+*.egg
+*.egg-info/
+*.eggs/
+MANIFEST
 
-*.env
-.env.*
-*.key
-*.pem
-
-# 🐳 Docker (futuro)
-
+# =====================================
+# 🐳 Docker / Containerização (futuro)
+# =====================================
 *.pid
 *.seed
 *.pid.lock
+docker-compose.override.yml   # se você usar para dev local
 
-# 📦 Build
-
-dist/
-build/
-*.egg-info/
-
-# 🧾 Logs
-
-logs/
-*.log
-
-# 🔄 Migrations cache (opcional - cuidado)
-
-**/migrations/**pycache**/
-
-# ⚠️ NÃO ignorar migrations (importante)
-
-# apps/*/migrations/*.py  ← manter versionado
-
-# 📁 Arquivos temporários
-
-tmp/
-temp/
-
-# 📊 Banco futuro
-
-*.sqlite3
-
-# 🔌 Celery / Redis (futuro)
-
+# =====================================
+# 🔄 Celery / Redis / Tarefas (futuro)
+# =====================================
 celerybeat-schedule
 celerybeat.pid
+celeryd.pid
+
+# =====================================
+# 📁 Temporários / Logs / Cache
+# =====================================
+tmp/
+temp/
+logs/
+*.bak
+*.backup
+*.tmp
+
+# =====================================
+# ⚠️ Migrations cache (opcional — cuidado!)
+# =====================================
+**/migrations/__pycache__/
+
+# IMPORTANTE: NUNCA ignore as migrations em si!
+# apps/*/migrations/*.py  ← devem ser versionadas
+
+# =====================================
+# 📊 Banco de dados futuro / backups
+# =====================================
+*.sql
+*.sql.gz
+*.dump
+backups/
