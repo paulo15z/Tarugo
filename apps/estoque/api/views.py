@@ -1,5 +1,3 @@
-from django.shortcuts import render
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -47,28 +45,79 @@ class MovimentacaoView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
+    
+
 class MovimentacaoListView(APIView):
     def get(self, request):
+        # Parâmetros de filtro
         produto_id = request.query_params.get("produto_id")
         data_inicio = request.query_params.get("data_inicio")
         data_fim = request.query_params.get("data_fim")
+        
+        # Parâmetros de paginação
+        limit = request.query_params.get("limit", 10)
+        offset = request.query_params.get("offset", 0)
+        
+        try:
+            limit = int(limit)
+            offset = int(offset)
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "limit e offset devem ser números inteiros"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         if produto_id:
-            produto_id = int(produto_id)
-
-        from datetime import datetime #parece loucura, e é, em breve relogio pro sistema
+            try:
+                produto_id = int(produto_id)
+            except (ValueError, TypeError):
+                return Response(
+                    {"error": "produto_id deve ser um número inteiro"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         if data_inicio:
-            data_inicio = datetime.fromisoformat(data_inicio)
+            try:
+                data_inicio = datetime.fromisoformat(data_inicio)
+            except ValueError:
+                return Response(
+                    {"error": "data_inicio inválida (use formato ISO: YYYY-MM-DD)"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         if data_fim:
-            data_fim = datetime.fromisoformat(data_fim)
+            try:
+                data_fim = datetime.fromisoformat(data_fim)
+            except ValueError:
+                return Response(
+                    {"error": "data_fim inválida (use formato ISO: YYYY-MM-DD)"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
+        # Obter movimentações com filtros
         movimentacoes = listar_movimentacoes(
             produto_id=produto_id,
             data_inicio=data_inicio,
             data_fim=data_fim,
         )
 
-        serializer = MovimentacaoListSerializer(movimentacoes, many=True)
-        return Response(serializer.data)
+        # Total antes da paginação
+        total = movimentacoes.count()
+        
+        # Aplicar paginação
+        movimentacoes_paginadas = movimentacoes[offset:offset + limit]
+
+        # Verificar se há próxima página
+        tem_proxima = (offset + limit) < total
+
+        serializer = MovimentacaoListSerializer(movimentacoes_paginadas, many=True)
+        
+        return Response({
+            "meta": {
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "tem_proxima": tem_proxima,
+            },
+            "data": serializer.data
+        })
