@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -25,7 +26,14 @@ SECRET_KEY = "django-insecure-x_8kz%w)*%opcd2w(omx^po)&(+sn&tbn*3q^mch_v8ay+(c5c
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+_allowed_hosts_env = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()]
+
+# MVP: permitir hosts arbitrários quando DEBUG estiver ligado.
+# (para produção, ajuste DJANGO_ALLOWED_HOSTS e desative DEBUG)
+if DEBUG:
+    ALLOWED_HOSTS = _allowed_hosts_env or ["*"]
+else:
+    ALLOWED_HOSTS = _allowed_hosts_env
 
 
 # Application definition
