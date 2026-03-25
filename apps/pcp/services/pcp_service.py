@@ -18,11 +18,15 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
         df.get('OBSERVAÇÃO', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False) |
         df.get('OBS', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False)
     )
+
     df_ripas = df[mask_ripa].copy()
     df_resto = df[~mask_ripa].copy()
+
     if df_ripas.empty:
         return df
 
+    # 🔧 CONFIG
+    ALTURA_CHAPA = 2750.0
     ESPESSURA_SERRA = 4.0
     MARGEM_REFILO = 20.0
 
@@ -36,31 +40,62 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
     df_ripas['QTD_NUM'] = df_ripas['QUANTIDADE'].apply(to_float)
 
     novos_paineis = []
-    grupos = df_ripas.groupby(['MATERIAL DA PEÇA', 'ESPESSURA', 'ALTURA DA PEÇA', 'LOCAL', 'LARGURA_NUM'])
+
+    grupos = df_ripas.groupby([
+        'MATERIAL DA PEÇA',
+        'ESPESSURA',
+        'ALTURA DA PEÇA',
+        'LOCAL',
+        'LARGURA_NUM'
+    ])
 
     for name, group in grupos:
         _, _, altura_ripa_raw, _, _ = name
+
         altura_ripa = to_float(altura_ripa_raw)
         total_unidades = int(group['QTD_NUM'].sum())
-        # Organização nova (Anderson):
-        # - manter a largura da ripa
-        # - distribuir as alturas das ripas na altura total do painel (com refilo)
-        altura_painel = (altura_ripa * total_unidades) + (total_unidades * ESPESSURA_SERRA) + MARGEM_REFILO
 
-        nova_peca = group.iloc[0].copy()
-        nova_peca['DESCRIÇÃO DA PEÇA'] = f"PAINEL PARA RIPAS ({total_unidades} un)"
-        # Mantém a largura original da ripa e altera apenas a altura do painel.
-        nova_peca['QUANTIDADE'] = "1"
-        nova_peca['ALTURA DA PEÇA'] = str(round(altura_painel, 1)).replace('.', ',')
-        nova_peca['OBSERVAÇÃO'] = (
-            f"CORTAR MANUALMENTE NA ESQUADREJADEIRA — {total_unidades}×{int(altura_ripa)}mm"
-        )
+        if altura_ripa <= 0:
+            continue
 
-        for col in BORDA_COLS:
-            if col in nova_peca:
-                nova_peca[col] = ""
+        altura_util = ALTURA_CHAPA - MARGEM_REFILO
+        altura_por_ripa = altura_ripa + ESPESSURA_SERRA
 
-        novos_paineis.append(nova_peca)
+        max_ripas_por_chapa = int(altura_util // altura_por_ripa)
+
+        if max_ripas_por_chapa <= 0:
+            raise ValueError(
+                f"Ripa com altura {altura_ripa} maior que capacidade da chapa ({ALTURA_CHAPA})"
+            )
+
+        restante = total_unidades
+
+        while restante > 0:
+            qtd_no_painel = min(restante, max_ripas_por_chapa)
+
+            altura_painel = (
+                qtd_no_painel * altura_ripa +
+                max(qtd_no_painel - 1, 0) * ESPESSURA_SERRA +
+                MARGEM_REFILO
+            )
+
+            nova_peca = group.iloc[0].copy()
+
+            nova_peca['DESCRIÇÃO DA PEÇA'] = f"PAINEL PARA RIPAS ({qtd_no_painel} un)"
+            nova_peca['QUANTIDADE'] = "1"
+            nova_peca['ALTURA DA PEÇA'] = str(round(altura_painel, 1)).replace('.', ',')
+
+            nova_peca['OBSERVAÇÃO'] = (
+                f"CORTAR NA ESQUADREJADEIRA — {qtd_no_painel}x{int(altura_ripa)}mm"
+            )
+
+            for col in BORDA_COLS:
+                if col in nova_peca:
+                    nova_peca[col] = ""
+
+            novos_paineis.append(nova_peca)
+
+            restante -= qtd_no_painel
 
     return pd.concat([df_resto, pd.DataFrame(novos_paineis)], ignore_index=True)
 
@@ -89,6 +124,7 @@ def determinar_plano_de_corte(row) -> str:
 
 def calcular_roteiro(row) -> str:
     desc = str(row.get('DESCRIÇÃO DA PEÇA', '')).strip().lower()
+
     if 'painel para ripas' in desc:
         return 'COR > MAR > CQL > EXP'
 
@@ -173,8 +209,7 @@ def gerar_xls(df: pd.DataFrame) -> BytesIO:
     return buf
 
 
-def processar_arquivo_dinabox(uploaded_file) -> tuple[pd.DataFrame, bytes, str]:
-    """Service principal - recebe o arquivo e devolve df, bytes do XLS e pid"""
+def processar_arquivo_dinabox(uploaded_file):
     ext = uploaded_file.name.rsplit('.', 1)[-1].lower()
 
     if ext == 'csv':
@@ -188,6 +223,7 @@ def processar_arquivo_dinabox(uploaded_file) -> tuple[pd.DataFrame, bytes, str]:
                 continue
         if text is None:
             raise ValueError("Não foi possível decodificar o CSV")
+
         linhas = text.splitlines()
         corpo = [l.rstrip(';') for l in linhas if not (l.startswith('[') and '[LISTA]' not in l and '[/LISTA]' not in l)]
         df = pd.read_csv(BytesIO('\n'.join(corpo).encode()), sep=';', dtype=str).fillna('')
@@ -208,13 +244,11 @@ def processar_arquivo_dinabox(uploaded_file) -> tuple[pd.DataFrame, bytes, str]:
     df = consolidar_ripas(df)
     df['ROTEIRO'] = df.apply(calcular_roteiro, axis=1)
     df['PLANO'] = df.apply(determinar_plano_de_corte, axis=1)
-    # Limpeza de colunas temporárias
-    cols_temp = ['LARGURA_NUM', 'QTD_NUM']
-    for col in cols_temp:
+
+    for col in ['LARGURA_NUM', 'QTD_NUM']:
         if col in df.columns:
             df = df.drop(columns=col)
 
-    # Limpeza final de tags
     for col in ['OBSERVAÇÃO', 'OBS']:
         if col in df.columns:
             df[col] = df[col].str.replace(r' *_(pin|tap|led|curvo|painel|ripa|lamina)_ *', ' ', case=False, regex=True).str.strip()
@@ -225,9 +259,9 @@ def processar_arquivo_dinabox(uploaded_file) -> tuple[pd.DataFrame, bytes, str]:
     xls_buf = gerar_xls(df)
     xls_bytes = xls_buf.getvalue()
 
-    # Salva fisicamente
     os.makedirs(settings.PCP_OUTPUTS_DIR, exist_ok=True)
     caminho = os.path.join(settings.PCP_OUTPUTS_DIR, nome_saida)
+
     with open(caminho, 'wb') as f:
         f.write(xls_bytes)
 
