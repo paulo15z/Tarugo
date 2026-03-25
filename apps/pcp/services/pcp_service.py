@@ -39,15 +39,22 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
     grupos = df_ripas.groupby(['MATERIAL DA PEÇA', 'ESPESSURA', 'ALTURA DA PEÇA', 'LOCAL', 'LARGURA_NUM'])
 
     for name, group in grupos:
-        _, _, _, _, largura_ripa = name
+        _, _, altura_ripa_raw, _, _ = name
+        altura_ripa = to_float(altura_ripa_raw)
         total_unidades = int(group['QTD_NUM'].sum())
-        largura_painel = (largura_ripa * total_unidades) + (total_unidades * ESPESSURA_SERRA) + MARGEM_REFILO
+        # Organização nova (Anderson):
+        # - manter a largura da ripa
+        # - distribuir as alturas das ripas na altura total do painel (com refilo)
+        altura_painel = (altura_ripa * total_unidades) + (total_unidades * ESPESSURA_SERRA) + MARGEM_REFILO
 
         nova_peca = group.iloc[0].copy()
         nova_peca['DESCRIÇÃO DA PEÇA'] = f"PAINEL PARA RIPAS ({total_unidades} un)"
-        nova_peca['LARGURA DA PEÇA'] = str(round(largura_painel, 1)).replace('.', ',')
+        # Mantém a largura original da ripa e altera apenas a altura do painel.
         nova_peca['QUANTIDADE'] = "1"
-        nova_peca['OBSERVAÇÃO'] = f"CORTAR MANUALMENTE NA ESQUADREJADEIRA — {total_unidades}×{int(largura_ripa)}mm"
+        nova_peca['ALTURA DA PEÇA'] = str(round(altura_painel, 1)).replace('.', ',')
+        nova_peca['OBSERVAÇÃO'] = (
+            f"CORTAR MANUALMENTE NA ESQUADREJADEIRA — {total_unidades}×{int(altura_ripa)}mm"
+        )
 
         for col in BORDA_COLS:
             if col in nova_peca:
