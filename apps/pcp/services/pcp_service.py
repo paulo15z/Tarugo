@@ -25,7 +25,6 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
     if df_ripas.empty:
         return df
 
-    # 🔧 CONFIG
     ALTURA_CHAPA = 2750.0
     ESPESSURA_SERRA = 4.0
     MARGEM_REFILO = 20.0
@@ -42,16 +41,18 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
 
     novas_ripas = []
 
+    fita_cols = [col for col in df.columns if 'FITA' in col.upper()]
+
     grupos = df_ripas.groupby([
         'MATERIAL DA PEÇA',
         'ESPESSURA',
         'ALTURA_NUM',
         'LARGURA_NUM',
         'LOCAL',
-
-        # 🔥 IMPORTANTE: mantém FITA no agrupamento
-        *[col for col in df.columns if 'FITA' in col.upper()]
+        *fita_cols
     ])
+
+    import math
 
     for name, group in grupos:
         altura_ripa = name[2]
@@ -62,7 +63,6 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
         if altura_ripa <= 0:
             continue
 
-        # 🔥 cálculo de capacidade por tira
         altura_util = ALTURA_CHAPA - MARGEM_REFILO
         altura_por_peca = altura_ripa + ESPESSURA_SERRA
 
@@ -70,29 +70,31 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
 
         if max_por_tira <= 0:
             raise ValueError(
-                f"Ripa com altura {altura_ripa} maior que a chapa"
+                f"Ripa {altura_ripa} maior que chapa"
             )
 
-        # 🔥 quantidade de tiras necessárias
-        import math
         qtd_tiras = math.ceil(total_pecas / max_por_tira)
 
         nova = group.iloc[0].copy()
 
-        # 🔥 mantém tudo, só ajusta o necessário
         nova['DESCRIÇÃO DA PEÇA'] = "RIPA CORTE"
-        nova['ALTURA DA PEÇA'] = str(int(ALTURA_CHAPA)).replace('.', ',')
-        nova['LARGURA DA PEÇA'] = str(int(largura_ripa)).replace('.', ',')
+        nova['ALTURA DA PEÇA'] = str(int(ALTURA_CHAPA))
+        nova['LARGURA DA PEÇA'] = str(int(largura_ripa))
         nova['QUANTIDADE'] = str(qtd_tiras)
 
         nova['OBSERVAÇÃO'] = (
-            f"GERAR {qtd_tiras} TIRAS DE {int(ALTURA_CHAPA)}mm → "
-            f"{total_pecas} PECAS DE {int(altura_ripa)}mm"
+            f"{qtd_tiras} TIRAS → {total_pecas} PCS {int(altura_ripa)}mm"
         )
 
         novas_ripas.append(nova)
 
-    return pd.concat([df_resto, pd.DataFrame(novas_ripas)], ignore_index=True)
+    #  GARANTIA: ripas originais NÃO VOLTAM
+    resultado = pd.concat(
+        [df_resto, pd.DataFrame(novas_ripas)],
+        ignore_index=True
+    )
+
+    return resultado
 
 
 def determinar_plano_de_corte(row) -> str:
