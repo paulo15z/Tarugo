@@ -22,11 +22,11 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
     df_ripas = df[mask_ripa].copy()
     df_resto = df[~mask_ripa].copy()
 
-    #  se não tiver ripa, não mexe
+    # se não tiver ripa, não mexe
     if df_ripas.empty:
         return df
 
-    #  CONFIG ---------------------------------------------
+    # CONFIG ---------------------------------------------
     ALTURA_CHAPA = 2750.0
     ESPESSURA_SERRA = 4.0
     MARGEM_REFILO = 20.0
@@ -43,7 +43,7 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
 
     novas_ripas = []
 
-    #  detecta colunas de fita automaticamente
+    # detecta colunas de fita automaticamente
     fita_cols = [col for col in df.columns if 'FITA' in col.upper()]
 
     grupos = df_ripas.groupby([
@@ -66,7 +66,7 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
         if altura_ripa <= 0:
             continue
 
-        #  cálculo de quantas peças cabem em uma tira
+        # cálculo de quantas peças cabem em uma tira
         altura_util = ALTURA_CHAPA - MARGEM_REFILO
         altura_por_peca = altura_ripa + ESPESSURA_SERRA
 
@@ -77,10 +77,10 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
                 f"Ripa com altura {altura_ripa} maior que a chapa"
             )
 
-        #  quantas tiras precisamos
+        # quantas tiras precisamos
         qtd_tiras = math.ceil(total_pecas / max_por_tira)
 
-        #  gera UMA LINHA POR TIRA (QTD = 1) nao temos ctz de que o sistema do pcp reconhece essa coluna de quantidade
+        # gera UMA LINHA POR TIRA (QTD = 1)
         for i in range(qtd_tiras):
             nova = group.iloc[0].copy()
 
@@ -94,11 +94,10 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
                 f"{total_pecas} PCS {int(altura_ripa)}mm"
             )
 
-            #  NÃO mexe nas FITAS → preserva tudo
-
+            # NÃO mexe nas FITAS → preserva tudo
             novas_ripas.append(nova)
 
-    #  remove completamente as ripas originais
+    # remove completamente as ripas originais
     resultado = pd.concat(
         [df_resto, pd.DataFrame(novas_ripas)],
         ignore_index=True
@@ -108,25 +107,37 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
 
 
 
-def determinar_plano_de_corte(row) -> str:
+def determinar_plano_de_corte(row, roteiro: str) -> str:
     desc = str(row.get('DESCRIÇÃO DA PEÇA', '')).strip().lower()
     obs = (str(row.get('OBSERVAÇÃO', '')) + ' ' + str(row.get('OBS', ''))).strip().lower()
     local = str(row.get('LOCAL', '')).strip().lower()
-    duplagem = str(row.get('DUPLAGEM', '')).strip().lower()
     material = str(row.get('MATERIAL DA PEÇA', '')).strip().lower()
 
-    if '_pin_' in obs or 'pintura' in desc:
+    # 01 - PLANO – PEÇAS COM PINTURA
+    if 'PIN' in roteiro:
         return '01'
-    if 'lamina' in material or 'folha' in material or '_lamina_' in obs:
+
+    # 02 - PLANO - PEÇAS EM LÂMINAS OU FOLHAS
+    if 'lamina' in material or 'lâmina' in material or 'folha' in material or '_lamina_' in obs:
         return '02'
-    if 'gaveta' in desc or 'gaveteiro' in desc or 'caixa' in local:
-        return '04'
-    if duplagem not in ('', 'nan', 'none'):
+
+    # 05 - PLANO - PEÇAS ENGROSSADAS/DUPLADAS
+    if 'DUP' in roteiro:
         return '05'
-    if 'porta' in desc or 'frontal' in desc or 'porta' in local:
-        return '06'
-    if 'pré' in desc or 'pre montagem' in obs or 'prem' in obs:
+
+    # 10 – PLANO – PEÇAS PARA PRÉ MONTAGEM
+    if 'PRÉ' in roteiro or 'pré' in desc or 'pre montagem' in obs or 'prem' in obs or '_pré_' in obs:
         return '10'
+
+    # 04 - PLANO – MONTAGEM DE CAIXAS E GAVETAS
+    if 'MCX' in roteiro:
+        return '04'
+
+    # 06 - PLANO – PORTAS E FRENTES
+    if 'MPE' in roteiro or 'porta' in desc or 'porta' in local or 'frontal' in desc or 'frontal' in local or 'frente' in desc or 'frente' in local:
+        return '06'
+
+    # 11 - PLANO – OUTROS
     return '11'
 
 
@@ -141,18 +152,18 @@ def calcular_roteiro(row) -> str:
     furo = str(row.get('FURO', '')).strip().lower()
     obs = (str(row.get('OBSERVAÇÃO', '')) + ' ' + str(row.get('OBS', ''))).strip().lower()
 
-    tem_borda = any(str(row.get(c, '')).strip() not in ('', 'nan') for c in BORDA_COLS) # logica inversa para facilitar a leitura do código do roteiro
-    tem_furo = furo not in ('', 'nan', 'none') # verifica se tem furo
-    tem_duplagem = duplagem not in ('', 'nan', 'none')                                  # coluca de duplag
-    tem_puxador = 'puxador' in desc or 'tampa' in desc                                  # alucinei mas em algum momento vamos usar
-    eh_porta = 'porta' in local or 'porta' in desc                                      # verifica se é uma porta
-    eh_gaveta = 'gaveta' in desc or 'gaveteiro' in desc or 'gaveta' in local            # verifica se é gaveta
-    eh_caixa = 'caixa' in local                                                         # verifica se é caixa (bem porcamente, mas é o que temos)  
-    eh_frontal = 'frontal' in local or 'frontal' in desc                                # verifica se é frontal
-    eh_tamponamento = 'tamponamento' in local                                           # verifica se é tamponamento (usado para decidir se vai para marcenaria ou não)
+    tem_borda = any(str(row.get(c, '')).strip() not in ('', 'nan') for c in BORDA_COLS) 
+    tem_furo = furo not in ('', 'nan', 'none') 
+    tem_duplagem = duplagem not in ('', 'nan', 'none')                                  
+    tem_puxador = 'puxador' in desc or 'tampa' in desc                                  
+    eh_porta = 'porta' in local or 'porta' in desc                                      
+    eh_gaveta = 'gaveta' in desc or 'gaveteiro' in desc or 'gaveta' in local            
+    eh_caixa = 'caixa' in local                                                         
+    eh_frontal = 'frontal' in local or 'frontal' in desc                                
+    eh_tamponamento = 'tamponamento' in local                                           
     eh_painel = '_painel_' in obs
 
-# uso das tags
+    # uso das tags
     tem_pintura = '_pin_' in obs 
     tem_tapecar = '_tap_' in obs
     tem_eletrica = '_led_' in obs
@@ -171,7 +182,7 @@ def calcular_roteiro(row) -> str:
     # 3º: Segue o fluxo normal de furação
     if tem_furo:
         rota.append('USI')
-        rota.append('FUR')      # vamso em algum momento verificar isso aqui
+        rota.append('FUR')      
 
     # Regra MCX: Só vai para MCX se NÃO tiver duplagem
     if (eh_gaveta or eh_caixa) and not eh_painel and not tem_duplagem:
@@ -260,8 +271,13 @@ def processar_arquivo_dinabox(uploaded_file):
         raise ValueError(f"Colunas obrigatórias não encontradas: {', '.join(faltando)}")
 
     df = consolidar_ripas(df)
+    
+    # 1º Calcula o ROTEIRO
     df['ROTEIRO'] = df.apply(calcular_roteiro, axis=1)
-    df['PLANO'] = df.apply(determinar_plano_de_corte, axis=1)
+    
+    # 2º Calcula o PLANO lendo a coluna ROTEIRO                     
+    """ to dividindo essa parte em 2 etapas pra garantir q n tenha q 'recalcular' o plano de corte sendo q ja verificamos as mesmas informaçoes """
+    df['PLANO'] = df.apply(lambda row: determinar_plano_de_corte(row, row['ROTEIRO']), axis=1)
 
     for col in ['LARGURA_NUM', 'QTD_NUM']:
         if col in df.columns:
