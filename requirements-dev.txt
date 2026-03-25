@@ -7,3 +7,4 @@ flake8==6.1.0
 pydantic==2.5.0
 djangorestframework==3.14.0
 pandas
+xlwt
