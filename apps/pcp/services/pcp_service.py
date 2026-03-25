@@ -141,36 +141,46 @@ def calcular_roteiro(row) -> str:
     furo = str(row.get('FURO', '')).strip().lower()
     obs = (str(row.get('OBSERVAÇÃO', '')) + ' ' + str(row.get('OBS', ''))).strip().lower()
 
-    tem_borda = any(str(row.get(c, '')).strip() not in ('', 'nan') for c in BORDA_COLS)
-    tem_furo = furo not in ('', 'nan', 'none')
-    tem_duplagem = duplagem not in ('', 'nan', 'none')
-    tem_puxador = 'puxador' in desc or 'tampa' in desc
-    eh_porta = 'porta' in local or 'porta' in desc
-    eh_gaveta = 'gaveta' in desc or 'gaveteiro' in desc or 'gaveta' in local
-    eh_caixa = 'caixa' in local
-    eh_frontal = 'frontal' in local or 'frontal' in desc
-    eh_tamponamento = 'tamponamento' in local
+    tem_borda = any(str(row.get(c, '')).strip() not in ('', 'nan') for c in BORDA_COLS) # logica inversa para facilitar a leitura do código do roteiro
+    tem_furo = furo not in ('', 'nan', 'none') # verifica se tem furo
+    tem_duplagem = duplagem not in ('', 'nan', 'none')                                  # coluca de duplag
+    tem_puxador = 'puxador' in desc or 'tampa' in desc                                  # alucinei mas em algum momento vamos usar
+    eh_porta = 'porta' in local or 'porta' in desc                                      # verifica se é uma porta
+    eh_gaveta = 'gaveta' in desc or 'gaveteiro' in desc or 'gaveta' in local            # verifica se é gaveta
+    eh_caixa = 'caixa' in local                                                         # verifica se é caixa (bem porcamente, mas é o que temos)  
+    eh_frontal = 'frontal' in local or 'frontal' in desc                                # verifica se é frontal
+    eh_tamponamento = 'tamponamento' in local                                           # verifica se é tamponamento (usado para decidir se vai para marcenaria ou não)
     eh_painel = '_painel_' in obs
 
-    tem_pintura = '_pin_' in obs
+# uso das tags
+    tem_pintura = '_pin_' in obs 
     tem_tapecar = '_tap_' in obs
     tem_eletrica = '_led_' in obs
     tem_curvo = '_curvo_' in obs
 
     rota = ['COR']
 
-    if tem_borda:
-        rota.append('BOR')
-    if tem_furo:
-        rota.append('USI')
-        rota.append('FUR')
+    # 1º: Faz o Engrossamento/Duplagem
     if tem_duplagem:
         rota.append('DUP')
-    if (eh_gaveta or eh_caixa) and not eh_painel:
+
+    # 2º: Passa a Borda 
+    if tem_borda:
+        rota.append('BOR')
+
+    # 3º: Segue o fluxo normal de furação
+    if tem_furo:
+        rota.append('USI')
+        rota.append('FUR')      # vamso em algum momento verificar isso aqui
+
+    # Regra MCX: Só vai para MCX se NÃO tiver duplagem
+    if (eh_gaveta or eh_caixa) and not eh_painel and not tem_duplagem:
         rota.append('MCX')
+
     elif tem_puxador or eh_porta or eh_frontal:
         rota.append('MPE')
         rota.append('MAR')
+        
     if eh_painel or (eh_tamponamento and not eh_gaveta):
         rota.append('MAR')
 
