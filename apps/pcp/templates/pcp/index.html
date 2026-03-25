@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roteiro de Produção · PCP - Tarugo</title>
+    <style>
+        :root {--bg:#f0f2f5;--card:#ffffff;--border:#dde1e7;--primary:#1a3a6b;--accent:#2563eb;--success:#16a34a;--danger:#dc2626;--text:#1e2532;--muted:#6b7280;--font:system-ui,sans-serif;}
+        *{box-sizing:border-box;margin:0;padding:0}body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+        header{background:var(--primary);color:#fff;padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+        header h1{font-size:1.1rem;font-weight:600;letter-spacing:.03em}
+        .tabs{display:flex;gap:2px;background:var(--primary);padding:0 32px}
+        .tab{padding:10px 24px;font-size:.85rem;font-weight:500;color:rgba(255,255,255,.7);cursor:pointer;border-bottom:3px solid transparent;transition:.15s}
+        .tab:hover{color:#fff}.tab.active{color:#fff;border-bottom-color:#60a5fa}
+        main{max-width:1180px;margin:32px auto;padding:0 24px}
+        .panel{display:none}.panel.active{display:block}
+        .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:24px;margin-bottom:24px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+        .card h2{font-size:1rem;font-weight:600;color:var(--primary);margin-bottom:16px}
+        .drop-area{border:2px dashed var(--border);border-radius:10px;padding:52px 24px;text-align:center;cursor:pointer;transition:.2s}
+        .drop-area:hover,.drop-area.over{border-color:var(--accent);background:#eff6ff}
+        .drop-area svg{width:52px;height:52px;color:var(--muted);margin-bottom:16px}
+        #file-input{display:none}
+        #file-name{margin-top:12px;font-size:.87rem;color:var(--accent);font-weight:500}
+        .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 22px;border-radius:6px;border:none;font-size:.9rem;font-weight:600;cursor:pointer;transition:.15s}
+        .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#1d4ed8}
+        .btn-primary:disabled{background:#93c5fd;cursor:not-allowed}
+        .btn-success{background:var(--success);color:#fff}
+        #progress-wrap{display:none;margin-top:20px}
+        .progress-bar{height:8px;background:#e5e7eb;border-radius:99px;overflow:hidden}
+        .progress-fill{height:100%;width:0%;background:var(--accent);border-radius:99px;transition:width .4s}
+        .alert{display:none;padding:14px 18px;border-radius:8px;font-size:.9rem;margin-top:16px;border-left:5px solid}
+        .alert-err{background:#fef2f2;border-color:var(--danger);color:#991b1b}
+        .alert-ok{background:#f0fdf4;border-color:var(--success);color:#166534}
+        #resultado{display:none}
+        .stats{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:24px}
+        .stat-box{flex:1;min-width:160px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center}
+        .stat-box .num{font-size:2.4rem;font-weight:700;color:var(--primary)}
+        .stat-box .lbl{font-size:.82rem;color:var(--muted);margin-top:4px}
+        .roteiro-list{display:flex;flex-direction:column;gap:10px}
+        .roteiro-row{display:flex;align-items:center;gap:12px;font-size:.85rem}
+        .roteiro-row .rota{font-family:'Consolas',monospace;color:var(--primary);flex:1}
+        .roteiro-row .bar-wrap{flex:2;height:9px;background:#e5e7eb;border-radius:99px;overflow:hidden}
+        .roteiro-row .bar-fill{height:100%;background:var(--accent);border-radius:99px}
+        .roteiro-row .qtd{width:40px;text-align:right;color:var(--muted);font-weight:600}
+        .table-wrap{overflow-x:auto}
+        table{width:100%;border-collapse:collapse;font-size:.84rem}
+        thead th{background:var(--primary);color:#fff;padding:10px 14px;text-align:left;font-weight:600;white-space:nowrap}
+        tbody tr:nth-child(even){background:var(--bg)}
+        tbody td{padding:9px 14px;border-bottom:1px solid var(--border)}
+        td.rota-cell{font-family:'Consolas',monospace;font-size:.8rem;color:var(--primary);font-weight:600;background:#fffbeb;white-space:nowrap}
+        .chip{padding:4px 11px;border-radius:5px;font-size:.76rem;font-weight:700;letter-spacing:.03em}
+        .arrow{color:#94a3b8;margin:0 4px}
+    </style>
+</head>
+<body>
+
+<input type="hidden" id="csrf-token" value="{{ csrf_token }}">
+
+<header>
+    <h1>⚙ Roteiro de Produção · PCP - Tarugo</h1>
+    <span id="clock"></span>
+</header>
+
+<div class="tabs">
+    <div class="tab active" onclick="showTab('upload')">Processar Arquivo</div>
+    <div class="tab" onclick="showTab('historico')">Histórico</div>
+</div>
+
+<main>
+    <div class="panel active" id="panel-upload">
+        <div class="card">
+            <h2>Upload do arquivo do Dinabox</h2>
+            <div class="drop-area" id="drop-area">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="52" height="52">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+                </svg>
+                <p>Arraste o arquivo aqui ou <strong>clique para selecionar</strong></p>
+                <p style="margin-top:8px;font-size:0.85rem;">CSV · XLS · XLSX</p>
+                <div id="file-name"></div>
+            </div>
+            <input type="file" id="file-input" accept=".csv,.xls,.xlsx">
+
+            <div id="progress-wrap">
+                <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+                <div id="progress-label">Processando arquivo...</div>
+            </div>
+
+            <div class="alert alert-err" id="alert-err"></div>
+            <div class="alert alert-ok" id="alert-ok"></div>
+
+            <button class="btn btn-primary" id="btn-processar" onclick="processar()" disabled style="margin-top:20px;">
+                ▶ Gerar Roteiro de Produção
+            </button>
+        </div>
+
+        <div id="resultado">
+            <div class="card">
+                <h2>Resultado do Processamento</h2>
+                <div class="stats" id="stats"></div>
+                <button class="btn btn-success" id="btn-download">⬇ Baixar arquivo XLS com roteiros</button>
+            </div>
+
+            <div class="card">
+                <h2>Distribuição de Roteiros</h2>
+                <div class="roteiro-list" id="roteiro-list"></div>
+            </div>
+
+            <div class="card">
+                <h2>Prévia das peças <span style="font-weight:400;color:var(--muted);font-size:.82rem">(primeiras 50)</span></h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Descrição da Peça</th>
+                                <th>Local</th>
+                                <th>OBS</th>
+                                <th>PLANO</th>
+                                <th>ROTEIRO</th>
+                            </tr>
+                        </thead>
+                        <tbody id="previa-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel" id="panel-historico">
+        <div class="card">
+            <h2>Pedidos processados</h2>
+            <table id="hist-table">
+                <thead><tr><th>ID</th><th>Arquivo Original</th><th>Data/Hora</th><th>Peças</th><th>Ações</th></tr></thead>
+                <tbody id="hist-tbody"></tbody>
+            </table>
+            <div id="no-historico" style="display:none;text-align:center;padding:40px;color:var(--muted);font-style:italic;">
+                Nenhum arquivo processado ainda.
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+function tick(){const d=new Date();document.getElementById('clock').textContent=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
+tick();setInterval(tick,30000);
+
+function showTab(name){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('panel-'+name).classList.add('active');document.querySelector(`.tab[onclick="showTab('${name}')"]`).classList.add('active');if(name==='historico')carregarHistorico();}
+
+const dropArea=document.getElementById('drop-area');const fileInput=document.getElementById('file-input');let arquivoAtual=null;let pidAtual=null;
+
+['dragover','dragenter'].forEach(ev=>{dropArea.addEventListener(ev,e=>{e.preventDefault();dropArea.classList.add('over');});});
+['dragleave','drop'].forEach(ev=>{dropArea.addEventListener(ev,e=>{e.preventDefault();dropArea.classList.remove('over');});});
+dropArea.addEventListener('drop',e=>{if(e.dataTransfer.files.length)setFile(e.dataTransfer.files[0]);});
+dropArea.addEventListener('click',()=>fileInput.click());
+fileInput.addEventListener('change',()=>{if(fileInput.files[0])setFile(fileInput.files[0]);});
+
+function setFile(f){arquivoAtual=f;document.getElementById('file-name').innerHTML=`📄 ${f.name}`;document.getElementById('btn-processar').disabled=false;document.getElementById('resultado').style.display='none';}
+
+async function processar(){
+    if(!arquivoAtual) return;
+
+    const formData = new FormData();
+    formData.append('arquivo', arquivoAtual);
+    formData.append('csrfmiddlewaretoken', document.getElementById('csrf-token').value);
+
+    document.getElementById('progress-wrap').style.display = 'block';
+    document.getElementById('btn-processar').disabled = true;
+
+    try {
+        const res = await fetch("{% url 'pcp-processar' %}", { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.erro || 'Erro no servidor');
+
+        pidAtual = data.pid;
+        mostrarResultado(data);
+
+        document.getElementById('alert-ok').textContent = `✓ Processado com sucesso — ${data.total} peças`;
+        document.getElementById('alert-ok').style.display = 'block';
+    } catch (e) {
+        document.getElementById('alert-err').textContent = `⚠ ${e.message}`;
+        document.getElementById('alert-err').style.display = 'block';
+    } finally {
+        document.getElementById('progress-wrap').style.display = 'none';
+        document.getElementById('btn-processar').disabled = false;
+    }
+}
+
+function renderRota(rota){return rota.split(' > ').map(s=>`<span class="chip">${s.trim()}</span>`).join('<span class="arrow">›</span>');}
+
+function mostrarResultado(data){
+    document.getElementById('stats').innerHTML=`
+        <div class="stat-box"><div class="num">${data.total}</div><div class="lbl">Total de peças</div></div>
+        <div class="stat-box"><div class="num">${data.resumo.length}</div><div class="lbl">Tipos de roteiro</div></div>`;
+    document.getElementById('btn-download').onclick=()=>{window.location.href=`{% url 'pcp-download' pid='__PID__' %}`.replace('__PID__',pidAtual);};
+    const maxQtd=Math.max(...data.resumo.map(r=>r.qtd),1);
+    document.getElementById('roteiro-list').innerHTML=data.resumo.map(r=>`
+        <div class="roteiro-row">
+            <div class="rota">${renderRota(r.roteiro)}</div>
+            <div class="bar-wrap"><div class="bar-fill" style="width:${(r.qtd/maxQtd*100).toFixed(1)}%"></div></div>
+            <div class="qtd">${r.qtd}</div>
+        </div>`).join('');
+    document.getElementById('previa-tbody').innerHTML=data.previa.map(p=>`
+        <tr>
+            <td>${p['DESCRIÇÃO DA PEÇA']||''}</td>
+            <td><span class="badge badge-blue">${p['LOCAL']||''}</span></td>
+            <td style="color:var(--muted);font-style:italic">${p['OBS']||''}</td>
+            <td><strong>${p['PLANO']||''}</strong></td>
+            <td class="rota-cell">${p['ROTEIRO']||''}</td>
+        </tr>`).join('');
+    document.getElementById('resultado').style.display='block';
+}
+
+async function carregarHistorico(){
+    const tbody=document.getElementById('hist-tbody');
+    const noData=document.getElementById('no-historico');
+    try{
+        const res=await fetch("{% url 'pcp-historico' %}");
+        const rows=await res.json();
+        if(rows.length===0){noData.style.display='block';return;}
+        noData.style.display='none';
+        tbody.innerHTML=rows.map(r=>`
+            <tr>
+                <td><strong>${r.id}</strong></td>
+                <td>${r.nome_arquivo}</td>
+                <td>${new Date(r.data).toLocaleString('pt-BR')}</td>
+                <td>${r.total_pecas}</td>
+                <td><a href="{% url 'pcp-download' pid='__PID__' %}".replace('__PID__',r.id) class="btn btn-success" style="padding:4px 12px;font-size:0.8rem;">⬇ XLS</a></td>
+            </tr>`).join('');
+    }catch(e){tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--danger)">Erro ao carregar histórico</td></tr>`;}
+}
+</script>
+</body>
+</html>

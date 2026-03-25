@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'apps.core',
     'apps.estoque',
+    'apps.pcp',
   
 ]
 
@@ -119,3 +120,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+
+
+PCP_OUTPUTS_DIR = BASE_DIR / 'media' / 'pcp' / 'outputs'
+MEDIA_ROOT = BASE_DIR / 'media'
+
