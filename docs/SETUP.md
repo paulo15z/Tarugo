@@ -409,6 +409,10 @@ Se existir regra de negócio:
 - Por isso, nesta rodada, o deploy usa somente o `requirements.txt` atual.
 - Se no futuro você precisar processar `XLS`/`XLSX`, aí sim adicione as dependências no `requirements.txt` e reconstrua a imagem.
 
+## Requisito de Python no Docker
+- O projeto usa `Django==6.0.3`, que exige `Python >= 3.12`.
+- Por isso o `Dockerfile` usa a imagem base `python:3.12-slim`.
+
 ## Smoke test (check rápido)
 - Carregar a página: `GET /pcp/` e verificar se a tela abre
 - Fluxo completo:
