@@ -392,9 +392,10 @@ Se existir regra de negócio:
 1. Garanta que você tenha no diretório do projeto:
    - `db.sqlite3` (arquivo do banco)
    - `media/` (pasta onde o PCP grava os XLS gerados; se não existir, o compose vai criar ao subir)
-2. Suba o container:
+2. Suba o container (via script):
    ```bash
-   docker compose up -d --build
+   chmod +x deploy.sh
+   ./deploy.sh
    ```
 3. Acesse:
    - `http://<IP_DO_CT>:8000/pcp/`
