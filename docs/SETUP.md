@@ -380,3 +380,74 @@ Toda nova funcionalidade deve seguir:
 Se existir regra de negócio:
 
 👉 Ela DEVE estar no service
+
+---
+# 🚀 Deploy com Docker em CT Proxmox (MVP PCP)
+
+## Pré-requisitos no CT
+- Docker e Docker Compose instalados
+- Um diretório persistente para o projeto, de preferência com permissão de escrita para o usuário do Docker
+
+## Rodar
+1. Garanta que você tenha no diretório do projeto:
+   - `db.sqlite3` (arquivo do banco)
+   - `media/` (pasta onde o PCP grava os XLS gerados; se não existir, o compose vai criar ao subir)
+2. Suba o container:
+   ```bash
+   docker compose up -d --build
+   ```
+3. Acesse:
+   - `http://<IP_DO_CT>:8000/pcp/`
+
+## Persistência
+- `db.sqlite3` é persistido via volume: `./db.sqlite3:/app/db.sqlite3`
+- Arquivos gerados pelo PCP são persistidos em `media/`, principalmente em `media/pcp/outputs`
+
+## Arquivos Excel (XLS/XLSX)
+- No seu uso atual do MVP PCP você envia apenas `CSV`.
+- Por isso, nesta rodada, o deploy usa somente o `requirements.txt` atual.
+- Se no futuro você precisar processar `XLS`/`XLSX`, aí sim adicione as dependências no `requirements.txt` e reconstrua a imagem.
+
+## Smoke test (check rápido)
+- Carregar a página: `GET /pcp/` e verificar se a tela abre
+- Fluxo completo:
+  - `POST /pcp/processar/` enviando um `CSV` válido
+  - checar se o retorno JSON traz um `pid`
+  - baixar o arquivo com `GET /pcp/download/<pid>/` e validar que chega um `.xls`
+
+### Script Python (requests) para o smoke test
+Ajuste `URL_BASE` e `CAMINHO_CSV`:
+```python
+import re
+import requests
+
+URL_BASE = "http://IP_DO_CT:8000"
+CAMINHO_CSV = "seu_arquivo.csv"
+
+session = requests.Session()
+page = session.get(f"{URL_BASE}/pcp/")
+page.raise_for_status()
+
+m = re.search(r'id="csrf-token" value="([^"]+)"', page.text)
+assert m, "CSRF token não encontrado"
+csrf = m.group(1)
+
+with open(CAMINHO_CSV, "rb") as f:
+    resp = session.post(
+        f"{URL_BASE}/pcp/processar/",
+        files={"arquivo": f},
+        data={"csrfmiddlewaretoken": csrf},
+    )
+resp.raise_for_status()
+data = resp.json()
+pid = data["pid"]
+
+download = session.get(f"{URL_BASE}/pcp/download/{pid}/")
+download.raise_for_status()
+
+out_name = f"ROTEIRO_{pid}.xls"
+with open(out_name, "wb") as out:
+    out.write(download.content)
+
+print("OK:", out_name)
+```

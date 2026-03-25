@@ -261,3 +261,14 @@ Entregar um sistema funcional com:
 - [ ] Celery + tarefas assíncronas
 - [ ] Backup automático
 - [ ] Multi-empresa (SaaS)
+
+---
+# 🧰 Infra — Deploy Proxmox (CT) [MVP PCP]
+
+## Checklist do deploy simples
+- [x] Criar `Dockerfile` e `docker-compose.yml` com persistência de `db.sqlite3` e `media/`
+- [ ] (Se precisar) Adicionar `openpyxl`/`xlrd` no `requirements.txt` para processar `XLS`/`XLSX`
+- [ ] Executar smoke test do fluxo:
+  - `GET /pcp/`
+  - `POST /pcp/processar/` com `CSV`
+  - `GET /pcp/download/<pid>/`
