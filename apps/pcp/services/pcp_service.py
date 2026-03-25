@@ -36,68 +36,63 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
         except:
             return 0.0
 
+    df_ripas['ALTURA_NUM'] = df_ripas['ALTURA DA PEÇA'].apply(to_float)
     df_ripas['LARGURA_NUM'] = df_ripas['LARGURA DA PEÇA'].apply(to_float)
     df_ripas['QTD_NUM'] = df_ripas['QUANTIDADE'].apply(to_float)
 
-    novos_paineis = []
+    novas_ripas = []
 
     grupos = df_ripas.groupby([
         'MATERIAL DA PEÇA',
         'ESPESSURA',
-        'ALTURA DA PEÇA',
+        'ALTURA_NUM',
+        'LARGURA_NUM',
         'LOCAL',
-        'LARGURA_NUM'
+
+        # 🔥 IMPORTANTE: mantém FITA no agrupamento
+        *[col for col in df.columns if 'FITA' in col.upper()]
     ])
 
     for name, group in grupos:
-        _, _, altura_ripa_raw, _, _ = name
+        altura_ripa = name[2]
+        largura_ripa = name[3]
 
-        altura_ripa = to_float(altura_ripa_raw)
-        total_unidades = int(group['QTD_NUM'].sum())
+        total_pecas = int(group['QTD_NUM'].sum())
 
         if altura_ripa <= 0:
             continue
 
+        # 🔥 cálculo de capacidade por tira
         altura_util = ALTURA_CHAPA - MARGEM_REFILO
-        altura_por_ripa = altura_ripa + ESPESSURA_SERRA
+        altura_por_peca = altura_ripa + ESPESSURA_SERRA
 
-        max_ripas_por_chapa = int(altura_util // altura_por_ripa)
+        max_por_tira = int(altura_util // altura_por_peca)
 
-        if max_ripas_por_chapa <= 0:
+        if max_por_tira <= 0:
             raise ValueError(
-                f"Ripa com altura {altura_ripa} maior que capacidade da chapa ({ALTURA_CHAPA})"
+                f"Ripa com altura {altura_ripa} maior que a chapa"
             )
 
-        restante = total_unidades
+        # 🔥 quantidade de tiras necessárias
+        import math
+        qtd_tiras = math.ceil(total_pecas / max_por_tira)
 
-        while restante > 0:
-            qtd_no_painel = min(restante, max_ripas_por_chapa)
+        nova = group.iloc[0].copy()
 
-            altura_painel = (
-                qtd_no_painel * altura_ripa +
-                max(qtd_no_painel - 1, 0) * ESPESSURA_SERRA +
-                MARGEM_REFILO
-            )
+        # 🔥 mantém tudo, só ajusta o necessário
+        nova['DESCRIÇÃO DA PEÇA'] = "RIPA CORTE"
+        nova['ALTURA DA PEÇA'] = str(int(ALTURA_CHAPA)).replace('.', ',')
+        nova['LARGURA DA PEÇA'] = str(int(largura_ripa)).replace('.', ',')
+        nova['QUANTIDADE'] = str(qtd_tiras)
 
-            nova_peca = group.iloc[0].copy()
+        nova['OBSERVAÇÃO'] = (
+            f"GERAR {qtd_tiras} TIRAS DE {int(ALTURA_CHAPA)}mm → "
+            f"{total_pecas} PECAS DE {int(altura_ripa)}mm"
+        )
 
-            nova_peca['DESCRIÇÃO DA PEÇA'] = f"PAINEL PARA RIPAS ({qtd_no_painel} un)"
-            nova_peca['QUANTIDADE'] = "1"
-            nova_peca['ALTURA DA PEÇA'] = str(round(altura_painel, 1)).replace('.', ',')
+        novas_ripas.append(nova)
 
-            nova_peca['OBSERVAÇÃO'] = (
-                f"CORTAR NA ESQUADREJADEIRA — {qtd_no_painel}x{int(altura_ripa)}mm"
-            )
-
-            for col in BORDA_COLS:
-                if col in nova_peca:
-                    nova_peca[col] = ""
-
-            novos_paineis.append(nova_peca)
-
-            restante -= qtd_no_painel
-
-    return pd.concat([df_resto, pd.DataFrame(novos_paineis)], ignore_index=True)
+    return pd.concat([df_resto, pd.DataFrame(novas_ripas)], ignore_index=True)
 
 
 def determinar_plano_de_corte(row) -> str:
