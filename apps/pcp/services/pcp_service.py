@@ -29,7 +29,7 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
     # CONFIG ---------------------------------------------
     ALTURA_CHAPA = 2750.0
     ESPESSURA_SERRA = 4.0
-    MARGEM_REFILO = 20.0
+    MARGEM_REFILO = 5.0
 
     def to_float(val):
         try:
