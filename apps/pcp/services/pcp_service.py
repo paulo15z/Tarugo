@@ -12,12 +12,24 @@ from datetime import datetime
 BORDA_COLS = ['BORDA_FACE_FRENTE', 'BORDA_FACE_TRASEIRA', 'BORDA_FACE_LE', 'BORDA_FACE_LD']
 
 
+#def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
+#    mask_ripa = (
+#        df['DESCRIÇÃO DA PEÇA'].str.upper().str.contains('RIPA', na=False) |
+#        df.get('OBSERVAÇÃO', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False) |
+#        df.get('OBS', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False)
+#    )
+
 def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
+    # máscara para identificar o que é porta, puta problema
+    mask_porta = df['DESCRIÇÃO DA PEÇA'].str.upper().str.contains('PORTA', na=False)
+    
+    # Ajusta a mask_ripa para só pegar o que tem RIPA e NÃO é porta
     mask_ripa = (
-        df['DESCRIÇÃO DA PEÇA'].str.upper().str.contains('RIPA', na=False) |
-        df.get('OBSERVAÇÃO', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False) |
-        df.get('OBS', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False)
+        (df['DESCRIÇÃO DA PEÇA'].str.upper().str.contains('RIPA', na=False) |
+         df.get('OBSERVAÇÃO', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False)) &
+        (~mask_porta) # O símbolo ~ significa "nao"
     )
+
 
     df_ripas = df[mask_ripa].copy()
     df_resto = df[~mask_ripa].copy()
