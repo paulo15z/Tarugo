@@ -7,13 +7,20 @@ BORDA_COLS = ['BORDA_FACE_FRENTE', 'BORDA_FACE_TRASEIRA', 'BORDA_FACE_LE', 'BORD
 
 def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Consolida ripas em tiras de chapa inteira.
-    Retorna o DataFrame completo com as ripas substituídas
+    Consolida ripas em tiras de chapa inteira, 
+    EXCETO se a peça for identificada como uma PORTA.
     """
+    
+    # Criamos uma máscara para identificar o que NÃO deve ser mexido (Portas)
+    mask_eh_porta = df['DESCRIÇÃO DA PEÇA'].str.upper().str.contains('PORTA', na=False)
+
+    # A regra das ripas agora tem o filtro: (Tem RIPA ou tag) E (Não é PORTA)
     mask_ripa = (
-        df['DESCRIÇÃO DA PEÇA'].str.upper().str.contains('RIPA', na=False) |
-        df.get('OBSERVAÇÃO', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False) |
-        df.get('OBS', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False)
+        (
+            df['DESCRIÇÃO DA PEÇA'].str.upper().str.contains('RIPA', na=False) |
+            df.get('OBSERVAÇÃO', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False) |
+            df.get('OBS', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False)
+        ) & (~mask_eh_porta)
     )
 
     df_ripas = df[mask_ripa].copy()
@@ -22,21 +29,16 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
     if df_ripas.empty:
         return df
 
-    # CONFIGURAÇÕES-----------------------------------------
+    # CONFIGURAÇÕES
     ALTURA_CHAPA = 2750.0
     ESPESSURA_SERRA = 4.0
     MARGEM_REFILO = 20.0
-    # CONFIGURAÇÕES-----------------------------------------
-
 
     def to_float(val):
-        try:
-            return float(str(val).replace(',', '.'))
-        except:
-            return 0.0
+        try: return float(str(val).replace(',', '.'))
+        except: return 0.0
 
     df_ripas['ALTURA_NUM'] = df_ripas['ALTURA DA PEÇA'].apply(to_float)
-    df_ripas['LARGURA_NUM'] = df_ripas['LARGURA DA PEÇA'].apply(to_float)
     df_ripas['QTD_NUM'] = df_ripas['QUANTIDADE'].apply(to_float)
 
     novas_ripas = []
