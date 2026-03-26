@@ -2,6 +2,7 @@ import pandas as pd
 import math
 from typing import Tuple
 
+
 BORDA_COLS = ['BORDA_FACE_FRENTE', 'BORDA_FACE_TRASEIRA', 'BORDA_FACE_LE', 'BORDA_FACE_LD']
 
 
@@ -39,6 +40,7 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
         except: return 0.0
 
     df_ripas['ALTURA_NUM'] = df_ripas['ALTURA DA PEÇA'].apply(to_float)
+    df_ripas['LARGURA_NUM'] = df_ripas['LARGURA DA PEÇA'].apply(to_float)
     df_ripas['QTD_NUM'] = df_ripas['QUANTIDADE'].apply(to_float)
 
     novas_ripas = []
