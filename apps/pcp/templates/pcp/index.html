@@ -1,233 +1,364 @@
+<!-- templates/pcp/index.html -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roteiro de Produção · PCP - Tarugo</title>
+    <title>Roteiro de Produção - PCP | Tarugo</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
     <style>
-        :root {--bg:#f0f2f5;--card:#ffffff;--border:#dde1e7;--primary:#1a3a6b;--accent:#2563eb;--success:#16a34a;--danger:#dc2626;--text:#1e2532;--muted:#6b7280;--font:system-ui,sans-serif;}
-        *{box-sizing:border-box;margin:0;padding:0}body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
-        header{background:var(--primary);color:#fff;padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.18)}
-        header h1{font-size:1.1rem;font-weight:600;letter-spacing:.03em}
-        .tabs{display:flex;gap:2px;background:var(--primary);padding:0 32px}
-        .tab{padding:10px 24px;font-size:.85rem;font-weight:500;color:rgba(255,255,255,.7);cursor:pointer;border-bottom:3px solid transparent;transition:.15s}
-        .tab:hover{color:#fff}.tab.active{color:#fff;border-bottom-color:#60a5fa}
-        main{max-width:1180px;margin:32px auto;padding:0 24px}
-        .panel{display:none}.panel.active{display:block}
-        .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:24px;margin-bottom:24px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
-        .card h2{font-size:1rem;font-weight:600;color:var(--primary);margin-bottom:16px}
-        .drop-area{border:2px dashed var(--border);border-radius:10px;padding:52px 24px;text-align:center;cursor:pointer;transition:.2s}
-        .drop-area:hover,.drop-area.over{border-color:var(--accent);background:#eff6ff}
-        .drop-area svg{width:52px;height:52px;color:var(--muted);margin-bottom:16px}
-        #file-input{display:none}
-        #file-name{margin-top:12px;font-size:.87rem;color:var(--accent);font-weight:500}
-        .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 22px;border-radius:6px;border:none;font-size:.9rem;font-weight:600;cursor:pointer;transition:.15s}
-        .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#1d4ed8}
-        .btn-primary:disabled{background:#93c5fd;cursor:not-allowed}
-        .btn-success{background:var(--success);color:#fff}
-        #progress-wrap{display:none;margin-top:20px}
-        .progress-bar{height:8px;background:#e5e7eb;border-radius:99px;overflow:hidden}
-        .progress-fill{height:100%;width:0%;background:var(--accent);border-radius:99px;transition:width .4s}
-        .alert{display:none;padding:14px 18px;border-radius:8px;font-size:.9rem;margin-top:16px;border-left:5px solid}
-        .alert-err{background:#fef2f2;border-color:var(--danger);color:#991b1b}
-        .alert-ok{background:#f0fdf4;border-color:var(--success);color:#166534}
-        #resultado{display:none}
-        .stats{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:24px}
-        .stat-box{flex:1;min-width:160px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center}
-        .stat-box .num{font-size:2.4rem;font-weight:700;color:var(--primary)}
-        .stat-box .lbl{font-size:.82rem;color:var(--muted);margin-top:4px}
-        .roteiro-list{display:flex;flex-direction:column;gap:10px}
-        .roteiro-row{display:flex;align-items:center;gap:12px;font-size:.85rem}
-        .roteiro-row .rota{font-family:'Consolas',monospace;color:var(--primary);flex:1}
-        .roteiro-row .bar-wrap{flex:2;height:9px;background:#e5e7eb;border-radius:99px;overflow:hidden}
-        .roteiro-row .bar-fill{height:100%;background:var(--accent);border-radius:99px}
-        .roteiro-row .qtd{width:40px;text-align:right;color:var(--muted);font-weight:600}
-        .table-wrap{overflow-x:auto}
-        table{width:100%;border-collapse:collapse;font-size:.84rem}
-        thead th{background:var(--primary);color:#fff;padding:10px 14px;text-align:left;font-weight:600;white-space:nowrap}
-        tbody tr:nth-child(even){background:var(--bg)}
-        tbody td{padding:9px 14px;border-bottom:1px solid var(--border)}
-        td.rota-cell{font-family:'Consolas',monospace;font-size:.8rem;color:var(--primary);font-weight:600;background:#fffbeb;white-space:nowrap}
-        .chip{padding:4px 11px;border-radius:5px;font-size:.76rem;font-weight:700;letter-spacing:.03em}
-        .arrow{color:#94a3b8;margin:0 4px}
+        body { font-family: 'Inter', system_ui, sans-serif; }
+        .rota-chip {
+            display: inline-flex;
+            align-items: center;
+            background-color: #fefce8;
+            color: #854d0e;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 4px;
+            margin-bottom: 2px;
+        }
+        .table-row:hover { background-color: #f8fafc; }
     </style>
 </head>
-<body>
+<body class="bg-gray-50 min-h-screen">
 
 <input type="hidden" id="csrf-token" value="{{ csrf_token }}">
+<input type="hidden" id="url-processar" value="{% url 'pcp-processar' %}">
+<input type="hidden" id="url-historico" value="{% url 'pcp-historico' %}">
+<input type="hidden" id="url-download-base" value="{% url 'pcp-download' pid='PID_PLACEHOLDER' %}">
 
-<header>
-    <h1>⚙ Roteiro de Produção · PCP - Tarugo</h1>
-    <span id="clock"></span>
+<header class="bg-indigo-800 text-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <i class="fas fa-cogs text-2xl"></i>
+            <h1 class="text-xl font-semibold tracking-tight">PCP • Roteiro de Produção</h1>
+        </div>
+        <div id="clock" class="text-sm font-medium"></div>
+    </div>
 </header>
 
-<div class="tabs">
-    <div class="tab active" onclick="showTab('upload')">Processar Arquivo</div>
-    <div class="tab" onclick="showTab('historico')">Histórico</div>
-</div>
+<div class="max-w-7xl mx-auto px-8 py-6">
+    <!-- Tabs -->
+    <div class="flex border-b border-gray-200 mb-8">
+        <button onclick="showTab(0)" id="tab-0"
+                class="tab-button px-8 py-4 font-medium text-sm border-b-2 border-indigo-600 text-indigo-700">
+            📤 Processar Novo Arquivo
+        </button>
+        <button onclick="showTab(1)" id="tab-1"
+                class="tab-button px-8 py-4 font-medium text-sm text-gray-500 hover:text-gray-700">
+            📋 Histórico de Processamentos
+        </button>
+    </div>
 
-<main>
-    <div class="panel active" id="panel-upload">
-        <div class="card">
-            <h2>Upload do arquivo do Dinabox</h2>
-            <div class="drop-area" id="drop-area">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="52" height="52">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
-                </svg>
-                <p>Arraste o arquivo aqui ou <strong>clique para selecionar</strong></p>
-                <p style="margin-top:8px;font-size:0.85rem;">CSV · XLS · XLSX</p>
-                <div id="file-name"></div>
+    <!-- TAB 1: UPLOAD -->
+    <div id="tab-content-0" class="tab-content">
+        <div class="bg-white rounded-2xl shadow border border-gray-100 p-8">
+            <h2 class="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                <i class="fas fa-upload"></i> Upload do Arquivo Dinabox
+            </h2>
+
+            <div id="drop-area"
+                 class="border-2 border-dashed border-gray-300 hover:border-indigo-400 transition-colors rounded-2xl p-16 text-center cursor-pointer">
+                <i class="fas fa-cloud-upload-alt text-6xl text-gray-300 mb-4"></i>
+                <p class="text-lg font-medium text-gray-700">Arraste o arquivo ou clique para selecionar</p>
+                <p class="text-sm text-gray-500 mt-2">CSV, XLS ou XLSX</p>
+                <div id="file-name" class="mt-6 text-indigo-600 font-medium"></div>
             </div>
-            <input type="file" id="file-input" accept=".csv,.xls,.xlsx">
 
-            <div id="progress-wrap">
-                <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-                <div id="progress-label">Processando arquivo...</div>
+            <input type="file" id="file-input" accept=".csv,.xls,.xlsx" class="hidden">
+
+            <div id="progress-wrap" class="hidden mt-8">
+                <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div id="progress-fill" class="h-full bg-indigo-600 rounded-full w-0 transition-all duration-300"></div>
+                </div>
+                <p id="progress-label" class="text-center text-sm text-gray-500 mt-3">Processando arquivo...</p>
             </div>
 
-            <div class="alert alert-err" id="alert-err"></div>
-            <div class="alert alert-ok" id="alert-ok"></div>
+            <div id="alert-err" class="hidden mt-6 bg-red-50 border-l-4 border-red-500 p-4 text-red-700 rounded-r-xl"></div>
+            <div id="alert-ok" class="hidden mt-6 bg-green-50 border-l-4 border-green-500 p-4 text-green-700 rounded-r-xl"></div>
 
-            <button class="btn btn-primary" id="btn-processar" onclick="processar()" disabled style="margin-top:20px;">
-                ▶ Gerar Roteiro de Produção
+            <button id="btn-processar"
+                    onclick="processarArquivo()"
+                    disabled
+                    class="mt-8 w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-semibold py-4 rounded-xl flex items-center justify-center gap-3 transition-all">
+                <i class="fas fa-play"></i>
+                GERAR ROTEIRO DE PRODUÇÃO
             </button>
         </div>
 
-        <div id="resultado">
-            <div class="card">
-                <h2>Resultado do Processamento</h2>
-                <div class="stats" id="stats"></div>
-                <button class="btn btn-success" id="btn-download">⬇ Baixar arquivo XLS com roteiros</button>
+        <!-- Resultado -->
+        <div id="resultado" class="hidden mt-10 space-y-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="stats"></div>
+
+            <div class="bg-white rounded-2xl shadow p-6 flex items-center justify-between">
+                <div>
+                    <h3 class="font-semibold text-gray-800">Arquivo processado com sucesso</h3>
+                    <p class="text-gray-500 text-sm">Clique abaixo para baixar o XLS completo</p>
+                </div>
+                <button id="btn-download" 
+                        class="bg-emerald-600 hover:bg-emerald-700 text-white px-10 py-3.5 rounded-xl font-semibold flex items-center gap-3">
+                    <i class="fas fa-download"></i>
+                    BAIXAR XLS
+                </button>
             </div>
 
-            <div class="card">
-                <h2>Distribuição de Roteiros</h2>
-                <div class="roteiro-list" id="roteiro-list"></div>
+            <div class="bg-white rounded-2xl shadow p-8">
+                <h3 class="font-semibold text-gray-800 mb-6">Distribuição de Roteiros</h3>
+                <div id="roteiro-list" class="space-y-5"></div>
             </div>
 
-            <div class="card">
-                <h2>Prévia das peças <span style="font-weight:400;color:var(--muted);font-size:.82rem">(primeiras 50)</span></h2>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
+            <div class="bg-white rounded-2xl shadow p-8">
+                <h3 class="font-semibold text-gray-800 mb-6">Prévia das Peças (primeiras 50)</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50">
                             <tr>
-                                <th>Descrição da Peça</th>
-                                <th>Local</th>
-                                <th>OBS</th>
-                                <th>PLANO</th>
-                                <th>ROTEIRO</th>
+                                <th class="px-6 py-4 text-left font-medium text-gray-600">Descrição</th>
+                                <th class="px-6 py-4 text-left font-medium text-gray-600">Local</th>
+                                <th class="px-6 py-4 text-left font-medium text-gray-600">OBS</th>
+                                <th class="px-6 py-4 text-left font-medium text-gray-600">PLANO</th>
+                                <th class="px-6 py-4 text-left font-medium text-gray-600">ROTEIRO</th>
                             </tr>
                         </thead>
-                        <tbody id="previa-tbody"></tbody>
+                        <tbody id="previa-tbody" class="divide-y"></tbody>
                     </table>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="panel" id="panel-historico">
-        <div class="card">
-            <h2>Pedidos processados</h2>
-            <table id="hist-table">
-                <thead><tr><th>ID</th><th>Arquivo Original</th><th>Data/Hora</th><th>Peças</th><th>Ações</th></tr></thead>
-                <tbody id="hist-tbody"></tbody>
-            </table>
-            <div id="no-historico" style="display:none;text-align:center;padding:40px;color:var(--muted);font-style:italic;">
-                Nenhum arquivo processado ainda.
+    <!-- TAB 2: HISTÓRICO -->
+    <div id="tab-content-1" class="tab-content hidden">
+        <div class="bg-white rounded-2xl shadow border border-gray-100 overflow-hidden">
+            <div class="p-8 border-b">
+                <h2 class="text-lg font-semibold text-gray-800">Histórico de Processamentos</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-8 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                            <th class="px-8 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Arquivo Original</th>
+                            <th class="px-8 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data/Hora</th>
+                            <th class="px-8 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Peças</th>
+                            <th class="px-8 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="hist-tbody" class="divide-y text-sm"></tbody>
+                </table>
+            </div>
+            <div id="no-historico" class="hidden py-24 text-center text-gray-400">
+                <i class="fas fa-inbox text-5xl mb-4"></i>
+                <p>Nenhum processamento encontrado ainda</p>
             </div>
         </div>
     </div>
-</main>
+</div>
 
 <script>
-function tick(){const d=new Date();document.getElementById('clock').textContent=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
-tick();setInterval(tick,30000);
+    // ==================== CONFIGURAÇÃO ====================
+    const CONFIG = {
+        urls: {
+            processar: document.getElementById('url-processar').value,
+            historico: document.getElementById('url-historico').value,
+            downloadBase: document.getElementById('url-download-base').value
+        },
+        csrfToken: document.getElementById('csrf-token').value
+    };
 
-function showTab(name){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('panel-'+name).classList.add('active');document.querySelector(`.tab[onclick="showTab('${name}')"]`).classList.add('active');if(name==='historico')carregarHistorico();}
+    let arquivoAtual = null;
+    let pidAtual = null;
 
-const dropArea=document.getElementById('drop-area');const fileInput=document.getElementById('file-input');let arquivoAtual=null;let pidAtual=null;
-
-['dragover','dragenter'].forEach(ev=>{dropArea.addEventListener(ev,e=>{e.preventDefault();dropArea.classList.add('over');});});
-['dragleave','drop'].forEach(ev=>{dropArea.addEventListener(ev,e=>{e.preventDefault();dropArea.classList.remove('over');});});
-dropArea.addEventListener('drop',e=>{if(e.dataTransfer.files.length)setFile(e.dataTransfer.files[0]);});
-dropArea.addEventListener('click',()=>fileInput.click());
-fileInput.addEventListener('change',()=>{if(fileInput.files[0])setFile(fileInput.files[0]);});
-
-function setFile(f){arquivoAtual=f;document.getElementById('file-name').innerHTML=`📄 ${f.name}`;document.getElementById('btn-processar').disabled=false;document.getElementById('resultado').style.display='none';}
-
-async function processar(){
-    if(!arquivoAtual) return;
-
-    const formData = new FormData();
-    formData.append('arquivo', arquivoAtual);
-    formData.append('csrfmiddlewaretoken', document.getElementById('csrf-token').value);
-
-    document.getElementById('progress-wrap').style.display = 'block';
-    document.getElementById('btn-processar').disabled = true;
-
-    try {
-        const res = await fetch("{% url 'pcp-processar' %}", { method: 'POST', body: formData });
-        const data = await res.json();
-
-        if (!res.ok) throw new Error(data.erro || 'Erro no servidor');
-
-        pidAtual = data.pid;
-        mostrarResultado(data);
-
-        document.getElementById('alert-ok').textContent = `✓ Processado com sucesso — ${data.total} peças`;
-        document.getElementById('alert-ok').style.display = 'block';
-    } catch (e) {
-        document.getElementById('alert-err').textContent = `⚠ ${e.message}`;
-        document.getElementById('alert-err').style.display = 'block';
-    } finally {
-        document.getElementById('progress-wrap').style.display = 'none';
-        document.getElementById('btn-processar').disabled = false;
+    // ==================== UTILS ====================
+    function tickClock() {
+        const now = new Date();
+        document.getElementById('clock').textContent = now.toLocaleString('pt-BR');
     }
-}
+    setInterval(tickClock, 10000);
+    tickClock();
 
-function renderRota(rota){return rota.split(' > ').map(s=>`<span class="chip">${s.trim()}</span>`).join('<span class="arrow">›</span>');}
+    function showTab(tabIndex) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.getElementById(`tab-content-${tabIndex}`).classList.remove('hidden');
 
-function mostrarResultado(data){
-    document.getElementById('stats').innerHTML=`
-        <div class="stat-box"><div class="num">${data.total}</div><div class="lbl">Total de peças</div></div>
-        <div class="stat-box"><div class="num">${data.resumo.length}</div><div class="lbl">Tipos de roteiro</div></div>`;
-    document.getElementById('btn-download').onclick=()=>{window.location.href=`{% url 'pcp-download' pid='__PID__' %}`.replace('__PID__',pidAtual);};
-    const maxQtd=Math.max(...data.resumo.map(r=>r.qtd),1);
-    document.getElementById('roteiro-list').innerHTML=data.resumo.map(r=>`
-        <div class="roteiro-row">
-            <div class="rota">${renderRota(r.roteiro)}</div>
-            <div class="bar-wrap"><div class="bar-fill" style="width:${(r.qtd/maxQtd*100).toFixed(1)}%"></div></div>
-            <div class="qtd">${r.qtd}</div>
-        </div>`).join('');
-    document.getElementById('previa-tbody').innerHTML=data.previa.map(p=>`
-        <tr>
-            <td>${p['DESCRIÇÃO DA PEÇA']||''}</td>
-            <td><span class="badge badge-blue">${p['LOCAL']||''}</span></td>
-            <td style="color:var(--muted);font-style:italic">${p['OBS']||''}</td>
-            <td><strong>${p['PLANO']||''}</strong></td>
-            <td class="rota-cell">${p['ROTEIRO']||''}</td>
-        </tr>`).join('');
-    document.getElementById('resultado').style.display='block';
-}
+        document.querySelectorAll('.tab-button').forEach((btn, i) => {
+            if (i === tabIndex) {
+                btn.classList.add('border-indigo-600', 'text-indigo-700');
+                btn.classList.remove('text-gray-500');
+            } else {
+                btn.classList.remove('border-indigo-600', 'text-indigo-700');
+                btn.classList.add('text-gray-500');
+            }
+        });
 
-async function carregarHistorico(){
-    const tbody=document.getElementById('hist-tbody');
-    const noData=document.getElementById('no-historico');
-    try{
-        const res=await fetch("{% url 'pcp-historico' %}");
-        const rows=await res.json();
-        if(rows.length===0){noData.style.display='block';return;}
-        noData.style.display='none';
-        tbody.innerHTML=rows.map(r=>`
-            <tr>
-                <td><strong>${r.id}</strong></td>
-                <td>${r.nome_arquivo}</td>
-                <td>${new Date(r.data).toLocaleString('pt-BR')}</td>
-                <td>${r.total_pecas}</td>
-                <td><a href="{% url 'pcp-download' pid='__PID__' %}".replace('__PID__',r.id) class="btn btn-success" style="padding:4px 12px;font-size:0.8rem;">⬇ XLS</a></td>
-            </tr>`).join('');
-    }catch(e){tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--danger)">Erro ao carregar histórico</td></tr>`;}
-}
+        if (tabIndex === 1) carregarHistorico();
+    }
+
+    function getDownloadUrl(pid) {
+        return CONFIG.urls.downloadBase.replace('PID_PLACEHOLDER', pid);
+    }
+
+    // Função segura contra undefined
+    function renderRota(rota) {
+        if (!rota || typeof rota !== 'string' || rota.trim() === '') {
+            return '<span class="rota-chip bg-gray-200 text-gray-500">—</span>';
+        }
+        return rota.split(' > ').map(s => {
+            const trimmed = s.trim();
+            return trimmed ? `<span class="rota-chip">${trimmed}</span>` : '';
+        }).filter(Boolean).join('');
+    }
+
+    // ==================== UPLOAD ====================
+    const dropArea = document.getElementById('drop-area');
+    const fileInput = document.getElementById('file-input');
+
+    dropArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files[0]) setFile(fileInput.files[0]);
+    });
+
+    ['dragover', 'dragenter'].forEach(ev => dropArea.addEventListener(ev, e => {
+        e.preventDefault();
+        dropArea.classList.add('!border-indigo-400', 'bg-indigo-50');
+    }));
+
+    ['dragleave', 'drop'].forEach(ev => dropArea.addEventListener(ev, e => {
+        e.preventDefault();
+        dropArea.classList.remove('!border-indigo-400', 'bg-indigo-50');
+    }));
+
+    dropArea.addEventListener('drop', e => {
+        e.preventDefault();
+        if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+    });
+
+    function setFile(file) {
+        arquivoAtual = file;
+        document.getElementById('file-name').innerHTML = `<i class="fas fa-file-excel mr-2"></i>${file.name}`;
+        document.getElementById('btn-processar').disabled = false;
+        document.getElementById('resultado').classList.add('hidden');
+    }
+
+    async function processarArquivo() {
+        if (!arquivoAtual) return;
+
+        const formData = new FormData();
+        formData.append('arquivo', arquivoAtual);
+        formData.append('csrfmiddlewaretoken', CONFIG.csrfToken);
+
+        document.getElementById('progress-wrap').classList.remove('hidden');
+        document.getElementById('btn-processar').disabled = true;
+        document.getElementById('alert-err').classList.add('hidden');
+        document.getElementById('alert-ok').classList.add('hidden');
+
+        try {
+            const res = await fetch(CONFIG.urls.processar, { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.erro || 'Erro no servidor');
+
+            pidAtual = data.pid;
+            mostrarResultado(data);
+
+            document.getElementById('alert-ok').innerHTML = `✅ Processado com sucesso — <strong>${data.total}</strong> peças`;
+            document.getElementById('alert-ok').classList.remove('hidden');
+        } catch (e) {
+            document.getElementById('alert-err').textContent = `❌ ${e.message}`;
+            document.getElementById('alert-err').classList.remove('hidden');
+        } finally {
+            document.getElementById('progress-wrap').classList.add('hidden');
+            document.getElementById('btn-processar').disabled = false;
+        }
+    }
+
+    function mostrarResultado(data) {
+        // Stats
+        document.getElementById('stats').innerHTML = `
+            <div class="bg-white p-6 rounded-2xl shadow border border-gray-100">
+                <div class="text-4xl font-bold text-indigo-600">${data.total}</div>
+                <div class="text-gray-500">Total de peças processadas</div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow border border-gray-100">
+                <div class="text-4xl font-bold text-indigo-600">${data.resumo.length}</div>
+                <div class="text-gray-500">Tipos diferentes de roteiro</div>
+            </div>
+        `;
+
+        // Download
+        document.getElementById('btn-download').onclick = () => {
+            window.location.href = getDownloadUrl(pidAtual);
+        };
+
+        // Distribuição de roteiros
+        const maxQtd = Math.max(...data.resumo.map(r => r.qtd), 1);
+        document.getElementById('roteiro-list').innerHTML = data.resumo.map(r => `
+            <div class="flex items-center gap-6">
+                <div class="flex-1">${renderRota(r.roteiro)}</div>
+                <div class="w-48 bg-gray-100 rounded-full h-2.5">
+                    <div class="bg-indigo-600 h-2.5 rounded-full" style="width: ${(r.qtd / maxQtd * 100).toFixed(1)}%"></div>
+                </div>
+                <div class="w-12 text-right font-semibold text-gray-700">${r.qtd}</div>
+            </div>
+        `).join('');
+
+        // Prévia
+        document.getElementById('previa-tbody').innerHTML = data.previa.map(p => `
+            <tr class="table-row">
+                <td class="px-6 py-4">${p['DESCRIÇÃO DA PEÇA'] || ''}</td>
+                <td class="px-6 py-4 font-medium">${p['LOCAL'] || ''}</td>
+                <td class="px-6 py-4 text-gray-500">${p['OBSERVAÇÃO'] || p['OBS'] || ''}</td>
+                <td class="px-6 py-4"><span class="font-bold text-amber-600">${p['PLANO'] || ''}</span></td>
+                <td class="px-6 py-4 font-mono text-xs">${p['ROTEIRO'] || ''}</td>
+            </tr>
+        `).join('');
+
+        document.getElementById('resultado').classList.remove('hidden');
+    }
+
+    // ==================== HISTÓRICO ====================
+    async function carregarHistorico() {
+        const tbody = document.getElementById('hist-tbody');
+        const noData = document.getElementById('no-historico');
+
+        try {
+            const res = await fetch(CONFIG.urls.historico);
+            const rows = await res.json();
+
+            if (rows.length === 0) {
+                noData.classList.remove('hidden');
+                tbody.innerHTML = '';
+                return;
+            }
+
+            noData.classList.add('hidden');
+            tbody.innerHTML = rows.map(r => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-8 py-5 font-mono font-medium">${r.id}</td>
+                    <td class="px-8 py-5">${r.nome_arquivo}</td>
+                    <td class="px-8 py-5 text-gray-500">${new Date(r.data).toLocaleString('pt-BR')}</td>
+                    <td class="px-8 py-5 font-medium">${r.total_pecas}</td>
+                    <td class="px-8 py-5">
+                        <a href="${getDownloadUrl(r.id)}" 
+                           class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-sm font-medium">
+                            <i class="fas fa-download"></i> Baixar XLS
+                        </a>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="5" class="px-8 py-12 text-center text-red-500">Erro ao carregar histórico</td></tr>`;
+        }
+    }
+
+    // Inicialização
+    showTab(0);
 </script>
 </body>
 </html>
