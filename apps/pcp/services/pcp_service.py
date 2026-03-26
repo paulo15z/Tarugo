@@ -7,41 +7,40 @@ from django.conf import settings
 from apps.pcp.models.processamento import ProcessamentoPCP
 import uuid
 from datetime import datetime
-
+import math
 
 BORDA_COLS = ['BORDA_FACE_FRENTE', 'BORDA_FACE_TRASEIRA', 'BORDA_FACE_LE', 'BORDA_FACE_LD']
 
 
-#def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
-#    mask_ripa = (
-#        df['DESCRIÇÃO DA PEÇA'].str.upper().str.contains('RIPA', na=False) |
-#        df.get('OBSERVAÇÃO', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False) |
-#        df.get('OBS', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False)
-#    )
-
 def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
-    # máscara para identificar o que é porta, puta problema
+    """
+    Consolida ripas em tiras de chapa inteira, 
+    protegendo peças que contenham 'PORTA' na descrição.
+    """
+    
+    # 1. Máscara para identificar o que é porta (evita que a chapa da porta seja picotada)
     mask_porta = df['DESCRIÇÃO DA PEÇA'].str.upper().str.contains('PORTA', na=False)
     
-    # Ajusta a mask_ripa para só pegar o que tem RIPA e NÃO é porta
+    # 2. Ajusta a mask_ripa para só pegar o que tem RIPA e NÃO é porta
     mask_ripa = (
-        (df['DESCRIÇÃO DA PEÇA'].str.upper().str.contains('RIPA', na=False) |
-         df.get('OBSERVAÇÃO', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False)) &
-        (~mask_porta) # O símbolo ~ significa "nao"
+        (
+            df['DESCRIÇÃO DA PEÇA'].str.upper().str.contains('RIPA', na=False) |
+            df.get('OBSERVAÇÃO', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False) |
+            df.get('OBS', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False)
+        ) & (~mask_porta)
     )
-
 
     df_ripas = df[mask_ripa].copy()
     df_resto = df[~mask_ripa].copy()
 
-    # se não tiver ripa, não mexe
+    # Se não tiver ripa, não mexe
     if df_ripas.empty:
         return df
 
-    # CONFIG ---------------------------------------------
+    # CONFIGURAÇÕES -----------------------------------------
     ALTURA_CHAPA = 2750.0
     ESPESSURA_SERRA = 4.0
-    MARGEM_REFILO = 5.0
+    MARGEM_REFILO = 5.0  # mudei
 
     def to_float(val):
         try:
@@ -49,13 +48,14 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
         except:
             return 0.0
 
+    # Criando colunas numéricas para o cálculo
     df_ripas['ALTURA_NUM'] = df_ripas['ALTURA DA PEÇA'].apply(to_float)
     df_ripas['LARGURA_NUM'] = df_ripas['LARGURA DA PEÇA'].apply(to_float)
     df_ripas['QTD_NUM'] = df_ripas['QUANTIDADE'].apply(to_float)
 
     novas_ripas = []
 
-    # detecta colunas de fita automaticamente
+    # Detecta colunas de fita automaticamente para o agrupamento
     fita_cols = [col for col in df.columns if 'FITA' in col.upper()]
 
     grupos = df_ripas.groupby([
@@ -67,32 +67,30 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
         *fita_cols
     ])
 
-    import math
-
     for name, group in grupos:
+        material = name[0]
+        espessura = name[1]
         altura_ripa = name[2]
         largura_ripa = name[3]
-
         total_pecas = int(group['QTD_NUM'].sum())
 
         if altura_ripa <= 0:
             continue
 
-        # cálculo de quantas peças cabem em uma tira
+        # Cálculo de quantas peças cabem em uma tira
         altura_util = ALTURA_CHAPA - MARGEM_REFILO
         altura_por_peca = altura_ripa + ESPESSURA_SERRA
-
         max_por_tira = int(altura_util // altura_por_peca)
 
         if max_por_tira <= 0:
-            raise ValueError(
-                f"Ripa com altura {altura_ripa} maior que a chapa"
-            )
+            # Se a ripa for maior que a chapa, mantém original para não travar
+            novas_ripas.append(group)
+            continue
 
-        # quantas tiras precisamos
+        # Quantas tiras precisamos
         qtd_tiras = math.ceil(total_pecas / max_por_tira)
 
-        # gera UMA LINHA POR TIRA (QTD = 1)
+        # Gera UMA LINHA POR TIRA (QTD = 1)
         for i in range(qtd_tiras):
             nova = group.iloc[0].copy()
 
@@ -106,14 +104,20 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
                 f"{total_pecas} PCS {int(altura_ripa)}mm"
             )
 
-            # NÃO mexe nas FITAS → preserva tudo
-            novas_ripas.append(nova)
+            # Preserva as fitas originais conforme sua lógica
+            novas_ripas.append(pd.DataFrame([nova]))
 
-    # remove completamente as ripas originais
-    resultado = pd.concat(
-        [df_resto, pd.DataFrame(novas_ripas)],
-        ignore_index=True
-    )
+    # Junta o resto das peças com as novas tiras de ripas
+    if novas_ripas:
+        df_novas_tiras = pd.concat(novas_ripas, ignore_index=True)
+        resultado = pd.concat([df_resto, df_novas_tiras], ignore_index=True)
+    else:
+        resultado = df_resto
+
+    # Limpeza de colunas auxiliares para o DataFrame não sair "sujo"
+    for col in ['ALTURA_NUM', 'LARGURA_NUM', 'QTD_NUM']:
+        if col in resultado.columns:
+            resultado = resultado.drop(columns=[col])
 
     return resultado
 
