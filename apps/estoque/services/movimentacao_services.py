@@ -1,7 +1,7 @@
 from django.db import transaction
 from django.contrib.auth import get_user_model
 
-from apps.estoque.models import Produto, Movimentacao
+from apps.estoque.models import Produto, Movimentacao, Reserva
 from apps.estoque.services.schemas import MovimentacaoSchema, AjusteLoteSchema
 
 User = get_user_model()
