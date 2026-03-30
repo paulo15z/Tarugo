@@ -1,42 +1,82 @@
 # apps/pcp/views.py
+from django.http import JsonResponse, FileResponse, Http404
 from django.shortcuts import render
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_GET, require_POST
 
+from apps.pcp.models.processamento import ProcessamentoPCP
 from apps.pcp.services.processamento_service import ProcessamentoPCPService
 
 
-@login_required
-def pcp_upload(request):
-    """Upload + processamento do PCP com campo de lote"""
-    contexto = {'secao': 'pcp'}
+def pcp_index(request):
+    """Serve o frontend principal do PCP."""
+    return render(request, 'pcp/index.html')
 
-    if request.method == 'POST':
-        arquivo = request.FILES.get('arquivo')
-        lote_str = request.POST.get('lote')
 
-        if not arquivo:
-            messages.error(request, "❌ Selecione um arquivo!")
-            return render(request, 'pcp/upload.html', contexto)
+@require_POST
+def pcp_processar(request):
+    """
+    Recebe o arquivo via AJAX (sem campo lote — gerado automaticamente).
+    Retorna JSON com resultado para o frontend.
+    """
+    arquivo = request.FILES.get('arquivo')
 
-        if not lote_str or not lote_str.isdigit():
-            messages.error(request, "❌ Informe um número de lote válido!")
-            return render(request, 'pcp/upload.html', contexto)
+    if not arquivo:
+        return JsonResponse({'erro': 'Nenhum arquivo enviado.'}, status=400)
 
-        lote = int(lote_str)
+    lote_str = request.POST.get('lote', '').strip()
+    if not lote_str or not lote_str.isdigit() or int(lote_str) <= 0:
+        return JsonResponse({'erro': 'Informe um número de lote válido.'}, status=400)
+    lote = int(lote_str)
 
-        try:
-            resultado = ProcessamentoPCPService.processar_arquivo(arquivo, lote)
+    try:
+        resultado = ProcessamentoPCPService.processar_arquivo(arquivo, lote)
+    except Exception as e:
+        return JsonResponse({'erro': str(e)}, status=500)
 
-            messages.success(request, f"✅ Roteiro do Lote {lote} processado com sucesso! ({resultado['total_pecas']} peças)")
+    return JsonResponse({
+        'pid': resultado['pid'],
+        'lote': resultado['lote'],
+        'total': resultado['total_pecas'],
+        'previa': resultado['previa'],
+        'resumo': resultado['resumo'],
+        'nome_saida': resultado['nome_saida'],
+    })
 
-            contexto.update({
-                'resultado': resultado,
-                'pid': resultado['pid'],
-                'nome_saida': resultado['nome_saida'],
-            })
 
-        except Exception as e:
-            messages.error(request, f"❌ Erro ao processar arquivo: {str(e)}")
+@require_GET
+def pcp_historico(request):
+    """Retorna os últimos 50 processamentos como JSON."""
+    registros = ProcessamentoPCP.objects.order_by('-criado_em')[:50]
 
-    return render(request, 'pcp/upload.html', contexto)
+    data = [
+        {
+            'id': r.id,
+            'nome_arquivo': r.nome_arquivo,
+            'lote': r.lote,
+            'total_pecas': r.total_pecas,
+            'data': r.criado_em.isoformat(),
+        }
+        for r in registros
+    ]
+
+    return JsonResponse(data, safe=False)
+
+
+@require_GET
+def pcp_download(request, pid):
+    """Serve o arquivo XLS gerado para download."""
+    try:
+        processamento = ProcessamentoPCP.objects.get(id=pid)
+    except ProcessamentoPCP.DoesNotExist:
+        raise Http404('Processamento não encontrado.')
+
+    if not processamento.arquivo_saida:
+        raise Http404('Arquivo não disponível.')
+
+    try:
+        arquivo = processamento.arquivo_saida.open('rb')
+    except FileNotFoundError:
+        raise Http404('Arquivo não encontrado no servidor.')
+
+    nome = processamento.arquivo_saida.name.split('/')[-1]
+    return FileResponse(arquivo, as_attachment=True, filename=nome)

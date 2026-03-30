@@ -1,5 +1,7 @@
 # apps/pcp/services/processamento_service.py
 from io import BytesIO
+import re
+import unicodedata
 import uuid
 
 import pandas as pd
@@ -18,14 +20,21 @@ from apps.pcp.utils.roteiros import calcular_roteiro, determinar_plano_de_corte
 from apps.pcp.utils.excel import gerar_xls_roteiro
 
 
+def _normalizar_chave(chave: str) -> str:
+    """Converte 'DESCRIÇÃO DA PEÇA' → 'DESCRICAO_DA_PECA' (válido no template Django)."""
+    chave = unicodedata.normalize('NFD', chave)
+    chave = ''.join(c for c in chave if unicodedata.category(c) != 'Mn')
+    return re.sub(r'\W+', '_', chave).strip('_').upper()
+
+
 class ProcessamentoPCPService:
 
     @staticmethod
-    def gerar_coluna_r(df: pd.DataFrame, lote: int) -> pd.DataFrame:
-        """Coluna R = lote-plano (ex: 305-06)"""
+    def gerar_coluna_lote(df: pd.DataFrame, lote: int) -> pd.DataFrame:
+        """Substitui a coluna LOTE por lote-plano (ex: 305-06)"""
         df = df.copy()
         df['PLANO'] = df['PLANO'].astype(str).str.strip()
-        df['R'] = df['PLANO'].apply(lambda plano: f"{lote}-{plano}")
+        df['LOTE'] = df['PLANO'].apply(lambda plano: f"{lote}-{plano}")
         return df
 
     @staticmethod
@@ -51,7 +60,7 @@ class ProcessamentoPCPService:
         )
 
         # 3. Gerar coluna R
-        df = ProcessamentoPCPService.gerar_coluna_r(df, lote=input_data.lote)
+        df = ProcessamentoPCPService.gerar_coluna_lote(df, lote=input_data.lote)
 
         # 4. Limpeza
         for col in ['LARGURA_NUM', 'QTD_NUM']:
@@ -92,11 +101,13 @@ class ProcessamentoPCPService:
         processamento.arquivo_saida.save(nome_saida, arquivo_content, save=True)
 
         # 7. Resposta
-        cols_previa = ['R', 'DESCRIÇÃO DA PEÇA', 'LOCAL', 'PLANO', 'ROTEIRO']
+        cols_previa = ['LOTE', 'DESCRIÇÃO DA PEÇA', 'LOCAL', 'PLANO', 'ROTEIRO']
         if 'OBSERVAÇÃO' in df.columns:
             cols_previa.insert(3, 'OBSERVAÇÃO')
 
-        previa = df[cols_previa].head(50).fillna('').to_dict(orient='records')
+        # Normaliza chaves para uso no template Django (sem espaços/acentos)
+        previa_raw = df[cols_previa].head(50).fillna('').to_dict(orient='records')
+        previa = [{_normalizar_chave(k): v for k, v in row.items()} for row in previa_raw]
 
         resumo_df = df['ROTEIRO'].fillna('SEM ROTEIRO').astype(str).value_counts().reset_index()
         resumo_df.columns = ['roteiro', 'qtd']
