@@ -1,0 +1,105 @@
+{% extends "estoque/base.html" %}
+{% block title %}Produtos{% endblock %}
+{% block nav_produtos %}text-white border-b-2 border-white pb-1{% endblock %}
+
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+    <h2 class="text-xl font-semibold text-gray-800">Produtos em Estoque</h2>
+    <a href="{% url 'estoque-produto-novo' %}"
+       class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2">
+        <i class="fas fa-plus"></i> Novo Produto
+    </a>
+</div>
+
+<!-- Filtros -->
+<form method="get" class="bg-white rounded-2xl shadow border border-gray-100 p-5 mb-6 flex flex-wrap gap-4 items-end">
+    <div class="flex-1 min-w-[180px]">
+        <label class="block text-xs font-medium text-gray-500 mb-1">Buscar</label>
+        <input name="q" value="{{ request.GET.q }}" placeholder="Nome ou SKU..."
+               class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+    </div>
+    <div class="min-w-[150px]">
+        <label class="block text-xs font-medium text-gray-500 mb-1">Filtro</label>
+        <select name="alerta" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+            <option value="">Todos</option>
+            <option value="1" {% if request.GET.alerta == "1" %}selected{% endif %}>Apenas em alerta</option>
+        </select>
+    </div>
+    <button type="submit"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2">
+        <i class="fas fa-magnifying-glass"></i> Filtrar
+    </button>
+    {% if request.GET.q or request.GET.alerta %}
+    <a href="{% url 'estoque-produtos' %}" class="text-sm text-gray-500 hover:text-gray-700 py-2.5">Limpar</a>
+    {% endif %}
+</form>
+
+<!-- Tabela -->
+<div class="bg-white rounded-2xl shadow border border-gray-100 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
+                    <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
+                    <th class="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Em Estoque</th>
+                    <th class="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Reservado</th>
+                    <th class="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Disponível</th>
+                    <th class="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Mínimo</th>
+                    <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y">
+                {% for item in produtos %}
+                <tr class="table-row">
+                    <td class="px-6 py-4 font-medium text-gray-800">{{ item.produto.nome }}</td>
+                    <td class="px-6 py-4 text-gray-500 font-mono text-xs">{{ item.produto.sku }}</td>
+                    <td class="px-6 py-4 text-right font-semibold text-gray-700">{{ item.produto.quantidade }}</td>
+                    <td class="px-6 py-4 text-right text-violet-600 font-medium">{{ item.reservado }}</td>
+                    <td class="px-6 py-4 text-right font-bold
+                        {% if item.disponivel <= 0 %}text-red-600
+                        {% elif item.disponivel <= item.produto.estoque_minimo %}text-amber-600
+                        {% else %}text-emerald-600{% endif %}">
+                        {{ item.disponivel }}
+                    </td>
+                    <td class="px-6 py-4 text-right text-gray-400">{{ item.produto.estoque_minimo }}</td>
+                    <td class="px-6 py-4">
+                        {% if item.produto.quantidade <= item.produto.estoque_minimo %}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            <i class="fas fa-triangle-exclamation"></i> Alerta
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                            <i class="fas fa-circle-check"></i> OK
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                            <a href="{% url 'estoque-movimentar' %}?produto_id={{ item.produto.id }}"
+                               class="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg font-medium">
+                                Movimentar
+                            </a>
+                            <a href="{% url 'estoque-reservas' %}?produto_id={{ item.produto.id }}"
+                               class="text-xs bg-violet-100 hover:bg-violet-200 text-violet-700 px-3 py-1.5 rounded-lg font-medium">
+                                Reservar
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="py-20 text-center text-gray-400">
+                        <i class="fas fa-box-open text-4xl mb-3 block"></i>
+                        Nenhum produto encontrado.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,191 @@
+{% extends "estoque/base.html" %}
+{% block title %}Reservas{% endblock %}
+{% block nav_reservas %}text-white border-b-2 border-white pb-1{% endblock %}
+
+{% block content %}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Formulário de nova reserva -->
+    <div class="lg:col-span-1">
+        <div class="bg-white rounded-2xl shadow border border-gray-100 p-6 sticky top-6">
+            <h2 class="font-semibold text-gray-800 mb-5 flex items-center gap-2">
+                <i class="fas fa-bookmark text-violet-500"></i> Nova Reserva
+            </h2>
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="acao" value="criar">
+
+                <div class="mb-4">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Produto *</label>
+                    <select name="produto_id" id="reserva-produto" required
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+                        <option value="">Selecione...</option>
+                        {% for p in produtos %}
+                        <option value="{{ p.id }}"
+                                data-disponivel="{{ p.disponivel }}"
+                                {% if produto_id_pre == p.id|stringformat:"s" %}selected{% endif %}>
+                            {{ p.nome }} ({{ p.disponivel }} disp.)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Saldo disponível -->
+                <div id="reserva-info" class="hidden mb-4 text-xs bg-violet-50 text-violet-800 rounded-lg px-3 py-2">
+                    Disponível para reserva: <strong id="reserva-disponivel">—</strong>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Projeto *</label>
+                    <input type="text" name="projeto" required
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300"
+                           placeholder="Ex: Cozinha Família Silva">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Quantidade *</label>
+                    <input type="number" name="quantidade" min="1" required
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300"
+                           placeholder="Ex: 3">
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Observação <span class="text-gray-400">(opcional)</span></label>
+                    <textarea name="observacao" rows="2"
+                              class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 resize-none"
+                              placeholder="Ex: Chapas 6mm freijó para bancada"></textarea>
+                </div>
+
+                {% if erro %}
+                <div class="mb-4 bg-red-50 border-l-4 border-red-500 px-3 py-2.5 text-red-700 text-xs rounded-r-xl">
+                    <i class="fas fa-circle-exclamation mr-1"></i>{{ erro }}
+                </div>
+                {% endif %}
+
+                <button type="submit"
+                        class="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 text-sm transition-colors">
+                    <i class="fas fa-bookmark"></i> Reservar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Listagem de reservas -->
+    <div class="lg:col-span-2">
+
+        <!-- Filtros -->
+        <form method="get" class="bg-white rounded-2xl shadow border border-gray-100 p-4 mb-5 flex flex-wrap gap-3 items-end">
+            <div class="flex-1 min-w-[140px]">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Projeto</label>
+                <input name="projeto" value="{{ request.GET.projeto }}" placeholder="Buscar projeto..."
+                       class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+            </div>
+            <div class="min-w-[130px]">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Status</label>
+                <select name="status" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+                    <option value="">Todos</option>
+                    <option value="ativa" {% if request.GET.status == "ativa" %}selected{% endif %}>Ativas</option>
+                    <option value="consumida" {% if request.GET.status == "consumida" %}selected{% endif %}>Consumidas</option>
+                    <option value="cancelada" {% if request.GET.status == "cancelada" %}selected{% endif %}>Canceladas</option>
+                </select>
+            </div>
+            <button type="submit"
+                    class="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                <i class="fas fa-magnifying-glass"></i>
+            </button>
+            {% if request.GET.projeto or request.GET.status or request.GET.produto_id %}
+            <a href="{% url 'estoque-reservas' %}" class="text-sm text-gray-400 hover:text-gray-600 py-2">Limpar</a>
+            {% endif %}
+        </form>
+
+        <!-- Tabela -->
+        <div class="bg-white rounded-2xl shadow border border-gray-100 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-5 py-4 text-left text-xs font-medium text-gray-500 uppercase">Projeto</th>
+                            <th class="px-5 py-4 text-left text-xs font-medium text-gray-500 uppercase">Produto</th>
+                            <th class="px-5 py-4 text-right text-xs font-medium text-gray-500 uppercase">Qtd</th>
+                            <th class="px-5 py-4 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                            <th class="px-5 py-4 text-left text-xs font-medium text-gray-500 uppercase">Criado em</th>
+                            <th class="px-5 py-4 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                        {% for r in reservas %}
+                        <tr class="table-row">
+                            <td class="px-5 py-4">
+                                <div class="font-medium text-gray-800">{{ r.projeto }}</div>
+                                {% if r.observacao %}
+                                <div class="text-xs text-gray-400 mt-0.5">{{ r.observacao }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-5 py-4 text-gray-600">{{ r.produto.nome }}</td>
+                            <td class="px-5 py-4 text-right font-semibold text-gray-700">{{ r.quantidade }}</td>
+                            <td class="px-5 py-4">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium badge-{{ r.status }}">
+                                    {{ r.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="px-5 py-4 text-xs text-gray-400">{{ r.criado_em|date:"d/m/Y H:i" }}</td>
+                            <td class="px-5 py-4">
+                                {% if r.status == 'ativa' %}
+                                <div class="flex items-center gap-2">
+                                    <form method="post" onsubmit="return confirm('Consumir esta reserva? Isso dará saída no estoque.')">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="acao" value="consumir">
+                                        <input type="hidden" name="reserva_id" value="{{ r.id }}">
+                                        <button type="submit"
+                                                class="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-3 py-1.5 rounded-lg font-medium">
+                                            Consumir
+                                        </button>
+                                    </form>
+                                    <form method="post" onsubmit="return confirm('Cancelar esta reserva?')">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="acao" value="cancelar">
+                                        <input type="hidden" name="reserva_id" value="{{ r.id }}">
+                                        <button type="submit"
+                                                class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-lg font-medium">
+                                            Cancelar
+                                        </button>
+                                    </form>
+                                </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="py-20 text-center text-gray-400">
+                                <i class="fas fa-bookmark text-4xl mb-3 block opacity-30"></i>
+                                Nenhuma reserva encontrada.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const sel = document.getElementById('reserva-produto');
+    const info = document.getElementById('reserva-info');
+
+    function atualizarDisponivel() {
+        const opt = sel.options[sel.selectedIndex];
+        if (!opt.value) { info.classList.add('hidden'); return; }
+        document.getElementById('reserva-disponivel').textContent = opt.dataset.disponivel;
+        info.classList.remove('hidden');
+    }
+
+    sel.addEventListener('change', atualizarDisponivel);
+    atualizarDisponivel();
+</script>
+{% endblock %}

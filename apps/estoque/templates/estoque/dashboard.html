@@ -1,0 +1,133 @@
+{% extends "estoque/base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block nav_dashboard %}text-white border-b-2 border-white pb-1{% endblock %}
+
+{% block content %}
+
+<!-- KPIs -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
+    <div class="bg-white rounded-2xl shadow border border-gray-100 p-6">
+        <div class="text-3xl font-bold text-indigo-600">{{ total_produtos }}</div>
+        <div class="text-sm text-gray-500 mt-1">Produtos cadastrados</div>
+    </div>
+    <div class="bg-white rounded-2xl shadow border border-gray-100 p-6">
+        <div class="text-3xl font-bold text-emerald-600">{{ total_em_estoque }}</div>
+        <div class="text-sm text-gray-500 mt-1">Itens em estoque</div>
+    </div>
+    <div class="bg-white rounded-2xl shadow border border-gray-100 p-6">
+        <div class="text-3xl font-bold text-amber-500">{{ baixo_estoque|length }}</div>
+        <div class="text-sm text-gray-500 mt-1">Produtos em alerta</div>
+    </div>
+    <div class="bg-white rounded-2xl shadow border border-gray-100 p-6">
+        <div class="text-3xl font-bold text-violet-600">{{ total_reservado }}</div>
+        <div class="text-sm text-gray-500 mt-1">Itens reservados</div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- Alertas de baixo estoque -->
+    <div class="bg-white rounded-2xl shadow border border-gray-100">
+        <div class="px-6 py-5 border-b flex items-center justify-between">
+            <h2 class="font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-triangle-exclamation text-amber-500"></i> Baixo Estoque
+            </h2>
+            <a href="{% url 'estoque-produtos' %}?alerta=1" class="text-xs text-indigo-600 hover:underline">ver todos</a>
+        </div>
+        {% if baixo_estoque %}
+        <ul class="divide-y text-sm">
+            {% for p in baixo_estoque %}
+            <li class="px-6 py-4 flex items-center justify-between table-row">
+                <div>
+                    <span class="font-medium text-gray-800">{{ p.nome }}</span>
+                    <span class="ml-2 text-xs text-gray-400">{{ p.sku }}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-red-600 font-semibold">{{ p.quantidade }}</span>
+                    <span class="text-gray-400 text-xs">/ mín {{ p.estoque_minimo }}</span>
+                    <a href="{% url 'estoque-movimentar' %}?produto_id={{ p.id }}"
+                       class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-lg">
+                        Entrada
+                    </a>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="py-16 text-center text-gray-400">
+            <i class="fas fa-circle-check text-3xl text-emerald-400 mb-3 block"></i>
+            Todos os produtos estão acima do estoque mínimo.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Movimentações recentes -->
+    <div class="bg-white rounded-2xl shadow border border-gray-100">
+        <div class="px-6 py-5 border-b flex items-center justify-between">
+            <h2 class="font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-clock-rotate-left text-indigo-500"></i> Movimentações Recentes
+            </h2>
+            <a href="{% url 'estoque-historico' %}" class="text-xs text-indigo-600 hover:underline">ver todas</a>
+        </div>
+        {% if movimentacoes_recentes %}
+        <ul class="divide-y text-sm">
+            {% for m in movimentacoes_recentes %}
+            <li class="px-6 py-4 flex items-center justify-between table-row">
+                <div>
+                    <span class="font-medium text-gray-800">{{ m.produto.nome }}</span>
+                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium badge-{{ m.tipo }}">
+                        {{ m.get_tipo_display }}
+                    </span>
+                </div>
+                <div class="text-right">
+                    <div class="font-semibold text-gray-700">{{ m.quantidade }}</div>
+                    <div class="text-xs text-gray-400">{{ m.criado_em|date:"d/m H:i" }}</div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="py-16 text-center text-gray-400">
+            <i class="fas fa-inbox text-3xl mb-3 block"></i>
+            Nenhuma movimentação ainda.
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Reservas ativas por projeto -->
+{% if reservas_ativas %}
+<div class="mt-6 bg-white rounded-2xl shadow border border-gray-100">
+    <div class="px-6 py-5 border-b flex items-center justify-between">
+        <h2 class="font-semibold text-gray-800 flex items-center gap-2">
+            <i class="fas fa-bookmark text-violet-500"></i> Reservas Ativas por Projeto
+        </h2>
+        <a href="{% url 'estoque-reservas' %}" class="text-xs text-indigo-600 hover:underline">gerenciar</a>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Projeto</th>
+                    <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Produto</th>
+                    <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Qtd reservada</th>
+                    <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Criado em</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y">
+                {% for r in reservas_ativas %}
+                <tr class="table-row">
+                    <td class="px-6 py-4 font-medium text-indigo-700">{{ r.projeto }}</td>
+                    <td class="px-6 py-4 text-gray-700">{{ r.produto.nome }}</td>
+                    <td class="px-6 py-4 font-semibold">{{ r.quantidade }}</td>
+                    <td class="px-6 py-4 text-gray-400 text-xs">{{ r.criado_em|date:"d/m/Y H:i" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends "estoque/base.html" %}
+{% block title %}Movimentar{% endblock %}
+{% block nav_movimentar %}text-white border-b-2 border-white pb-1{% endblock %}
+
+{% block content %}
+
+<div class="max-w-xl mx-auto">
+    <h2 class="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
+        <i class="fas fa-arrow-right-arrow-left text-indigo-500"></i> Registrar Movimentação
+    </h2>
+
+    <div class="bg-white rounded-2xl shadow border border-gray-100 p-8">
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <!-- Produto -->
+            <div class="mb-5">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Produto *</label>
+                <select name="produto_id" id="produto-select" required
+                        class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                    <option value="">Selecione um produto...</option>
+                    {% for p in produtos %}
+                    <option value="{{ p.id }}"
+                            data-quantidade="{{ p.quantidade }}"
+                            data-minimo="{{ p.estoque_minimo }}"
+                            {% if produto_id_pre == p.id|stringformat:"s" %}selected{% endif %}>
+                        {{ p.nome }} — {{ p.quantidade }} em estoque
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Info do produto selecionado -->
+            <div id="produto-info" class="hidden mb-5 bg-indigo-50 rounded-xl px-4 py-3 text-sm text-indigo-800 flex items-center gap-4">
+                <i class="fas fa-circle-info"></i>
+                <span>Em estoque: <strong id="info-qtd">—</strong></span>
+                <span>Mínimo: <strong id="info-min">—</strong></span>
+            </div>
+
+            <!-- Tipo -->
+            <div class="mb-5">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
+                <div class="grid grid-cols-2 gap-3">
+                    {% for valor, label in tipos %}
+                    <label class="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3 cursor-pointer hover:border-indigo-400 transition-colors has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50">
+                        <input type="radio" name="tipo" value="{{ valor }}" class="accent-indigo-600"
+                               {% if forloop.first %}checked{% endif %}>
+                        <span class="text-sm font-medium text-gray-700">{{ label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Quantidade -->
+            <div class="mb-5">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade *</label>
+                <input type="number" name="quantidade" min="1" required
+                       class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                       placeholder="Ex: 10">
+            </div>
+
+            <!-- Observação -->
+            <div class="mb-7">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Observação <span class="text-gray-400">(opcional)</span></label>
+                <textarea name="observacao" rows="2"
+                          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+                          placeholder="Ex: Recebimento NF 1234"></textarea>
+            </div>
+
+            {% if erro %}
+            <div class="mb-5 bg-red-50 border-l-4 border-red-500 px-4 py-3 text-red-700 text-sm rounded-r-xl">
+                <i class="fas fa-circle-exclamation mr-2"></i>{{ erro }}
+            </div>
+            {% endif %}
+
+            <button type="submit"
+                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
+                <i class="fas fa-check"></i> Confirmar Movimentação
+            </button>
+        </form>
+    </div>
+
+    <div class="mt-4 text-center">
+        <a href="{% url 'estoque-historico' %}" class="text-sm text-gray-500 hover:text-indigo-600">
+            <i class="fas fa-clock-rotate-left mr-1"></i> Ver histórico de movimentações
+        </a>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const select = document.getElementById('produto-select');
+    const info = document.getElementById('produto-info');
+
+    function atualizarInfo() {
+        const opt = select.options[select.selectedIndex];
+        if (!opt.value) { info.classList.add('hidden'); return; }
+        document.getElementById('info-qtd').textContent = opt.dataset.quantidade;
+        document.getElementById('info-min').textContent = opt.dataset.minimo;
+        info.classList.remove('hidden');
+    }
+
+    select.addEventListener('change', atualizarInfo);
+    atualizarInfo(); // caso venha pré-selecionado via query string
+</script>
+{% endblock %}
