@@ -1,75 +1,60 @@
-# 🪵 Tarugo
+# Tarugo
 
-Sistema modular desenvolvido em Django com foco na automação de
-processos da indústria moveleira.
+Sistema modular desenvolvido em Django para indústrias moveleiras de alto padrão.
 
-------------------------------------------------------------------------
+---
 
 ## 📌 Contexto
 
-O Tarugo nasce como um projeto de estudo e aplicação prática, com
-objetivo de resolver problemas reais dentro do ambiente industrial.
+Projeto de estudo e aplicação prática na empresa.  
+Objetivo principal: resolver problemas reais do dia a dia (estoque, produção, integrações).  
+Pode evoluir para SaaS no futuro, mas prioridade atual é uso interno + aprendizado.
 
-Pode evoluir futuramente para um SaaS escalável, mas atualmente é
-utilizado como:
+---
 
--   Ferramenta interna
--   Objeto de estudo técnico
--   Base para atividades acadêmicas
+## 🎯 Objetivo Atual (Março/2026)
 
-------------------------------------------------------------------------
+Fortalecer o módulo **estoque** para uso real pelo almoxarife:
+- Refinar backend (services e selectors)
+- Implementar controle de acessos por papéis
+- Criar interface web simples e rápida (templates Django)
 
-## 🎯 Objetivo
+Em seguida: PCP fica congelado por enquanto.
 
--   Automatizar processos industriais
--   Melhorar controle de estoque e produção
--   Servir como base para integrações com ERPs
--   Estruturar um sistema escalável desde o início
+---
 
-------------------------------------------------------------------------
+## 🧱 Arquitetura (mantida)
 
-## 🧱 Arquitetura
+- **models** → estrutura de dados
+- **services** → regras de negócio (nunca na view!)
+- **selectors** → consultas otimizadas ao banco
+- **api** → DRF (mantida)
 
--   models → estrutura de dados (ORM)
--   services → regras de negócio
--   selectors → consultas ao banco
--   api → camada HTTP (DRF)
+**Regra de ouro:** Regra de negócio sempre no Service + validação com Pydantic.
 
-Regra crítica: - Nunca colocar regra de negócio em views\
-- Sempre utilizar services
-
-------------------------------------------------------------------------
-
-## 🔄 Fluxo
-
-Request → Serializer → Service → Model → Banco → Response
-
-------------------------------------------------------------------------
-
-## ⚙️ Stack
-
--   Django
--   DRF
--   Pydantic
--   PostgreSQL (planejado)
--   Celery (planejado)
-
-------------------------------------------------------------------------
+---
 
 ## 📦 Módulos
 
--   core
--   estoque
--   pcp (funcional)
--   integracoes
--   scripts (planejado)
--   orcamentos (planejado)
+| Módulo       | Status                  | Próximos passos |
+|--------------|-------------------------|-----------------|
+| **core**     | Base + autenticação     | Controle de acessos (grupos e permissões) |
+| **estoque**  | Funcional               | **Foco atual** – refinar para almoxarife + frontend |
+| **pcp**      | Funcional               | Congelado temporariamente |
+| **integracoes** | Base iniciada        | Futuro |
+| **orcamentos** | Planejado             | Após estoque |
+| **scripts**  | Planejado               | Biblioteca de utilitários |
 
-------------------------------------------------------------------------
+---
 
-## 🚀 MVP atual
+## 🚀 Próximos Passos (Ordem definida)
 
--   Controle de estoque
--   Movimentações com histórico
--   Base para integrações
--   Evolução do PCP
+1. **B** – Refinar backend do `estoque` (services + selectors)
+2. **A** – Controle de acessos (grupos, permissões, mixin)
+3. **C** – Frontend para almoxarife (dashboard + form de movimentação rápida)
+
+---
+
+## Stack
+
+Django + DRF + Pydantic + Templates Django (Bootstrap recomendado)

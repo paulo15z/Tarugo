@@ -89,3 +89,7 @@ interna.
 ## ⚠️ Regra principal
 
 Se não está no service, está errado.
+
+## Atualização 29/03/2026
+Decisão: PCP congelado temporariamente (usuário chato no trabalho).  
+Novo foco: Fortalecer `estoque` na ordem B (backend) → A (acessos) → C (frontend).
