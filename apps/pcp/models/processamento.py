@@ -1,53 +1,37 @@
 # apps/pcp/models/processamento.py
 from django.db import models
-from django.utils.timezone import now
+from django.conf import settings
+from django.utils import timezone
 
 
 class ProcessamentoPCP(models.Model):
-    """Histórico de processamentos do Roteiro PCP"""
-    id = models.CharField(max_length=8, primary_key=True)
-    nome_arquivo = models.CharField(max_length=255)
-    data = models.DateTimeField(default=now)
-    total_pecas = models.PositiveIntegerField(default=0)
-    
-    
+    """Histórico de processamentos do PCP"""
+
+    id = models.CharField(max_length=8, primary_key=True, editable=False)
+    nome_arquivo = models.CharField(max_length=255, verbose_name="Arquivo Original")
+    lote = models.PositiveIntegerField(null=True, blank=True, verbose_name="Número do Lote")
+    total_pecas = models.PositiveIntegerField(default=0, verbose_name="Total de Peças")
+
     arquivo_saida = models.FileField(
         upload_to='pcp/outputs/%Y/%m/%d/',
-        blank=True,
         null=True,
-        max_length=500,          # mais espaço para paths longos
+        blank=True,
+        verbose_name="Roteiro Gerado"
     )
 
-    # Campos futuros úteis 
-   # usuario = models.ForeignKey(
-   #     'core.User',             # ajuste se o usuário for em outro app
-   #     on_delete=models.SET_NULL,
-   #     null=True,
-   #     blank=True,
-   #     related_name='processamentos_pcp'
-   # )
-    status = models.CharField(
-        max_length=20,
-        default='processado',
-        choices=[
-            ('processado', 'Processado'),
-            ('erro', 'Erro'),
-            ('pendente', 'Pendente'),
-        ]
+    criado_em = models.DateTimeField(default=timezone.now, editable=False)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
     )
 
     class Meta:
-        ordering = ['-data']
-        verbose_name = 'Processamento PCP'
-        verbose_name_plural = 'Processamentos PCP'
-        db_table = 'pcp_processamentopcp'
+        verbose_name = "Processamento PCP"
+        verbose_name_plural = "Processamentos PCP"
+        ordering = ['-criado_em']
 
     def __str__(self):
-        return f"{self.id} - {self.nome_arquivo} ({self.total_pecas} peças)"
-
-    @property
-    def download_url(self):
-        """ para frontend """
-        if self.arquivo_saida:
-            return self.arquivo_saida.url
-        return None
+        lote_str = f"Lote {self.lote}" if self.lote else "Sem lote"
+        return f"{self.id} - {lote_str} ({self.total_pecas} peças)"
