@@ -133,3 +133,5 @@ STATIC_URL = "static/"
 PCP_OUTPUTS_DIR = BASE_DIR / 'media' / 'pcp' / 'outputs'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+
+MEDIA_URL = '/media/'

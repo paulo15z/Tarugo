@@ -1,3 +1,4 @@
+# apps/estoque/api/views.py
 from datetime import datetime
 
 from rest_framework.views import APIView
@@ -10,12 +11,12 @@ from apps.estoque.api.serializers import (
     MovimentacaoListSerializer,
     AjusteLoteSerializer,
 )
+
+# Imports corrigidos e alinhados com o padrão Tarugo
+from apps.estoque.services.movimentacao_service import MovimentacaoService
 from apps.estoque.services.produto_service import criar_produto
-from apps.estoque.services.movimentacao_services import (
-    processar_movimentacao,
-    processar_ajuste_em_lote,
-)
-from apps.estoque.selectors.estoque_selectors import (
+
+from apps.estoque.selectors import (
     listar_movimentacoes,
     get_produtos_baixo_estoque,
     get_saldo_atual,
@@ -32,25 +33,26 @@ def _parse_date(value: str, field_name: str):
 class ProdutoCreateView(APIView):
     def post(self, request):
         serializer = ProdutoSerializer(data=request.data)
-
         if serializer.is_valid():
             produto = criar_produto(serializer.validated_data)
             return Response(ProdutoSerializer(produto).data, status=status.HTTP_201_CREATED)
-
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class MovimentacaoView(APIView):
     def post(self, request):
         serializer = MovimentacaoSerializer(data=request.data)
-
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         usuario_id = request.user.id if request.user.is_authenticated else None
 
         try:
-            produto = processar_movimentacao(serializer.validated_data, usuario_id=usuario_id)
+            # Uso da classe Service (padrão Tarugo)
+            produto = MovimentacaoService.processar_movimentacao(
+                serializer.validated_data, 
+                usuario_id=usuario_id
+            )
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -69,10 +71,7 @@ class MovimentacaoListView(APIView):
             limit = int(params.get('limit', 10))
             offset = int(params.get('offset', 0))
         except (ValueError, TypeError):
-            return Response(
-                {'error': 'limit e offset devem ser inteiros.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({'error': 'limit e offset devem ser inteiros.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             produto_id = int(params['produto_id']) if params.get('produto_id') else None
@@ -109,14 +108,16 @@ class MovimentacaoListView(APIView):
 class AjusteLoteView(APIView):
     def post(self, request):
         serializer = AjusteLoteSerializer(data=request.data)
-
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         usuario_id = request.user.id if request.user.is_authenticated else None
 
         try:
-            produtos = processar_ajuste_em_lote(serializer.validated_data, usuario_id=usuario_id)
+            produtos = MovimentacaoService.processar_ajuste_em_lote(
+                serializer.validated_data, 
+                usuario_id=usuario_id
+            )
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
