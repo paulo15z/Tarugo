@@ -12,14 +12,13 @@ from apps.estoque.api.serializers import (
     AjusteLoteSerializer,
 )
 
-# Imports corrigidos e alinhados com o padrão Tarugo
+# Imports alinhados com o padrão Tarugo
 from apps.estoque.services.movimentacao_service import MovimentacaoService
 from apps.estoque.services.produto_service import criar_produto
 
 from apps.estoque.selectors import (
     listar_movimentacoes,
     get_produtos_baixo_estoque,
-    get_saldo_atual,
 )
 
 
@@ -45,21 +44,21 @@ class MovimentacaoView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        usuario_id = request.user.id if request.user.is_authenticated else None
+        usuario = request.user if request.user.is_authenticated else None
 
         try:
-            # Uso da classe Service (padrão Tarugo)
-            produto = MovimentacaoService.processar_movimentacao(
-                serializer.validated_data, 
-                usuario_id=usuario_id
+            # Chamada corrigida para o novo service
+            movimentacao = MovimentacaoService.processar_movimentacao(
+                serializer.validated_data,
+                usuario=usuario
             )
-        except ValueError as e:
+        except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({
             'message': 'Movimentação realizada com sucesso.',
-            'produto_id': produto.id,
-            'quantidade_atual': produto.quantidade,
+            'produto_id': movimentacao.produto_id,
+            'quantidade_atual': movimentacao.produto.quantidade,
         }, status=status.HTTP_200_OK)
 
 
@@ -111,14 +110,14 @@ class AjusteLoteView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        usuario_id = request.user.id if request.user.is_authenticated else None
+        usuario = request.user if request.user.is_authenticated else None
 
         try:
             produtos = MovimentacaoService.processar_ajuste_em_lote(
-                serializer.validated_data, 
-                usuario_id=usuario_id
+                serializer.validated_data,
+                usuario=usuario
             )
-        except ValueError as e:
+        except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({

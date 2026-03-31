@@ -1,5 +1,5 @@
 # apps/estoque/selectors/__init__.py
-from .produto_selectors import (
+from .produto_selector import (
     get_produtos_com_saldo_baixo,
     get_total_produtos_ativos,
     get_saldo_atual,

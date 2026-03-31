@@ -1,11 +1,9 @@
-# apps/estoque/urls.py
 from django.urls import path
+from . import views
 
-from . import views   # ← views.py da raiz (template views)
-
-app_name = 'estoque'
+app_name = "estoque"
 
 urlpatterns = [
-    path('', views.dashboard, name='estoque-dashboard'),
-    path('movimentacao/nova/', views.movimentacao_create, name='movimentacao-create'),
+    path("", views.lista_produtos, name="lista_produtos"),
+    path("movimentacao/", views.movimentacao_create, name="movimentacao_create"),
 ]
