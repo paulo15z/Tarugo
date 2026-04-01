@@ -1,0 +1,94 @@
+{% extends "estoque/base.html" %}
+{% block title %}Produtos — Estoque{% endblock %}
+
+{% block content %}
+
+{# ── STATS ── #}
+{% with total=produtos|length %}
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Total de produtos</div>
+    <div class="stat-value">{{ total }}</div>
+  </div>
+
+  {% with baixo=produtos_baixo_estoque %}
+  {% if baixo %}
+  <div class="stat-card alert-card">
+    <div class="stat-label">Abaixo do mínimo</div>
+    <div class="stat-value">{{ baixo|length }}</div>
+  </div>
+  {% endif %}
+  {% endwith %}
+</div>
+{% endwith %}
+
+{# ── HEADER DA PÁGINA ── #}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Produtos</h1>
+    <p class="page-subtitle">Catálogo completo com saldos atuais</p>
+  </div>
+  <a href="{% url 'estoque:movimentacao_create' %}" class="btn btn-primary">
+    + Movimentar estoque
+  </a>
+</div>
+
+{# ── TABELA ── #}
+<div class="card">
+  {% if produtos %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>SKU</th>
+          <th>Quantidade</th>
+          <th>Estoque mínimo</th>
+          <th>Status</th>
+          <th>Criado em</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for produto in produtos %}
+        <tr>
+          <td><strong>{{ produto.nome }}</strong></td>
+          <td><span class="mono">{{ produto.sku }}</span></td>
+          <td>
+            {% if produto.quantidade <= produto.estoque_minimo %}
+              <span style="font-weight: 600; color: var(--accent);">{{ produto.quantidade }}</span>
+            {% else %}
+              <span style="font-weight: 600;">{{ produto.quantidade }}</span>
+            {% endif %}
+          </td>
+          <td><span class="mono">{{ produto.estoque_minimo }}</span></td>
+          <td>
+            {% if produto.quantidade == 0 %}
+              <span class="badge badge-saida">Sem estoque</span>
+            {% elif produto.quantidade <= produto.estoque_minimo %}
+              <span class="badge badge-warning">Baixo</span>
+            {% else %}
+              <span class="badge badge-entrada">OK</span>
+            {% endif %}
+          </td>
+          <td><span class="mono" style="color: var(--text-muted);">{{ produto.criado_em|date:"d/m/Y" }}</span></td>
+          <td style="text-align: right;">
+            <a href="{% url 'estoque:movimentacao_create' %}?produto_id={{ produto.id }}"
+               class="btn btn-outline" style="padding: 0.35rem 0.7rem; font-size: 0.76rem;">
+              Movimentar
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <strong>Nenhum produto cadastrado</strong>
+    Produtos serão listados aqui após cadastro via API ou admin.
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

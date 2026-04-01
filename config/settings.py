@@ -135,3 +135,13 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 
 MEDIA_URL = '/media/'
+
+# ── AUTENTICAÇÃO ──────────────────────────────────────────────
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/estoque/'
+LOGOUT_REDIRECT_URL = '/login/'
+ 
+# ── FUSO HORÁRIO (Brasil) ──────────────────────────────────────
+LANGUAGE_CODE = "pt-br"
+TIME_ZONE = "America/Sao_Paulo"
+ 

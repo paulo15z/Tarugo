@@ -1,0 +1,236 @@
+{% extends "estoque/base.html" %}
+{% block title %}Movimentar Estoque{% endblock %}
+
+{% block extra_css %}
+<style>
+  .tipo-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+    margin-top: 0.4rem;
+  }
+
+  .tipo-option input[type="radio"] { display: none; }
+
+  .tipo-option label {
+    display: block;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    background: var(--bg);
+  }
+
+  .tipo-option input:checked + label {
+    border-color: var(--text);
+    background: var(--text);
+    color: #fff;
+  }
+
+  .tipo-option.entrada input:checked + label { border-color: var(--green); background: var(--green); }
+  .tipo-option.saida   input:checked + label { border-color: var(--accent); background: var(--accent); }
+  .tipo-option.ajuste  input:checked + label { border-color: var(--yellow); background: var(--yellow); }
+
+  .tipo-option label:hover { border-color: var(--border-strong); }
+
+  .produto-info {
+    display: none;
+    margin-top: 0.6rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.82rem;
+    font-family: var(--mono);
+    color: var(--text-muted);
+  }
+
+  .produto-info.visible { display: flex; gap: 1.5rem; }
+
+  .info-item span:first-child {
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.15rem;
+  }
+
+  .info-item strong {
+    color: var(--text);
+    font-size: 1rem;
+  }
+
+  .info-item strong.baixo { color: var(--accent); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Movimentar estoque</h1>
+    <p class="page-subtitle">Registre entrada, saída ou ajuste de quantidade</p>
+  </div>
+  <a href="{% url 'estoque:lista_produtos' %}" class="btn btn-outline">← Voltar</a>
+</div>
+
+<div class="form-card">
+
+  <form method="POST" id="mov-form">
+    {% csrf_token %}
+
+    {# ── PRODUTO ── #}
+    <div class="form-group">
+      <label for="produto_id">Produto</label>
+      <select name="produto_id" id="produto_id" required>
+        <option value="">Selecione um produto...</option>
+        {% for produto in produtos %}
+        <option value="{{ produto.id }}"
+                data-qtd="{{ produto.quantidade }}"
+                data-min="{{ produto.estoque_minimo }}"
+                data-sku="{{ produto.sku }}"
+                {% if request.GET.produto_id == produto.id|stringformat:"s" %}selected{% endif %}>
+          {{ produto.nome }} — {{ produto.sku }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <div class="produto-info" id="produto-info">
+        <div class="info-item">
+          <span>Estoque atual</span>
+          <strong id="info-qtd">—</strong>
+        </div>
+        <div class="info-item">
+          <span>Estoque mínimo</span>
+          <strong id="info-min">—</strong>
+        </div>
+        <div class="info-item">
+          <span>SKU</span>
+          <strong id="info-sku">—</strong>
+        </div>
+      </div>
+    </div>
+
+    {# ── TIPO ── #}
+    <div class="form-group">
+      <label>Tipo de movimentação</label>
+      <div class="tipo-grid">
+        <div class="tipo-option entrada">
+          <input type="radio" name="tipo" id="tipo-entrada" value="entrada" required>
+          <label for="tipo-entrada">↑ Entrada</label>
+        </div>
+        <div class="tipo-option saida">
+          <input type="radio" name="tipo" id="tipo-saida" value="saida">
+          <label for="tipo-saida">↓ Saída</label>
+        </div>
+        <div class="tipo-option ajuste">
+          <input type="radio" name="tipo" id="tipo-ajuste" value="ajuste">
+          <label for="tipo-ajuste">≈ Ajuste</label>
+        </div>
+      </div>
+      <p class="form-hint" id="tipo-hint">Entrada adiciona ao saldo atual.</p>
+    </div>
+
+    {# ── QUANTIDADE ── #}
+    <div class="form-group">
+      <label for="quantidade" id="qtd-label">Quantidade</label>
+      <input type="number" name="quantidade" id="quantidade" min="0" required placeholder="0">
+      <p class="form-hint" id="qtd-hint"></p>
+    </div>
+
+    {# ── OBSERVAÇÃO ── #}
+    <div class="form-group">
+      <label for="observacao">Observação <span style="font-weight:400; text-transform: none; letter-spacing:0">(opcional)</span></label>
+      <textarea name="observacao" id="observacao" placeholder="Motivo, NF, lote..."></textarea>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Registrar movimentação</button>
+      <a href="{% url 'estoque:lista_produtos' %}" class="btn btn-outline">Cancelar</a>
+    </div>
+  </form>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const selectProduto = document.getElementById('produto_id');
+  const infoBox       = document.getElementById('produto-info');
+  const infoQtd       = document.getElementById('info-qtd');
+  const infoMin       = document.getElementById('info-min');
+  const infoSku       = document.getElementById('info-sku');
+  const tipoHint      = document.getElementById('tipo-hint');
+  const qtdHint       = document.getElementById('qtd-hint');
+  const qtdLabel      = document.getElementById('qtd-label');
+  const qtdInput      = document.getElementById('quantidade');
+
+  const hints = {
+    entrada:  'Entrada adiciona ao saldo atual.',
+    saida:    'Saída desconta do saldo atual. Não pode ser maior que o estoque disponível.',
+    ajuste:   'Ajuste define o valor exato do estoque (inventário físico).',
+  };
+
+  function atualizarProdutoInfo() {
+    const opt = selectProduto.options[selectProduto.selectedIndex];
+    if (!opt.value) { infoBox.classList.remove('visible'); return; }
+
+    const qtd = parseInt(opt.dataset.qtd);
+    const min = parseInt(opt.dataset.min);
+
+    infoQtd.textContent = qtd;
+    infoQtd.className   = qtd <= min ? 'baixo' : '';
+    infoMin.textContent = min;
+    infoSku.textContent = opt.dataset.sku;
+    infoBox.classList.add('visible');
+  }
+
+  function atualizarTipo() {
+    const tipo = document.querySelector('input[name="tipo"]:checked');
+    if (!tipo) return;
+
+    tipoHint.textContent = hints[tipo.value] || '';
+
+    if (tipo.value === 'ajuste') {
+      qtdLabel.textContent = 'Novo saldo (quantidade absoluta)';
+      qtdInput.min = 0;
+    } else {
+      qtdLabel.textContent = 'Quantidade';
+      qtdInput.min = 1;
+    }
+
+    // Valida saída em tempo real
+    if (tipo.value === 'saida') {
+      const opt = selectProduto.options[selectProduto.selectedIndex];
+      if (opt.value) {
+        const disponivel = parseInt(opt.dataset.qtd);
+        qtdHint.textContent = `Máximo disponível: ${disponivel}`;
+        qtdInput.max = disponivel;
+      }
+    } else {
+      qtdInput.removeAttribute('max');
+      qtdHint.textContent = '';
+    }
+  }
+
+  selectProduto.addEventListener('change', () => {
+    atualizarProdutoInfo();
+    atualizarTipo();
+  });
+
+  document.querySelectorAll('input[name="tipo"]').forEach(r =>
+    r.addEventListener('change', atualizarTipo)
+  );
+
+  // Inicializa se produto já veio pré-selecionado via ?produto_id=
+  if (selectProduto.value) atualizarProdutoInfo();
+</script>
+{% endblock %}
