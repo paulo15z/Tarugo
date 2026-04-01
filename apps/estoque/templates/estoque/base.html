@@ -345,10 +345,23 @@
   <div class="header-brand">Estoque</div>
   <nav class="header-nav">
     <a href="{% url 'estoque:lista_produtos' %}" {% if request.resolver_match.url_name == 'lista_produtos' %}class="active"{% endif %}>Produtos</a>
+    {% if pode_movimentar or user.is_superuser %}
     <a href="{% url 'estoque:movimentacao_create' %}" {% if request.resolver_match.url_name == 'movimentacao_create' %}class="active"{% endif %}>Movimentar</a>
+    {% endif %}
+    {% if pode_cadastrar or user.is_superuser %}
+    <a href="{% url 'estoque:produto_create' %}" {% if request.resolver_match.url_name == 'produto_create' %}class="active"{% endif %}>Novo produto</a>
+    {% endif %}
   </nav>
-  <div class="header-user">
-    {% if user.is_authenticated %}{{ user.username }}{% else %}—{% endif %}
+  <div style="display:flex; align-items:center; gap:1rem;">
+    <div class="header-user">
+      {% if user.is_authenticated %}{{ user.username }}{% else %}—{% endif %}
+    </div>
+    {% if user.is_authenticated %}
+    <form method="POST" action="{% url 'logout' %}" style="margin:0;">
+      {% csrf_token %}
+      <button type="submit" style="background:none; border:none; color:#888; font-size:0.75rem; font-family:var(--mono); cursor:pointer; padding:0; letter-spacing:0.04em;">sair</button>
+    </form>
+    {% endif %}
   </div>
 </header>
 

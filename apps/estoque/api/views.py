@@ -14,7 +14,7 @@ from apps.estoque.api.serializers import (
 
 # Imports alinhados com o padrão Tarugo
 from apps.estoque.services.movimentacao_service import MovimentacaoService
-from apps.estoque.services.produto_service import criar_produto
+from apps.estoque.services.produto_service import ProdutoService
 
 from apps.estoque.selectors import (
     listar_movimentacoes,
@@ -33,7 +33,7 @@ class ProdutoCreateView(APIView):
     def post(self, request):
         serializer = ProdutoSerializer(data=request.data)
         if serializer.is_valid():
-            produto = criar_produto(serializer.validated_data)
+            produto = ProdutoService.criar_produto(serializer.validated_data)
             return Response(ProdutoSerializer(produto).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

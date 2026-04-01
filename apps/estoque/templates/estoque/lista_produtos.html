@@ -28,9 +28,12 @@
     <h1 class="page-title">Produtos</h1>
     <p class="page-subtitle">Catálogo completo com saldos atuais</p>
   </div>
-  <a href="{% url 'estoque:movimentacao_create' %}" class="btn btn-primary">
-    + Movimentar estoque
-  </a>
+  {% if pode_movimentar %}
+  <a href="{% url 'estoque:movimentacao_create' %}" class="btn btn-primary">+ Movimentar estoque</a>
+  {% endif %}
+  {% if pode_cadastrar %}
+  <a href="{% url 'estoque:produto_create' %}" class="btn btn-outline">+ Novo produto</a>
+  {% endif %}
 </div>
 
 {# ── TABELA ── #}
@@ -73,10 +76,12 @@
           </td>
           <td><span class="mono" style="color: var(--text-muted);">{{ produto.criado_em|date:"d/m/Y" }}</span></td>
           <td style="text-align: right;">
+            {% if pode_movimentar %}
             <a href="{% url 'estoque:movimentacao_create' %}?produto_id={{ produto.id }}"
                class="btn btn-outline" style="padding: 0.35rem 0.7rem; font-size: 0.76rem;">
               Movimentar
             </a>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
