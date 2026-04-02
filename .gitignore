@@ -117,3 +117,4 @@ logs/
 *.sql.gz
 *.dump
 backups/
+features/
