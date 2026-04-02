@@ -3,7 +3,7 @@ import math
 
 BORDA_COLS = ['BORDA_FACE_FRENTE', 'BORDA_FACE_TRASEIRA', 'BORDA_FACE_LE', 'BORDA_FACE_LD']
 
-ALTURA_CHAPA = 2750.0
+ALTURA_CHAPA = 2730.0
 ESPESSURA_SERRA = 4.0
 MARGEM_REFILO = 5.0
 
@@ -124,6 +124,15 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
             for i in range(qtd_tiras):
                 nova = group.iloc[0].copy()
 
+                # --- CORREÇÃO: Tornar o ID DA PEÇA único para cada tira ---
+                if 'ID DA PEÇA' in nova:
+                    id_base = str(nova['ID DA PEÇA'])
+                    nova['ID DA PEÇA'] = f"{id_base}-T{i+1}"
+                elif 'ID' in nova:
+                    id_base = str(nova['ID'])
+                    nova['ID'] = f"{id_base}-T{i+1}"
+                # ----------------------------------------------------------
+
                 nova['DESCRIÇÃO DA PEÇA'] = 'RIPA CORTE'
                 nova['ALTURA DA PEÇA'] = str(int(ALTURA_CHAPA))
                 nova['LARGURA DA PEÇA'] = str(int(largura_ripa))
@@ -151,6 +160,15 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
             nova = group.iloc[0].copy()
             nova['QUANTIDADE'] = str(total_pecas)
 
+            # --- CORREÇÃO: Diferenciar o ID da Ripa Fonte ---
+            if 'ID DA PEÇA' in nova:
+                id_base = str(nova['ID DA PEÇA'])
+                nova['ID DA PEÇA'] = f"{id_base}-F"
+            elif 'ID' in nova:
+                id_base = str(nova['ID'])
+                nova['ID'] = f"{id_base}-F"
+            # ------------------------------------------------
+
             nova['OBSERVAÇÃO'] = (
                 f"RIPA FONTE | {total_pecas} PCS {int(largura_ripa)}x{int(altura_ripa)}mm"
             )
@@ -164,6 +182,13 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
     if not novas_linhas:
         return df_resto
 
-    resultado = pd.concat([df_resto, pd.DataFrame(novas_linhas)], ignore_index=True)
+    df_novas = pd.DataFrame(novas_linhas)
+
+    # --- CORREÇÃO: Remover colunas auxiliares criadas para o cálculo ---
+    colunas_para_remover = ['ALTURA_NUM', 'LARGURA_NUM', 'QTD_NUM', 'EH_FONTE']
+    df_novas.drop(columns=colunas_para_remover, errors='ignore', inplace=True)
+    # -------------------------------------------------------------------
+
+    resultado = pd.concat([df_resto, df_novas], ignore_index=True)
 
     return resultado
