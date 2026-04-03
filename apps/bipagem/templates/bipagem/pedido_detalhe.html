@@ -14,52 +14,65 @@
     margin-bottom: 1.5rem;
   }
   .scanner-input-wrap {
-    max-width: 800px;
+    max-width: 1000px;
     margin: 0 auto;
     display: flex;
-    gap: 1rem;
+    gap: 1.5rem;
     align-items: center;
     position: relative;
   }
   .scanner-input-wrap input {
     flex: 1;
-    padding: 1rem 1.5rem;
-    font-size: 1.5rem;
+    padding: 1.2rem 1.5rem;
+    font-size: 2rem;
     font-family: var(--mono);
-    border: 3px solid var(--border-strong);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border: 4px solid var(--border-strong);
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
   }
   .scanner-input-wrap input:focus {
     outline: none;
     border-color: var(--text);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    box-shadow: 0 6px 30px rgba(0,0,0,0.15);
   }
   
-  /* Feedback do Setor */
-  .sector-feedback {
-    position: absolute;
-    right: -320px;
-    width: 300px;
-    padding: 1rem;
-    border-radius: 8px;
-    background: white;
-    border: 2px solid var(--border);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  /* Overlay Escandaloso do Setor */
+  #sector-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 2000;
     display: none;
-    animation: slide-in 0.3s ease-out;
-  }
-  @keyframes slide-in {
-    from { transform: translateX(20px); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-  }
-  .sector-name {
-    font-size: 1.5rem;
-    font-weight: 800;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
     text-align: center;
-    line-height: 1.2;
-    margin-top: 0.5rem;
+    padding: 2rem;
   }
+  .overlay-sector-name {
+    font-size: 8vw;
+    font-weight: 900;
+    line-height: 1;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .overlay-peca-id {
+    font-size: 3vw;
+    font-family: var(--mono);
+    opacity: 0.9;
+  }
+
+  /* Layout da Tabela Otimizado */
+  #pecas-table th, #pecas-table td { padding: 1rem 0.75rem; }
+  .col-status { width: 40px; }
+  .col-id { width: 15%; font-family: var(--mono); font-weight: 700; }
+  .col-desc { width: 35%; }
+  .col-lote { width: 10%; font-family: var(--mono); color: var(--text-muted); }
+  .col-destino { width: 15%; }
+  .col-modulo { width: 15%; }
+  .col-status-text { width: 10%; font-family: var(--mono); font-size: 0.75rem; }
 
   .peca-row { transition: background 0.3s ease; }
   .peca-row.bipada { background-color: #e8f5e9 !important; }
@@ -70,26 +83,36 @@
     100% { background-color: #e8f5e9; }
   }
   .status-indicator {
-    width: 12px; height: 12px; border-radius: 50%;
-    display: inline-block; margin-right: 8px; background: var(--border-strong);
+    width: 14px; height: 14px; border-radius: 50%;
+    display: inline-block; background: var(--border-strong);
   }
-  .status-indicator.bipada { background: #4caf50; box-shadow: 0 0 8px #4caf50; }
-  .progress-stats { display: flex; gap: 2rem; font-family: var(--mono); font-size: 0.9rem; font-weight: 600; }
+  .status-indicator.bipada { background: #4caf50; box-shadow: 0 0 10px #4caf50; }
+  
+  .progress-stats { display: flex; gap: 2.5rem; font-family: var(--mono); font-size: 1rem; font-weight: 700; }
   .progress-stats span { color: var(--text-muted); font-weight: 400; margin-right: 0.5rem; }
   
-  /* Cores dos Setores na Tabela */
   .sector-badge {
-    padding: 0.2rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.7rem;
-    font-weight: 700;
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 800;
     color: white;
     text-transform: uppercase;
+    display: inline-block;
+    white-space: nowrap;
   }
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- Overlay de Destino (Escandaloso) -->
+<div id="sector-overlay" onclick="this.style.display='none'">
+  <div style="font-size: 2vw; font-family: var(--mono); margin-bottom: 1rem; opacity: 0.8;">DESTINO DA PEÇA:</div>
+  <div id="overlay-name" class="overlay-sector-name">---</div>
+  <div id="overlay-id" class="overlay-peca-id">---</div>
+  <div style="margin-top: 3rem; font-size: 1.5vw; opacity: 0.6;">Clique ou bipe a próxima para fechar</div>
+</div>
+
 <div class="page-header" style="border-bottom: none; margin-bottom: 0;">
   <div>
     <h1 class="page-title">Pedido {{ pedido.numero_pedido }}</h1>
@@ -105,14 +128,7 @@
 <div class="scanner-header">
   <div class="scanner-input-wrap">
     <input type="text" id="scanner-input" placeholder="BIPE A PEÇA AQUI..." autofocus autocomplete="off">
-    
-    <!-- Card de Feedback do Setor -->
-    <div id="sector-card" class="sector-feedback">
-      <div style="font-size: 0.7rem; font-family: var(--mono); color: var(--text-muted); text-align: center;">DESTINO DA PEÇA:</div>
-      <div id="sector-display" class="sector-name">---</div>
-    </div>
-
-    <div id="scanner-feedback" style="font-weight: 600; font-size: 0.9rem; margin-left: 1rem;"></div>
+    <div id="scanner-feedback" style="font-weight: 800; font-size: 1.2rem; min-width: 200px;"></div>
   </div>
 </div>
 
@@ -121,27 +137,29 @@
     <table id="pecas-table">
       <thead>
         <tr>
-          <th style="width: 40px;"></th>
-          <th>ID PEÇA</th>
-          <th>DESCRIÇÃO</th>
-          <th>DESTINO</th>
-          <th>MÓDULO</th>
-          <th>STATUS</th>
+          <th class="col-status"></th>
+          <th class="col-id">ID PEÇA</th>
+          <th class="col-lote">LOTE</th>
+          <th class="col-desc">DESCRIÇÃO</th>
+          <th class="col-destino">DESTINO</th>
+          <th class="col-modulo">MÓDULO</th>
+          <th class="col-status-text">STATUS</th>
         </tr>
       </thead>
       <tbody>
         {% for p in pecas %}
         <tr id="row-{{ p.id_peca }}" class="peca-row {% if p.status == status_bipada %}bipada{% endif %}">
-          <td><div class="status-indicator {% if p.status == status_bipada %}bipada{% endif %}"></div></td>
-          <td class="mono"><strong>{{ p.id_peca }}</strong></td>
-          <td>{{ p.descricao }}</td>
-          <td>
+          <td class="col-status"><div class="status-indicator {% if p.status == status_bipada %}bipada{% endif %}"></div></td>
+          <td class="col-id">{{ p.id_peca }}</td>
+          <td class="col-lote">{{ p.numero_lote_pcp|default:"---" }}</td>
+          <td class="col-desc">{{ p.descricao }}</td>
+          <td class="col-destino">
             <span class="sector-badge" data-code="{{ p.plano_corte }}">
               {{ p.plano_corte }}
             </span>
           </td>
-          <td><span class="badge badge-pendente" style="font-size: 0.65rem;">{{ p.modulo.nome_modulo }}</span></td>
-          <td class="status-text mono" style="font-size: 0.75rem;">{{ p.status }}</td>
+          <td class="col-modulo"><span class="badge badge-pendente" style="font-size: 0.65rem;">{{ p.modulo.nome_modulo }}</span></td>
+          <td class="col-status-text status-text">{{ p.status }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -162,17 +180,17 @@
   };
   const MAPA_NOMES = {
     '01': 'PINTURA', '02': 'LÂMINAS/FOLHAS', '04': 'MONTAGEM CAIXA',
-    '05': 'DUPLAGEM', '06': 'PORTAS/FRENTES', '10': 'PRÉ-MONTAGEM', '11': 'OUTROS'
+    '05': 'DUPLAGEM', '06': 'PORTAS/FRENTES', '10': 'PRÉ-MONTAGEM', '11': 'GERAL / OUTROS'
   };
 
   const input = document.getElementById('scanner-input');
   const feedback = document.getElementById('scanner-feedback');
-  const sectorCard = document.getElementById('sector-card');
-  const sectorDisplay = document.getElementById('sector-display');
+  const overlay = document.getElementById('sector-overlay');
+  const overlayName = document.getElementById('overlay-name');
+  const overlayId = document.getElementById('overlay-id');
   const audioSuccess = document.getElementById('audio-success');
   const audioError = document.getElementById('audio-error');
   
-  // Colorir badges da tabela no carregamento
   document.querySelectorAll('.sector-badge').forEach(badge => {
     const code = badge.getAttribute('data-code');
     badge.style.backgroundColor = MAPA_CORES[code] || '#ccc';
@@ -195,7 +213,8 @@
   async function processScan(code) {
     if (isProcessing || !code) return;
     isProcessing = true;
-    feedback.textContent = "Processando...";
+    feedback.textContent = "PROCESSANDO...";
+    overlay.style.display = 'none'; // Fecha overlay anterior se houver
     
     try {
       const response = await fetch('/api/bipagem/bipagem/', {
@@ -205,8 +224,8 @@
       });
       const data = await response.json();
       if (response.ok) handleSuccess(data);
-      else handleError(data.erro || "Erro");
-    } catch (err) { handleError("Erro de conexão"); }
+      else handleError(data.erro || "ERRO");
+    } catch (err) { handleError("ERRO CONEXÃO"); }
     finally { isProcessing = false; input.value = ""; input.focus(); }
   }
 
@@ -218,29 +237,36 @@
       row.querySelector('.status-text').textContent = "BIPADA";
       row.scrollIntoView({ behavior: 'smooth', block: 'center' });
       
-      // Mostrar Setor de Destino com destaque
+      // Feedback Escandaloso (Overlay)
       const setorNome = data.peca.setor_destino || "NÃO DEFINIDO";
       const setorCor = MAPA_CORES[data.peca.plano_corte] || "#333";
       
-      sectorDisplay.textContent = setorNome;
-      sectorCard.style.display = 'block';
-      sectorCard.style.borderColor = setorCor;
-      sectorDisplay.style.color = setorCor;
+      overlayName.textContent = setorNome;
+      overlayId.textContent = `PEÇA: ${data.peca.id_peca}`;
+      overlay.style.backgroundColor = setorCor + 'F2'; // Adiciona transparência
+      overlay.style.display = 'flex';
+
+      // Fecha overlay automaticamente após 3 segundos se não houver nova bipagem
+      setTimeout(() => {
+        if (overlay.style.display === 'flex' && overlayId.textContent.includes(data.peca.id_peca)) {
+          overlay.style.display = 'none';
+        }
+      }, 3000);
 
       if (!data.repetido) {
         updateStats();
         audioSuccess.play().catch(e => {});
       }
-      feedback.textContent = `PEÇA ${data.peca.id_peca} OK!`;
+      feedback.textContent = `OK: ${data.peca.id_peca}`;
       feedback.style.color = "var(--green)";
-    } else { handleError("Peça não pertence a este pedido"); }
+    } else { handleError("PEÇA NÃO PERTENCE AO PEDIDO"); }
   }
 
   function handleError(msg) {
     audioError.play().catch(e => {});
     feedback.textContent = msg.toUpperCase();
     feedback.style.color = "var(--accent)";
-    sectorCard.style.display = 'none';
+    overlay.style.display = 'none';
   }
 
   function updateStats() {

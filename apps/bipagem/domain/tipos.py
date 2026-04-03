@@ -13,8 +13,8 @@ MAPA_SETORES = {
     '05': {'nome': 'DUPLAGEM', 'cor': '#ff9800'},
     '06': {'nome': 'PORTAS/FRENTES', 'cor': '#e91e63'},
     '10': {'nome': 'PRÉ-MONTAGEM', 'cor': '#00bcd4'},
-    '11': {'nome': 'OUTROS', 'cor': '#607d8b'},
+    '11': {'nome': 'GERAL / OUTROS', 'cor': '#607d8b'},
 }
 
 def get_nome_setor(codigo_plano: str) -> str:
-    return MAPA_SETORES.get(codigo_plano, {}).get('nome', 'NÃO DEFINIDO')
+    return MAPA_SETORES.get(codigo_plano, {}).get('nome', f'SETOR {codigo_plano}' if codigo_plano else 'NÃO DEFINIDO')
