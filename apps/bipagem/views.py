@@ -12,12 +12,7 @@ from apps.bipagem.domain.tipos import StatusPeca
 
 @login_required
 def index(request):
-    """Página principal do scanner de bipagem."""
-    return render(request, 'bipagem/index.html')
-
-@login_required
-def pedidos_list(request):
-    """Listagem de pedidos com progresso de bipagem."""
+    """Página principal do scanner de bipagem (Dashboard Operacional)."""
     pedidos_qs = Pedido.objects.annotate(
         total=Count('ordens_producao__modulos__pecas'),
         bipadas=Count('ordens_producao__modulos__pecas', filter=Q(ordens_producao__modulos__pecas__status=StatusPeca.BIPADA))
@@ -34,24 +29,33 @@ def pedidos_list(request):
             'cliente_nome': p.cliente_nome,
             'total': total,
             'bipadas': bipadas,
-            'percentual': round(percentual, 2)
+            'bipadas_neg': -bipadas, # Para cálculo no template
+            'percentual': round(percentual, 1)
         })
         
-    return render(request, 'bipagem/pedidos.html', {'pedidos': pedidos})
+    return render(request, 'bipagem/index.html', {'pedidos': pedidos})
+
+@login_required
+def pedidos_list(request):
+    """Redireciona para a index que agora é a listagem operacional."""
+    return index(request)
 
 @login_required
 def pedido_detalhe(request, numero_pedido):
-    """Detalhes de um pedido e seus módulos."""
+    """Detalhes de um pedido e seus módulos para conferência real-time."""
     resumo = get_resumo_pedido(numero_pedido)
     if not resumo:
-        # Poderia redirecionar com mensagem de erro
-        return render(request, 'bipagem/pedidos.html', {'erro': 'Pedido não encontrado'})
+        return render(request, 'bipagem/index.html', {'erro': 'Pedido não encontrado'})
         
-    modulos = get_modulos_pedido(numero_pedido)
+    # Buscar todas as peças do pedido de uma vez para a visão completa
+    pecas_qs = Peca.objects.filter(
+        modulo__ordem_producao__pedido__numero_pedido=numero_pedido
+    ).select_related('modulo').order_by('modulo__nome_modulo', 'id_peca')
     
     return render(request, 'bipagem/pedido_detalhe.html', {
         'pedido': resumo,
-        'modulos': modulos
+        'pecas': pecas_qs,
+        'status_bipada': StatusPeca.BIPADA
     })
 
 @login_required

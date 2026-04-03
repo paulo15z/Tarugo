@@ -1,53 +1,250 @@
 {% extends "bipagem/base.html" %}
 
-{% block title %}Pedido {{ pedido.numero_pedido }}{% endblock %}
+{% block title %}Conferência Pedido {{ pedido.numero_pedido }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .scanner-header {
+    position: sticky;
+    top: 52px;
+    background: var(--bg);
+    padding: 1rem 0;
+    z-index: 90;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+  }
+  .scanner-input-wrap {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+  .scanner-input-wrap input {
+    flex: 1;
+    padding: 1rem 1.5rem;
+    font-size: 1.5rem;
+    font-family: var(--mono);
+    border: 3px solid var(--border-strong);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+  .scanner-input-wrap input:focus {
+    outline: none;
+    border-color: var(--text);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  }
+  .peca-row {
+    transition: background 0.3s ease;
+  }
+  .peca-row.bipada {
+    background-color: #e8f5e9 !important; /* Verde bem clarinho */
+  }
+  .peca-row.bipada td {
+    color: #2e7d32;
+  }
+  .peca-row.just-bipada {
+    animation: highlight-green 2s ease-out;
+  }
+  @keyframes highlight-green {
+    0% { background-color: #4caf50; color: white; }
+    100% { background-color: #e8f5e9; }
+  }
+  .status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+    background: var(--border-strong);
+  }
+  .status-indicator.bipada {
+    background: #4caf50;
+    box-shadow: 0 0 8px #4caf50;
+  }
+  .progress-stats {
+    display: flex;
+    gap: 2rem;
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .progress-stats span { color: var(--text-muted); font-weight: 400; margin-right: 0.5rem; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<div class="page-header" style="border-bottom: none; margin-bottom: 0;">
   <div>
     <h1 class="page-title">Pedido {{ pedido.numero_pedido }}</h1>
-    <p class="page-subtitle">Cliente: {{ pedido.cliente }}</p>
+    <p class="page-subtitle">{{ pedido.cliente }}</p>
   </div>
-  <div class="mono" style="font-size: 0.85rem; color: var(--text-muted);">
-    {{ pedido.pecas_bipadas }} / {{ pedido.total_pecas }} peças bipadas ({{ pedido.percentual }}%)
+  <div class="progress-stats">
+    <div><span>TOTAL:</span> <span id="stat-total" style="color:var(--text)">{{ pedido.total_pecas }}</span></div>
+    <div><span>BIPADAS:</span> <span id="stat-bipadas" style="color:var(--green)">{{ pedido.pecas_bipadas }}</span></div>
+    <div><span>RESTAM:</span> <span id="stat-restam" style="color:var(--accent)">{{ pedido.total_pecas|add:pedido.pecas_bipadas_neg|default:pedido.total_pecas }}</span></div>
+  </div>
+</div>
+
+<div class="scanner-header">
+  <div class="scanner-input-wrap">
+    <input type="text" id="scanner-input" placeholder="BIPE A PEÇA AQUI..." autofocus autocomplete="off">
+    <div id="scanner-feedback" style="font-weight: 600; font-size: 0.9rem;"></div>
   </div>
 </div>
 
 <div class="card" style="padding: 0;">
   <div class="table-wrap">
-    <table>
+    <table id="pecas-table">
       <thead>
         <tr>
-          <th>Módulo</th>
-          <th>Referência</th>
-          <th>Progresso</th>
-          <th>Peças</th>
-          <th>Ações</th>
+          <th style="width: 40px;"></th>
+          <th>ID PEÇA</th>
+          <th>DESCRIÇÃO</th>
+          <th>MÓDULO</th>
+          <th>LOCAL</th>
+          <th>STATUS</th>
         </tr>
       </thead>
       <tbody>
-        {% for m in modulos %}
-        <tr>
-          <td><strong>{{ m.nome }}</strong></td>
-          <td class="mono">{{ m.referencia }}</td>
+        {% for p in pecas %}
+        <tr id="row-{{ p.id_peca }}" class="peca-row {% if p.status == status_bipada %}bipada{% endif %}">
           <td>
-            <div style="width: 100px; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
-              <div style="width: {{ m.percentual }}%; height: 100%; background: var(--green);"></div>
-            </div>
-            <span style="font-size: 0.7rem; color: var(--text-muted); font-family: var(--mono);">{{ m.percentual }}%</span>
+            <div class="status-indicator {% if p.status == status_bipada %}bipada{% endif %}"></div>
           </td>
-          <td class="mono">{{ m.bipadas }}/{{ m.total }}</td>
-          <td>
-            <a href="{% url 'bipagem:modulo_detalhe' m.referencia %}" class="btn btn-outline" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">Ver Peças</a>
-          </td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="5" class="empty-state">Nenhum módulo encontrado para este pedido.</td>
+          <td class="mono"><strong>{{ p.id_peca }}</strong></td>
+          <td>{{ p.descricao }}</td>
+          <td><span class="badge badge-pendente" style="font-size: 0.65rem;">{{ p.modulo.nome_modulo }}</span></td>
+          <td>{{ p.local }}</td>
+          <td class="status-text mono" style="font-size: 0.75rem;">{{ p.status }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
+
+<!-- Audio para feedback sonoro -->
+<audio id="audio-success" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+<audio id="audio-error" src="https://assets.mixkit.co/active_storage/sfx/2873/2873-preview.mp3"></audio>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const input = document.getElementById('scanner-input');
+  const feedback = document.getElementById('scanner-feedback');
+  const audioSuccess = document.getElementById('audio-success');
+  const audioError = document.getElementById('audio-error');
+  
+  let isProcessing = false;
+  let lastCode = "";
+  let scanTimeout = null;
+
+  // Focar sempre no input
+  document.addEventListener('click', () => input.focus());
+
+  // Lógica do Scanner sem Enter (Debounce / Auto-process)
+  input.addEventListener('input', (e) => {
+    const code = e.target.value.trim();
+    
+    if (scanTimeout) clearTimeout(scanTimeout);
+    
+    // Se o código parece completo (geralmente IDs tem um padrão de tamanho)
+    // Ou simplesmente esperar 300ms de inatividade do scanner
+    if (code.length >= 6) {
+      scanTimeout = setTimeout(() => {
+        processScan(code);
+      }, 300);
+    }
+  });
+
+  async function processScan(code) {
+    if (isProcessing || !code) return;
+    isProcessing = true;
+    
+    feedback.textContent = "Processando...";
+    feedback.style.color = "var(--text-muted)";
+
+    try {
+      const response = await fetch('/api/bipagem/bipagem/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+          codigo: code,
+          usuario: '{{ user.username|default:"OPERADOR" }}',
+          localizacao: 'EXPEDIÇÃO'
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        handleSuccess(data, code);
+      } else {
+        handleError(data.erro || "Erro desconhecido");
+      }
+    } catch (err) {
+      handleError("Erro de conexão");
+    } finally {
+      isProcessing = false;
+      input.value = "";
+      input.focus();
+    }
+  }
+
+  function handleSuccess(data, code) {
+    const row = document.getElementById(`row-${data.peca.id_peca}`);
+    
+    if (row) {
+      // Feedback Visual na Linha
+      row.classList.add('bipada');
+      row.classList.add('just-bipada');
+      row.querySelector('.status-indicator').classList.add('bipada');
+      row.querySelector('.status-text').textContent = "BIPADA";
+      
+      // Scroll até a linha se não estiver visível
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // Remover classe de animação após um tempo
+      setTimeout(() => row.classList.remove('just-bipada'), 2000);
+      
+      // Atualizar Stats
+      if (!data.repetido) {
+        updateStats();
+        audioSuccess.play().catch(e => {});
+      }
+      
+      feedback.textContent = `PEÇA ${data.peca.id_peca} OK!`;
+      feedback.style.color = "var(--green)";
+    } else {
+      handleError("Peça não pertence a este pedido");
+    }
+  }
+
+  function handleError(msg) {
+    audioError.play().catch(e => {});
+    feedback.textContent = msg.toUpperCase();
+    feedback.style.color = "var(--accent)";
+    
+    // Shake effect no input
+    input.style.borderColor = "var(--accent)";
+    setTimeout(() => input.style.borderColor = "", 500);
+  }
+
+  function updateStats() {
+    const bipadasEl = document.getElementById('stat-bipadas');
+    const restamEl = document.getElementById('stat-restam');
+    
+    let bipadas = parseInt(bipadasEl.textContent);
+    let total = parseInt(document.getElementById('stat-total').textContent);
+    
+    bipadas++;
+    bipadasEl.textContent = bipadas;
+    restamEl.textContent = total - bipadas;
+  }
+</script>
 {% endblock %}

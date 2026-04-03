@@ -1,155 +1,118 @@
 {% extends "bipagem/base.html" %}
 
-{% block title %}Scanner de Bipagem{% endblock %}
+{% block title %}Dashboard Operacional{% endblock %}
 
 {% block extra_css %}
 <style>
-  .scanner-container { max-width: 600px; margin: 0 auto; }
-  .input-group { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
-  .input-group input { flex: 1; padding: 0.75rem 1rem; border: 2px solid var(--border); border-radius: 6px; font-size: 1.1rem; font-family: var(--mono); }
-  .input-group input:focus { outline: none; border-color: var(--text); }
-  .peca-card { display: none; border-left: 4px solid var(--green); }
-  .peca-card.error { border-left-color: var(--accent); }
-  .peca-info { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; font-size: 0.9rem; }
-  .peca-info div span { display: block; font-family: var(--mono); font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
-  .status-msg { margin-top: 1rem; padding: 0.75rem; border-radius: 4px; font-weight: 500; display: none; }
-  .status-msg.success { background: var(--green-light); color: var(--green); }
-  .status-msg.error { background: var(--accent-light); color: var(--accent); }
-  .history-list { margin-top: 2rem; }
-  .history-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
-  .history-item:last-child { border-bottom: none; }
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  .order-card {
+    transition: transform 0.15s, box-shadow 0.15s;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  .order-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+    border-color: var(--text);
+  }
+  .progress-bar-container {
+    height: 10px;
+    background: var(--border);
+    border-radius: 5px;
+    overflow: hidden;
+    margin: 1rem 0;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--green);
+    transition: width 0.3s ease;
+  }
+  .order-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    font-family: var(--mono);
+    color: var(--text-muted);
+  }
+  .search-box {
+    max-width: 500px;
+    margin-bottom: 2rem;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    font-size: 1rem;
+  }
+  .search-box input:focus {
+    outline: none;
+    border-color: var(--text);
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="scanner-container">
-  <div class="card">
-    <h2 style="margin-bottom: 1rem;">Scanner de Peças</h2>
-    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">
-      Bipe o código de barras da peça para registrar a conferência.
-    </p>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Painel de Bipagem</h1>
+    <p class="page-subtitle">Selecione um pedido para iniciar a conferência</p>
+  </div>
+</div>
+
+<div class="search-box">
+  <input type="text" id="search-orders" placeholder="Buscar por pedido ou cliente..." autocomplete="off">
+</div>
+
+<div class="dashboard-grid" id="orders-grid">
+  {% for p in pedidos %}
+  <a href="{% url 'bipagem:pedido_detalhe' p.numero_pedido %}" class="card order-card" data-search="{{ p.numero_pedido }} {{ p.cliente_nome }}">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+      <span class="badge badge-pendente">PEDIDO {{ p.numero_pedido }}</span>
+      <span class="mono" style="font-size: 0.75rem;">{{ p.percentual }}%</span>
+    </div>
+    <h3 style="font-size: 1.1rem; margin-bottom: 0.25rem;">{{ p.cliente_nome }}</h3>
     
-    <div class="input-group">
-      <input type="text" id="barcode-input" placeholder="Aguardando bipagem..." autofocus autocomplete="off">
-      <button class="btn btn-primary" id="btn-scan">OK</button>
+    <div class="progress-bar-container">
+      <div class="progress-bar-fill" style="width: {{ p.percentual }}%;"></div>
     </div>
-
-    <div id="status-msg" class="status-msg"></div>
-
-    <div id="peca-card" class="card peca-card" style="margin-top: 1.5rem; margin-bottom: 0; padding: 1rem;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-        <h3 id="peca-id" class="mono"></h3>
-        <span id="peca-status" class="badge"></span>
-      </div>
-      <p id="peca-desc" style="margin-top: 0.5rem; font-weight: 500;"></p>
-      
-      <div class="peca-info">
-        <div><span>Local</span><strong id="peca-local"></strong></div>
-        <div><span>Material</span><strong id="peca-material"></strong></div>
-        <div><span>Pedido</span><strong id="peca-pedido"></strong></div>
-        <div><span>Módulo</span><strong id="peca-modulo"></strong></div>
-      </div>
+    
+    <div class="order-meta">
+      <span>{{ p.bipadas }} / {{ p.total }} PEÇAS</span>
+      <span>RESTAM {{ p.total|add:p.bipadas_neg }}</span>
     </div>
+  </a>
+  {% empty %}
+  <div class="empty-state" style="grid-column: 1 / -1;">
+    <strong>Nenhum pedido em aberto</strong>
+    <p>Importe novos roteiros pelo PCP para começar.</p>
   </div>
-
-  <div class="history-list">
-    <h4 style="font-family: var(--mono); font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.75rem;">Últimas Bipagens</h4>
-    <div id="history-items" class="card" style="padding: 0;">
-      <div class="empty-state" style="padding: 1.5rem;">Nenhuma bipagem nesta sessão.</div>
-    </div>
-  </div>
+  {% endfor %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  const input = document.getElementById('barcode-input');
-  const btn = document.getElementById('btn-scan');
-  const statusMsg = document.getElementById('status-msg');
-  const pecaCard = document.getElementById('peca-card');
-  const historyItems = document.getElementById('history-items');
+  const searchInput = document.getElementById('search-orders');
+  const orderCards = document.querySelectorAll('.order-card');
 
-  function addHistory(peca, msg) {
-    const empty = historyItems.querySelector('.empty-state');
-    if (empty) empty.remove();
-
-    const item = document.createElement('div');
-    item.className = 'history-item';
-    item.innerHTML = `
-      <div>
-        <strong class="mono">${peca.id_peca}</strong>
-        <span style="color: var(--text-muted); margin-left: 0.5rem;">${peca.descricao.substring(0, 30)}...</span>
-      </div>
-      <span class="badge badge-bipada">OK</span>
-    `;
-    historyItems.prepend(item);
-    
-    // Manter apenas os últimos 5
-    if (historyItems.children.length > 5) {
-      historyItems.removeChild(historyItems.lastChild);
-    }
-  }
-
-  async function processScan(code) {
-    if (!code) return;
-    
-    input.disabled = true;
-    statusMsg.style.display = 'none';
-    
-    try {
-      const response = await fetch('/api/bipagem/bipagem/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': '{{ csrf_token }}'
-        },
-        body: JSON.stringify({
-          codigo: code,
-          usuario: '{{ user.username|default:"OPERADOR" }}',
-          localizacao: 'EXPEDIÇÃO'
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        statusMsg.textContent = data.mensagem;
-        statusMsg.className = 'status-msg success';
-        statusMsg.style.display = 'block';
-        
-        pecaCard.style.display = 'block';
-        pecaCard.className = 'card peca-card';
-        document.getElementById('peca-id').textContent = data.peca.id_peca;
-        document.getElementById('peca-desc').textContent = data.peca.descricao;
-        document.getElementById('peca-status').textContent = data.peca.status;
-        document.getElementById('peca-status').className = 'badge badge-' + data.peca.status.toLowerCase();
-        document.getElementById('peca-local').textContent = data.peca.local;
-        document.getElementById('peca-material').textContent = data.peca.material || '—';
-        document.getElementById('peca-pedido').textContent = data.peca.pedido_numero || '—';
-        document.getElementById('peca-modulo').textContent = data.peca.modulo_nome || '—';
-        
-        addHistory(data.peca, data.mensagem);
+  searchInput.addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    orderCards.forEach(card => {
+      const searchText = card.getAttribute('data-search').toLowerCase();
+      if (searchText.includes(term)) {
+        card.style.display = 'block';
       } else {
-        statusMsg.textContent = data.erro || 'Erro ao processar peça';
-        statusMsg.className = 'status-msg error';
-        statusMsg.style.display = 'block';
-        pecaCard.style.display = 'none';
+        card.style.display = 'none';
       }
-    } catch (err) {
-      statusMsg.textContent = 'Erro de conexão com o servidor';
-      statusMsg.className = 'status-msg error';
-      statusMsg.style.display = 'block';
-    } finally {
-      input.disabled = false;
-      input.value = '';
-      input.focus();
-    }
-  }
-
-  input.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') processScan(input.value.trim());
+    });
   });
-
-  btn.addEventListener('click', () => processScan(input.value.trim()));
 </script>
 {% endblock %}

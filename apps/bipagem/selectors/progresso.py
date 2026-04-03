@@ -28,7 +28,8 @@ def get_resumo_pedido(numero_pedido: str) -> Optional[dict]:
             'cliente': pedido.cliente_nome,
             'total_pecas': total,
             'pecas_bipadas': bipadas,
-            'percentual': round(percentual, 2)
+            'pecas_bipadas_neg': -bipadas, # Para facilitar cálculos no template Django
+            'percentual': round(percentual, 1)
         }
     except Pedido.DoesNotExist:
         return None
@@ -55,7 +56,7 @@ def get_modulos_pedido(numero_pedido: str) -> List[dict]:
             'nome': m.nome_modulo,
             'total': total,
             'bipadas': bipadas,
-            'percentual': round(percentual, 2)
+            'percentual': round(percentual, 1)
         })
     return resultado
 
