@@ -9,7 +9,7 @@ class StatusPeca(str, Enum):
 MAPA_SETORES = {
     '01': {'nome': 'PINTURA', 'cor': '#9c27b0'},
     '02': {'nome': 'LÂMINAS/FOLHAS', 'cor': '#795548'},
-    '03': {'nome': 'MARCENARIA', 'cor': '#4caf50'}, # Adicionado Marcenaria
+    '03': {'nome': 'RIPAS', 'cor': '#2e7d32'}, # Renomeado para RIPAS com verde escuro
     '04': {'nome': 'MONTAGEM DE CAIXA', 'cor': '#2196f3'},
     '05': {'nome': 'DUPLAGEM', 'cor': '#ff9800'},
     '06': {'nome': 'PORTAS/FRENTES', 'cor': '#e91e63'},

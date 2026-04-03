@@ -18,9 +18,11 @@ def determinar_plano_de_corte(row: pd.Series, roteiro: str) -> str:
     if 'lamina' in material or 'lâmina' in material or 'folha' in material or '_lamina_' in obs:
         return '02'   # LÂMINAS OU FOLHAS
 
-    # Prioridade 3: Ripas (Direcionado para MARCENARIA 03)
-    if 'ripa' in desc or 'ripa' in local or '_ripa_' in obs:
-        return '03'   # MARCENARIA
+    # Prioridade 3: Ripas (Direcionado para RIPAS 03)
+    # Refinado para evitar falsos positivos: deve conter 'ripa' mas não 'porta' ou 'frente' no mesmo campo se for ambíguo
+    eh_ripa = 'ripa' in desc or 'ripa' in local or '_ripa_' in obs
+    if eh_ripa:
+        return '03'   # RIPAS
 
     # Prioridade 4: Duplagem
     if 'DUP' in roteiro:
@@ -53,11 +55,16 @@ def calcular_roteiro(row: pd.Series) -> str:
     tem_furo = furo not in ('', 'nan', 'none')
     tem_duplagem = duplagem not in ('', 'nan', 'none')
     tem_puxador = 'puxador' in desc or 'tampa' in desc
+    
+    # Lógica refinada para Ripas
     eh_ripa = 'ripa' in desc or 'ripa' in local or '_ripa_' in obs
+    
+    # Portas e Frentes só se não for ripa
     eh_porta = ('porta' in local or 'porta' in desc) and not eh_ripa
     eh_gaveta = 'gaveta' in desc or 'gaveteiro' in desc or 'gaveta' in local
     eh_caixa = 'caixa' in local
     eh_frontal = ('frontal' in local or 'frontal' in desc) and not eh_ripa
+    
     eh_tamponamento = 'tamponamento' in local
     eh_painel = '_painel_' in obs
 
@@ -82,6 +89,7 @@ def calcular_roteiro(row: pd.Series) -> str:
         rota.append('MPE')
         rota.append('MAR')
 
+    # Ripas vão para Marcenaria (MAR)
     if eh_painel or (eh_tamponamento and not eh_gaveta) or eh_ripa:
         rota.append('MAR')
 

@@ -210,12 +210,12 @@
 {% block extra_js %}
 <script>
   const MAPA_CORES = {
-    '01': '#9c27b0', '02': '#795548', '04': '#2196f3',
+    '01': '#9c27b0', '02': '#795548', '03': '#2e7d32', '04': '#2196f3',
     '05': '#ff9800', '06': '#e91e63', '10': '#00bcd4', '11': '#607d8b'
   };
   const MAPA_NOMES = {
-    '01': 'PINTURA', '02': 'LÂMINAS/FOLHAS', '04': 'MONTAGEM CAIXA',
-    '05': 'DUPLAGEM', '06': 'PORTAS/FRENTES', '10': 'PRÉ-MONTAGEM', '11': 'GERAL / MARCENARIA'
+    '01': 'PINTURA', '02': 'LÂMINAS/FOLHAS', '03': 'RIPAS', '04': 'MONTAGEM CAIXA',
+    '05': 'DUPLAGEM', '06': 'PORTAS/FRENTES', '10': 'PRÉ-MONTAGEM', '11': 'GERAL / OUTROS'
   };
 
   const input = document.getElementById('scanner-input');
@@ -282,7 +282,7 @@
         row.querySelector('.status-text').textContent = "BIPADA";
         row.scrollIntoView({ behavior: 'smooth', block: 'center' });
         
-        const setorNome = data.peca.setor_destino || "NÃO DEFINIDO";
+        const setorNome = MAPA_NOMES[data.peca.plano_corte] || data.peca.setor_destino || "NÃO DEFINIDO";
         const setorCor = MAPA_CORES[data.peca.plano_corte] || "#333";
         
         document.getElementById('overlay-name').textContent = setorNome;
