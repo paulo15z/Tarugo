@@ -27,40 +27,39 @@ def index(request):
         'status'
     )
     
-    # Agrupamento manual por Lote Base
-    lotes_base = {}
+    # Agrupamento manual por Lote Base para garantir unicidade absoluta
+    lotes_base_map = {}
     for p in pecas_qs:
         lote_composto = p['numero_lote_pcp']
         lote_base = _extrair_lote_base(lote_composto)
         
-        if lote_base not in lotes_base:
-            lotes_base[lote_base] = {
+        if lote_base not in lotes_base_map:
+            lotes_base_map[lote_base] = {
                 'lote_base': lote_base,
                 'numero_pedido': p['modulo__ordem_producao__pedido__numero_pedido'] or "---",
                 'cliente_nome': p['modulo__ordem_producao__pedido__cliente_nome'] or "Cliente Desconhecido",
                 'total': 0,
                 'bipadas': 0,
-                'sub_lotes': set()
+                'sub_lotes': set() # Usando set para evitar repetições
             }
         
-        lotes_base[lote_base]['total'] += 1
+        lotes_base_map[lote_base]['total'] += 1
         if p['status'] == StatusPeca.BIPADA:
-            lotes_base[lote_base]['bipadas'] += 1
+            lotes_base_map[lote_base]['bipadas'] += 1
         
         if lote_composto:
-            lotes_base[lote_base]['sub_lotes'].add(lote_composto)
+            lotes_base_map[lote_base]['sub_lotes'].add(lote_composto)
 
-    # Preparar lista final para o template
     lotes_finais = []
-    for lb in lotes_base.values():
+    for lb in lotes_base_map.values():
         total = lb['total']
         bipadas = lb['bipadas']
         percentual = (bipadas / total * 100) if total > 0 else 0
         
-        # Ordenar sub-lotes para exibição
-        sub_lotes_sorted = sorted(list(lb['sub_lotes']))
-        sub_lotes_display = ", ".join(sub_lotes_sorted[:3])
-        if len(sub_lotes_sorted) > 3:
+        # Ordenar sub-lotes e pegar apenas os únicos
+        sub_lotes_unicos = sorted(list(lb['sub_lotes']))
+        sub_lotes_display = " / ".join(sub_lotes_unicos[:5])
+        if len(sub_lotes_unicos) > 5:
             sub_lotes_display += "..."
 
         lotes_finais.append({
@@ -74,9 +73,7 @@ def index(request):
             'percentual': round(percentual, 1)
         })
     
-    # Ordenar por lote (mais recentes primeiro se possível, ou alfabético reverso)
     lotes_finais.sort(key=lambda x: x['lote'], reverse=True)
-        
     return render(request, 'bipagem/index.html', {'lotes': lotes_finais})
 
 @login_required
@@ -85,14 +82,9 @@ def pedidos_list(request):
 
 @login_required
 def pedido_detalhe(request, numero_pedido):
-    """
-    Detalhes de um LOTE BASE. 
-    Filtra todas as peças cujo numero_lote_pcp comece com o lote base.
-    """
-    lote_base = numero_pedido # O parâmetro agora é o lote base (ex: 500)
+    """Detalhes de um LOTE BASE."""
+    lote_base = numero_pedido
     
-    # Filtra peças que pertencem a este lote base (ex: 500-01, 500-02, etc)
-    # Usamos __startswith ou filtramos manualmente se necessário
     pecas_qs = Peca.objects.filter(
         Q(numero_lote_pcp=lote_base) | Q(numero_lote_pcp__startswith=f"{lote_base}-")
     ).select_related('modulo__ordem_producao__pedido').order_by('numero_lote_pcp', 'modulo__nome_modulo', 'id_peca')
@@ -103,7 +95,6 @@ def pedido_detalhe(request, numero_pedido):
     primeira = pecas_qs.first()
     pedido_obj = primeira.modulo.ordem_producao.pedido
     
-    # Agregando estatísticas do lote base
     stats = pecas_qs.aggregate(
         total=Count('id'),
         bipadas=Count('id', filter=Q(status=StatusPeca.BIPADA))
@@ -118,9 +109,9 @@ def pedido_detalhe(request, numero_pedido):
         'percentual': round((stats['bipadas'] / stats['total'] * 100), 1) if stats['total'] > 0 else 0
     }
     
-    # Lotes únicos para o cabeçalho
-    lotes_unicos = sorted(list(pecas_qs.values_list('numero_lote_pcp', flat=True).distinct()))
-    lote_display = " / ".join(lotes_unicos)
+    # GARANTIA DE UNICIDADE: Usar set() para os lotes exibidos no cabeçalho
+    lotes_unicos_set = set(pecas_qs.exclude(numero_lote_pcp='').values_list('numero_lote_pcp', flat=True))
+    lote_display = " / ".join(sorted(list(lotes_unicos_set)))
     
     return render(request, 'bipagem/pedido_detalhe.html', {
         'pedido': resumo,
