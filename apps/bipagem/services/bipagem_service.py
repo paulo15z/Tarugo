@@ -1,86 +1,82 @@
 from django.db import transaction
 from django.utils import timezone
+from typing import Dict, Any
 
 from apps.bipagem.models import Peca, EventoBipagem
 from apps.bipagem.schemas.bipagem_schema import (
     BipagemInput,
-    BipagemOutput,
-    PecaOutput
+    BipagemOutput
 )
 from apps.bipagem.mappers.peca_mapper import map_peca_to_output
+from apps.bipagem.domain.tipos import StatusPeca
 
-
-
-
-def registrar_bipagem(data: dict) -> dict:
-
-    # 1. Validação de entrada (Pydantic)
+@transaction.atomic
+def registrar_bipagem(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Registra a bipagem de uma peça, validando o estado e persistindo o evento.
+    """
     try:
         payload = BipagemInput(**data)
-    except Exception:
+    except Exception as e:
         return BipagemOutput(
             sucesso=False,
-            erro="Dados inválidos"
-        ).dict()
+            mensagem="Dados de entrada inválidos",
+            erro=str(e)
+        ).model_dump()
 
-    try:
-        with transaction.atomic():
+    # 1. Buscar peça com lock para evitar concorrência
+    peca = (
+        Peca.objects
+        .select_for_update()
+        .select_related("modulo__ordem_producao__pedido")
+        .filter(id_peca=payload.codigo_peca)
+        .order_by("-id") # Pega a mais recente se houver duplicidade de ID em lotes diferentes
+        .first()
+    )
 
-            # lock + performance
-            peca = (
-                Peca.objects
-                .select_for_update()
-                .select_related("modulo__ordem_producao__pedido")
-                .filter(id_peca=payload.codigo_peca)
-                .order_by("-id")
-                .first()
-            )
-
-            if not peca:
-                return BipagemOutput(
-                    sucesso=False,
-                    erro="Peça não encontrada"
-                ).dict()
-
-            # estados inválidos
-            if peca.status in ["CONCLUIDA", "CANCELADA"]:
-                return BipagemOutput(
-                    sucesso=False,
-                    erro=f"Peça já está {peca.status.lower()}"
-                ).dict()
-
-            agora = timezone.now()
-
-            # idempotência
-            if peca.status == "BIPADA":
-                return BipagemOutput(
-                    sucesso=True,
-                    mensagem="Peça já bipada",
-                    repetido=True,
-                    peca= map_peca_to_output(peca)
-                ).dict()
-
-            # registrar evento
-            EventoBipagem.objects.create(
-                peca=peca,
-                usuario=payload.usuario or "DESCONHECIDO",
-                localizacao=payload.localizacao,
-                data_hora=agora
-            )
-
-            # atualizar peça
-            peca.status = "BIPADA"
-            peca.data_bipagem = agora
-            peca.save(update_fields=["status", "data_bipagem"])
-
-            return BipagemOutput(
-                sucesso=True,
-                mensagem="Bipagem registrada",
-                peca= map_peca_to_output(peca)
-            ).dict()
-
-    except Exception:
+    if not peca:
         return BipagemOutput(
             sucesso=False,
-            erro="Erro interno ao registrar bipagem"
-        ).dict()
+            mensagem="Peça não encontrada",
+            erro=f"Código {payload.codigo_peca} não existe no sistema"
+        ).model_dump()
+
+    # 2. Validar estados impeditivos
+    if peca.status in [StatusPeca.CONCLUIDA, StatusPeca.CANCELADA]:
+        return BipagemOutput(
+            sucesso=False,
+            mensagem=f"Peça já está {peca.status.lower()}",
+            peca=map_peca_to_output(peca)
+        ).model_dump()
+
+    agora = timezone.now()
+
+    # 3. Idempotência: se já estiver bipada, apenas retorna sucesso
+    if peca.status == StatusPeca.BIPADA:
+        # Ainda assim registramos o evento para histórico de tentativas/re-bipagem se necessário,
+        # mas aqui vamos apenas retornar que já foi feito.
+        return BipagemOutput(
+            sucesso=True,
+            mensagem="Peça já foi bipada anteriormente",
+            repetido=True,
+            peca=map_peca_to_output(peca)
+        ).model_dump()
+
+    # 4. Registrar evento de bipagem
+    EventoBipagem.objects.create(
+        peca=peca,
+        usuario=payload.usuario,
+        localizacao=payload.localizacao,
+        momento=agora
+    )
+
+    # 5. Atualizar status da peça
+    peca.status = StatusPeca.BIPADA
+    peca.data_bipagem = agora
+    peca.save(update_fields=["status", "data_bipagem"])
+
+    return BipagemOutput(
+        sucesso=True,
+        mensagem="Bipagem realizada com sucesso",
+        peca=map_peca_to_output(peca)
+    ).model_dump()

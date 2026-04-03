@@ -1,25 +1,39 @@
 from pydantic import BaseModel, Field
-from typing import Optional
-
-# pydantic eh do caralho
+from typing import Optional, List
+from datetime import datetime
 
 class BipagemInput(BaseModel):
     codigo_peca: str = Field(..., min_length=1)
-    usuario: Optional[str] = None
-    localizacao: str = Field(..., min_length=1)
-
+    usuario: str = Field(default="DESCONHECIDO")
+    localizacao: str = Field(default="")
 
 class PecaOutput(BaseModel):
-    id: str
+    id_peca: str
     descricao: str
     status: str
-    destino: Optional[str] = None
-    pedido_id: Optional[int] = None
-
+    local: str
+    material: Optional[str] = None
+    quantidade: int
+    roteiro: Optional[str] = None
+    plano_corte: Optional[str] = None
+    data_bipagem: Optional[datetime] = None
+    pedido_numero: Optional[str] = None
+    modulo_nome: Optional[str] = None
 
 class BipagemOutput(BaseModel):
     sucesso: bool
-    mensagem: Optional[str] = None
+    mensagem: str
     erro: Optional[str] = None
     repetido: bool = False
     peca: Optional[PecaOutput] = None
+
+class ResumoModulo(BaseModel):
+    referencia: str
+    nome: str
+    total: int
+    bipadas: int
+    percentual: float
+
+class DetalheModulo(BaseModel):
+    modulo: ResumoModulo
+    pecas: List[PecaOutput]

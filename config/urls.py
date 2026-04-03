@@ -15,6 +15,10 @@ urlpatterns = [
     path('estoque/', include('apps.estoque.urls')),
     path('api/estoque/', include('apps.estoque.api.urls')),
     path('pcp/', include('apps.pcp.urls')),
+    
+    # Bipagem
+    path('bipagem/', include('apps.bipagem.urls')),
+    path('api/bipagem/', include('apps.bipagem.api.urls')),
 ]
 
 if settings.DEBUG:
