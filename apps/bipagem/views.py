@@ -13,11 +13,10 @@ from apps.bipagem.domain.tipos import StatusPeca
 @login_required
 def index(request):
     """Página principal do scanner de bipagem (Dashboard Operacional)."""
-    # Puxamos o numero_lote_pcp mais comum ou o primeiro encontrado para cada pedido
+    # Agrupamos por pedido, mas queremos mostrar os lotes associados
     pedidos_qs = Pedido.objects.annotate(
         total=Count('ordens_producao__modulos__pecas'),
-        bipadas=Count('ordens_producao__modulos__pecas', filter=Q(ordens_producao__modulos__pecas__status=StatusPeca.BIPADA)),
-        lote_manual=Max('ordens_producao__modulos__pecas__numero_lote_pcp')
+        bipadas=Count('ordens_producao__modulos__pecas', filter=Q(ordens_producao__modulos__pecas__status=StatusPeca.BIPADA))
     ).order_by('-data_criacao')
     
     pedidos = []
@@ -26,9 +25,19 @@ def index(request):
         bipadas = p.bipadas or 0
         percentual = (bipadas / total * 100) if total > 0 else 0
         
+        # Buscar os lotes únicos deste pedido (ex: 573-01, 573-04)
+        lotes = Peca.objects.filter(
+            modulo__ordem_producao__pedido=p
+        ).values_list('numero_lote_pcp', flat=True).distinct()
+        
+        # Se houver muitos lotes, mostramos o prefixo ou uma lista curta
+        lote_display = ", ".join(list(lotes)[:3])
+        if len(lotes) > 3:
+            lote_display += "..."
+
         pedidos.append({
             'numero_pedido': p.numero_pedido,
-            'lote': p.lote_manual or "---",
+            'lote': lote_display or "---",
             'cliente_nome': p.cliente_nome,
             'total': total,
             'bipadas': bipadas,
@@ -53,12 +62,13 @@ def pedido_detalhe(request, numero_pedido):
         modulo__ordem_producao__pedido__numero_pedido=numero_pedido
     ).select_related('modulo').order_by('modulo__nome_modulo', 'id_peca')
     
-    # Pega o lote manual de uma das peças para exibir no cabeçalho
-    lote_manual = pecas_qs.first().numero_lote_pcp if pecas_qs.exists() else "---"
+    # Pegar todos os lotes únicos para o cabeçalho
+    lotes_unicos = pecas_qs.values_list('numero_lote_pcp', flat=True).distinct()
+    lote_display = " / ".join(lotes_unicos)
     
     return render(request, 'bipagem/pedido_detalhe.html', {
         'pedido': resumo,
-        'lote_manual': lote_manual,
+        'lote_manual': lote_display,
         'pecas': pecas_qs,
         'status_bipada': StatusPeca.BIPADA
     })

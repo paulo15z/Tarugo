@@ -49,7 +49,7 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str =
     Args:
         df: DataFrame já processado pelo pcp_service (com ROTEIRO e PLANO)
         arquivo_nome: Nome original do arquivo (para logging)
-        numero_lote: O número do lote inserido manualmente pelo usuário no app PCP
+        numero_lote: O número do lote inserido manualmente pelo usuário no app PCP (Lote Base)
     
     Returns:
         Dict com resultado da importação
@@ -139,13 +139,17 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str =
 
                         roteiro = _limpar_valor(row.get('ROTEIRO', ''))
                         plano = _limpar_valor(row.get('PLANO', ''))
+                        
+                        # O LOTE que o operador precisa ver é a composição LoteBase-Plano (ex: 573-06)
+                        # O numero_lote passado como argumento é o Lote Base digitado no PCP
+                        lote_composto = f"{numero_lote}-{plano}" if plano else str(numero_lote)
 
                         # Verifica se já existe
                         if not Peca.objects.filter(modulo=modulo, id_peca=id_peca).exists():
                             peca = Peca(
                                 modulo=modulo,
                                 id_peca=id_peca,
-                                numero_lote_pcp=str(numero_lote), # Usa o lote manual do PCP
+                                numero_lote_pcp=lote_composto, # Agora usa o LoteBase-Plano (ex: 573-06)
                                 descricao=descricao,
                                 local=local,
                                 material=_limpar_valor(row.get('MATERIAL DA PEÇA', '')),
@@ -163,7 +167,7 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str =
                         Peca.objects.bulk_create(pecas_para_criar, batch_size=500)
                         total_pecas_criadas += len(pecas_para_criar)
 
-            mensagem = f'Importação concluída: {total_pecas_criadas} peças importadas (Pedido {numero_pedido}, Lote {numero_lote})'
+            mensagem = f'Importação concluída: {total_pecas_criadas} peças importadas (Pedido {numero_pedido}, Lote Base {numero_lote})'
 
             return {
                 'sucesso': True,
