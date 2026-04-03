@@ -141,15 +141,19 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str =
                         plano = _limpar_valor(row.get('PLANO', ''))
                         
                         # O LOTE que o operador precisa ver é a composição LoteBase-Plano (ex: 573-06)
-                        # O numero_lote passado como argumento é o Lote Base digitado no PCP
-                        lote_composto = f"{numero_lote}-{plano}" if plano else str(numero_lote)
+                        # O PCP Service já gera isso na coluna 'LOTE'
+                        lote_composto = _limpar_valor(row.get('LOTE', ''))
+                        
+                        # Fallback caso a coluna LOTE não esteja preenchida como esperado
+                        if not lote_composto or lote_composto == 'nan':
+                            lote_composto = f"{numero_lote}-{plano}" if plano else str(numero_lote)
 
                         # Verifica se já existe
                         if not Peca.objects.filter(modulo=modulo, id_peca=id_peca).exists():
                             peca = Peca(
                                 modulo=modulo,
                                 id_peca=id_peca,
-                                numero_lote_pcp=lote_composto, # Agora usa o LoteBase-Plano (ex: 573-06)
+                                numero_lote_pcp=lote_composto,
                                 descricao=descricao,
                                 local=local,
                                 material=_limpar_valor(row.get('MATERIAL DA PEÇA', '')),

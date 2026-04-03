@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q, Max
+from django.db.models import Count, Q
 
 from apps.bipagem.models import Pedido, Modulo, Peca
 from apps.bipagem.selectors.progresso import (
@@ -13,7 +13,7 @@ from apps.bipagem.domain.tipos import StatusPeca
 @login_required
 def index(request):
     """Página principal do scanner de bipagem (Dashboard Operacional)."""
-    # Agrupamos por pedido, mas queremos mostrar os lotes associados
+    # Agrupamos por pedido
     pedidos_qs = Pedido.objects.annotate(
         total=Count('ordens_producao__modulos__pecas'),
         bipadas=Count('ordens_producao__modulos__pecas', filter=Q(ordens_producao__modulos__pecas__status=StatusPeca.BIPADA))
@@ -26,13 +26,16 @@ def index(request):
         percentual = (bipadas / total * 100) if total > 0 else 0
         
         # Buscar os lotes únicos deste pedido (ex: 573-01, 573-04)
-        lotes = Peca.objects.filter(
+        # Usamos set() para garantir unicidade e evitar repetições
+        lotes_list = list(Peca.objects.filter(
             modulo__ordem_producao__pedido=p
-        ).values_list('numero_lote_pcp', flat=True).distinct()
+        ).values_list('numero_lote_pcp', flat=True).distinct())
         
-        # Se houver muitos lotes, mostramos o prefixo ou uma lista curta
-        lote_display = ", ".join(list(lotes)[:3])
-        if len(lotes) > 3:
+        # Ordenar para manter consistência
+        lotes_list.sort()
+        
+        lote_display = ", ".join(lotes_list[:3])
+        if len(lotes_list) > 3:
             lote_display += "..."
 
         pedidos.append({
@@ -62,8 +65,8 @@ def pedido_detalhe(request, numero_pedido):
         modulo__ordem_producao__pedido__numero_pedido=numero_pedido
     ).select_related('modulo').order_by('modulo__nome_modulo', 'id_peca')
     
-    # Pegar todos os lotes únicos para o cabeçalho
-    lotes_unicos = pecas_qs.values_list('numero_lote_pcp', flat=True).distinct()
+    # Pegar todos os lotes únicos de forma limpa
+    lotes_unicos = sorted(list(pecas_qs.values_list('numero_lote_pcp', flat=True).distinct()))
     lote_display = " / ".join(lotes_unicos)
     
     return render(request, 'bipagem/pedido_detalhe.html', {
