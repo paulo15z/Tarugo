@@ -59,11 +59,17 @@
   .lote-badge {
     background: var(--text);
     color: white;
-    padding: 0.2rem 0.5rem;
+    padding: 0.2rem 0.6rem;
     border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 800;
+    font-size: 0.9rem;
+    font-weight: 900;
     font-family: var(--mono);
+  }
+  .sub-lotes-list {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    margin-top: 0.25rem;
   }
 </style>
 {% endblock %}
@@ -72,7 +78,7 @@
 <div class="page-header">
   <div>
     <h1 class="page-title">Painel de Bipagem</h1>
-    <p class="page-subtitle">Selecione um lote para iniciar a conferência</p>
+    <p class="page-subtitle">Selecione um lote base para iniciar a conferência</p>
   </div>
 </div>
 
@@ -84,13 +90,14 @@
   {% for l in lotes %}
   <a href="{% url 'bipagem:pedido_detalhe' l.lote %}" class="card order-card" data-search="{{ l.lote }} {{ l.numero_pedido }} {{ l.cliente_nome }}">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-      <div style="display: flex; gap: 0.5rem; align-items: center;">
-        <span class="lote-badge">{{ l.lote }}</span>
-        <span class="badge badge-pendente" style="font-size: 0.6rem;">PED. {{ l.numero_pedido }}</span>
+      <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+        <span class="lote-badge">LOTE {{ l.lote }}</span>
+        <span class="sub-lotes-list">{{ l.sub_lotes_display }}</span>
       </div>
       <span class="mono" style="font-size: 0.75rem;">{{ l.percentual }}%</span>
     </div>
     <h3 style="font-size: 1.1rem; margin-bottom: 0.25rem;">{{ l.cliente_nome }}</h3>
+    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">PEDIDO: {{ l.numero_pedido }}</p>
     
     <div class="progress-bar-container">
       <div class="progress-bar-fill" style="width: {{ l.percentual }}%;"></div>

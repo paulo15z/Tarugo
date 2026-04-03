@@ -10,39 +10,74 @@ from apps.bipagem.selectors.progresso import (
 )
 from apps.bipagem.domain.tipos import StatusPeca
 
+def _extrair_lote_base(lote_composto: str) -> str:
+    """Extrai o lote base de um lote composto (ex: '500-01' -> '500')."""
+    if not lote_composto:
+        return "SEM LOTE"
+    return lote_composto.split('-')[0].strip()
+
 @login_required
 def index(request):
-    """Página principal do scanner de bipagem (Dashboard Operacional por LOTE)."""
-    # Agrupamos por LOTE em vez de Pedido para que cada lote seja uma unidade de trabalho
-    lotes_qs = Peca.objects.values(
-        'numero_lote_pcp', 
+    """Página principal do scanner de bipagem (Dashboard Operacional por LOTE BASE)."""
+    # Buscamos todas as peças e seus dados de pedido
+    pecas_qs = Peca.objects.select_related('modulo__ordem_producao__pedido').values(
+        'numero_lote_pcp',
         'modulo__ordem_producao__pedido__numero_pedido',
-        'modulo__ordem_producao__pedido__cliente_nome'
-    ).annotate(
-        total=Count('id'),
-        bipadas=Count('id', filter=Q(status=StatusPeca.BIPADA))
-    ).order_by('-modulo__ordem_producao__pedido__data_criacao', 'numero_lote_pcp')
+        'modulo__ordem_producao__pedido__cliente_nome',
+        'status'
+    )
     
-    lotes = []
-    for item in lotes_qs:
-        total = item['total'] or 0
-        bipadas = item['bipadas'] or 0
+    # Agrupamento manual por Lote Base
+    lotes_base = {}
+    for p in pecas_qs:
+        lote_composto = p['numero_lote_pcp']
+        lote_base = _extrair_lote_base(lote_composto)
+        
+        if lote_base not in lotes_base:
+            lotes_base[lote_base] = {
+                'lote_base': lote_base,
+                'numero_pedido': p['modulo__ordem_producao__pedido__numero_pedido'] or "---",
+                'cliente_nome': p['modulo__ordem_producao__pedido__cliente_nome'] or "Cliente Desconhecido",
+                'total': 0,
+                'bipadas': 0,
+                'sub_lotes': set()
+            }
+        
+        lotes_base[lote_base]['total'] += 1
+        if p['status'] == StatusPeca.BIPADA:
+            lotes_base[lote_base]['bipadas'] += 1
+        
+        if lote_composto:
+            lotes_base[lote_base]['sub_lotes'].add(lote_composto)
+
+    # Preparar lista final para o template
+    lotes_finais = []
+    for lb in lotes_base.values():
+        total = lb['total']
+        bipadas = lb['bipadas']
         percentual = (bipadas / total * 100) if total > 0 else 0
         
-        lote_val = item['numero_lote_pcp'] or "SEM LOTE"
-        pedido_val = item['modulo__ordem_producao__pedido__numero_pedido'] or "---"
+        # Ordenar sub-lotes para exibição
+        sub_lotes_sorted = sorted(list(lb['sub_lotes']))
+        sub_lotes_display = ", ".join(sub_lotes_sorted[:3])
+        if len(sub_lotes_sorted) > 3:
+            sub_lotes_display += "..."
 
-        lotes.append({
-            'lote': lote_val,
-            'numero_pedido': pedido_val,
-            'cliente_nome': item['modulo__ordem_producao__pedido__cliente_nome'] or "Cliente Desconhecido",
+        lotes_finais.append({
+            'lote': lb['lote_base'],
+            'sub_lotes_display': sub_lotes_display,
+            'numero_pedido': lb['numero_pedido'],
+            'cliente_nome': lb['cliente_nome'],
             'total': total,
             'bipadas': bipadas,
             'bipadas_neg': -bipadas,
             'percentual': round(percentual, 1)
         })
+    
+    # Ordenar por lote (mais recentes primeiro se possível, ou alfabético reverso)
+    lotes_finais.sort(key=lambda x: x['lote'], reverse=True)
         
-    return render(request, 'bipagem/index.html', {'lotes': lotes})
+    return render(request, 'bipagem/index.html', {'lotes': lotes_finais})
 
 @login_required
 def pedidos_list(request):
@@ -51,50 +86,41 @@ def pedidos_list(request):
 @login_required
 def pedido_detalhe(request, numero_pedido):
     """
-    Detalhes de um pedido. 
-    Se o numero_pedido contiver um hífen, tratamos como um LOTE específico.
+    Detalhes de um LOTE BASE. 
+    Filtra todas as peças cujo numero_lote_pcp comece com o lote base.
     """
-    # Verifica se o parâmetro é um LOTE (ex: 573-04) ou um Pedido (ex: 573)
-    is_lote = "-" in numero_pedido
+    lote_base = numero_pedido # O parâmetro agora é o lote base (ex: 500)
     
-    if is_lote:
-        pecas_qs = Peca.objects.filter(
-            numero_lote_pcp=numero_pedido
-        ).select_related('modulo__ordem_producao__pedido').order_by('modulo__nome_modulo', 'id_peca')
+    # Filtra peças que pertencem a este lote base (ex: 500-01, 500-02, etc)
+    # Usamos __startswith ou filtramos manualmente se necessário
+    pecas_qs = Peca.objects.filter(
+        Q(numero_lote_pcp=lote_base) | Q(numero_lote_pcp__startswith=f"{lote_base}-")
+    ).select_related('modulo__ordem_producao__pedido').order_by('numero_lote_pcp', 'modulo__nome_modulo', 'id_peca')
+    
+    if not pecas_qs.exists():
+        return render(request, 'bipagem/index.html', {'erro': f'Lote {lote_base} não encontrado'})
         
-        if not pecas_qs.exists():
-            return render(request, 'bipagem/index.html', {'erro': 'Lote não encontrado'})
-            
-        primeira = pecas_qs.first()
-        pedido_obj = primeira.modulo.ordem_producao.pedido
-        
-        # Criar um resumo fake baseado no lote
-        stats = pecas_qs.aggregate(
-            total=Count('id'),
-            bipadas=Count('id', filter=Q(status=StatusPeca.BIPADA))
-        )
-        
-        resumo = {
-            'numero_pedido': pedido_obj.numero_pedido,
-            'cliente': pedido_obj.cliente_nome,
-            'total_pecas': stats['total'],
-            'pecas_bipadas': stats['bipadas'],
-            'pecas_bipadas_neg': -stats['bipadas'],
-            'percentual': round((stats['bipadas'] / stats['total'] * 100), 1) if stats['total'] > 0 else 0
-        }
-        lote_display = numero_pedido
-    else:
-        # Comportamento original por Pedido
-        resumo = get_resumo_pedido(numero_pedido)
-        if not resumo:
-            return render(request, 'bipagem/index.html', {'erro': 'Pedido não encontrado'})
-            
-        pecas_qs = Peca.objects.filter(
-            modulo__ordem_producao__pedido__numero_pedido=numero_pedido
-        ).select_related('modulo').order_by('modulo__nome_modulo', 'id_peca')
-        
-        lotes_unicos = sorted(list(set(pecas_qs.exclude(numero_lote_pcp='').values_list('numero_lote_pcp', flat=True).distinct())))
-        lote_display = " / ".join(lotes_unicos) if lotes_unicos else numero_pedido
+    primeira = pecas_qs.first()
+    pedido_obj = primeira.modulo.ordem_producao.pedido
+    
+    # Agregando estatísticas do lote base
+    stats = pecas_qs.aggregate(
+        total=Count('id'),
+        bipadas=Count('id', filter=Q(status=StatusPeca.BIPADA))
+    )
+    
+    resumo = {
+        'numero_pedido': pedido_obj.numero_pedido,
+        'cliente': pedido_obj.cliente_nome,
+        'total_pecas': stats['total'],
+        'pecas_bipadas': stats['bipadas'],
+        'pecas_bipadas_neg': -stats['bipadas'],
+        'percentual': round((stats['bipadas'] / stats['total'] * 100), 1) if stats['total'] > 0 else 0
+    }
+    
+    # Lotes únicos para o cabeçalho
+    lotes_unicos = sorted(list(pecas_qs.values_list('numero_lote_pcp', flat=True).distinct()))
+    lote_display = " / ".join(lotes_unicos)
     
     return render(request, 'bipagem/pedido_detalhe.html', {
         'pedido': resumo,
