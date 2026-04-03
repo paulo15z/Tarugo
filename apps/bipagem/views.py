@@ -26,21 +26,22 @@ def index(request):
         percentual = (bipadas / total * 100) if total > 0 else 0
         
         # Buscar os lotes únicos deste pedido (ex: 573-01, 573-04)
-        # Usamos set() para garantir unicidade e evitar repetições
-        lotes_list = list(Peca.objects.filter(
+        # Filtramos valores vazios e usamos set() para garantir unicidade absoluta
+        lotes_raw = Peca.objects.filter(
             modulo__ordem_producao__pedido=p
-        ).values_list('numero_lote_pcp', flat=True).distinct())
+        ).exclude(numero_lote_pcp='').values_list('numero_lote_pcp', flat=True).distinct()
         
-        # Ordenar para manter consistência
-        lotes_list.sort()
+        lotes_list = sorted(list(set(lotes_raw)))
         
         lote_display = ", ".join(lotes_list[:3])
         if len(lotes_list) > 3:
             lote_display += "..."
+        elif not lotes_list:
+            lote_display = p.numero_pedido # Fallback para o número do pedido se não houver lote
 
         pedidos.append({
             'numero_pedido': p.numero_pedido,
-            'lote': lote_display or "---",
+            'lote': lote_display,
             'cliente_nome': p.cliente_nome,
             'total': total,
             'bipadas': bipadas,
@@ -65,9 +66,11 @@ def pedido_detalhe(request, numero_pedido):
         modulo__ordem_producao__pedido__numero_pedido=numero_pedido
     ).select_related('modulo').order_by('modulo__nome_modulo', 'id_peca')
     
-    # Pegar todos os lotes únicos de forma limpa
-    lotes_unicos = sorted(list(pecas_qs.values_list('numero_lote_pcp', flat=True).distinct()))
-    lote_display = " / ".join(lotes_unicos)
+    # Pegar todos os lotes únicos de forma limpa e sem repetições
+    lotes_raw = pecas_qs.exclude(numero_lote_pcp='').values_list('numero_lote_pcp', flat=True).distinct()
+    lotes_unicos = sorted(list(set(lotes_raw)))
+    
+    lote_display = " / ".join(lotes_unicos) if lotes_unicos else numero_pedido
     
     return render(request, 'bipagem/pedido_detalhe.html', {
         'pedido': resumo,
