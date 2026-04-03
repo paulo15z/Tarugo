@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Max
 
 from apps.bipagem.models import Pedido, Modulo, Peca
 from apps.bipagem.selectors.progresso import (
@@ -13,9 +13,11 @@ from apps.bipagem.domain.tipos import StatusPeca
 @login_required
 def index(request):
     """Página principal do scanner de bipagem (Dashboard Operacional)."""
+    # Puxamos o numero_lote_pcp mais comum ou o primeiro encontrado para cada pedido
     pedidos_qs = Pedido.objects.annotate(
         total=Count('ordens_producao__modulos__pecas'),
-        bipadas=Count('ordens_producao__modulos__pecas', filter=Q(ordens_producao__modulos__pecas__status=StatusPeca.BIPADA))
+        bipadas=Count('ordens_producao__modulos__pecas', filter=Q(ordens_producao__modulos__pecas__status=StatusPeca.BIPADA)),
+        lote_manual=Max('ordens_producao__modulos__pecas__numero_lote_pcp')
     ).order_by('-data_criacao')
     
     pedidos = []
@@ -26,10 +28,11 @@ def index(request):
         
         pedidos.append({
             'numero_pedido': p.numero_pedido,
+            'lote': p.lote_manual or "---",
             'cliente_nome': p.cliente_nome,
             'total': total,
             'bipadas': bipadas,
-            'bipadas_neg': -bipadas, # Para cálculo no template
+            'bipadas_neg': -bipadas,
             'percentual': round(percentual, 1)
         })
         
@@ -37,7 +40,6 @@ def index(request):
 
 @login_required
 def pedidos_list(request):
-    """Redireciona para a index que agora é a listagem operacional."""
     return index(request)
 
 @login_required
@@ -47,20 +49,22 @@ def pedido_detalhe(request, numero_pedido):
     if not resumo:
         return render(request, 'bipagem/index.html', {'erro': 'Pedido não encontrado'})
         
-    # Buscar todas as peças do pedido de uma vez para a visão completa
     pecas_qs = Peca.objects.filter(
         modulo__ordem_producao__pedido__numero_pedido=numero_pedido
     ).select_related('modulo').order_by('modulo__nome_modulo', 'id_peca')
     
+    # Pega o lote manual de uma das peças para exibir no cabeçalho
+    lote_manual = pecas_qs.first().numero_lote_pcp if pecas_qs.exists() else "---"
+    
     return render(request, 'bipagem/pedido_detalhe.html', {
         'pedido': resumo,
+        'lote_manual': lote_manual,
         'pecas': pecas_qs,
         'status_bipada': StatusPeca.BIPADA
     })
 
 @login_required
 def modulo_detalhe(request, referencia_modulo):
-    """Listagem de peças de um módulo."""
     modulo = get_object_or_404(Modulo, referencia_modulo=referencia_modulo)
     pecas = get_pecas_modulo(referencia_modulo)
     

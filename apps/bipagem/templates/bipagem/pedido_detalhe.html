@@ -1,6 +1,6 @@
 {% extends "bipagem/base.html" %}
 
-{% block title %}Conferência Pedido {{ pedido.numero_pedido }}{% endblock %}
+{% block title %}Conferência Lote {{ lote_manual }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -36,7 +36,6 @@
     box-shadow: 0 6px 30px rgba(0,0,0,0.15);
   }
   
-  /* Overlay Escandaloso do Setor */
   #sector-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -64,7 +63,6 @@
     opacity: 0.9;
   }
 
-  /* Layout da Tabela Otimizado */
   #pecas-table th, #pecas-table td { padding: 1rem 0.75rem; }
   .col-status { width: 40px; }
   .col-id { width: 15%; font-family: var(--mono); font-weight: 700; }
@@ -101,11 +99,20 @@
     display: inline-block;
     white-space: nowrap;
   }
+  .lote-header-badge {
+    background: var(--text);
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    display: inline-block;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Overlay de Destino (Escandaloso) -->
 <div id="sector-overlay" onclick="this.style.display='none'">
   <div style="font-size: 2vw; font-family: var(--mono); margin-bottom: 1rem; opacity: 0.8;">DESTINO DA PEÇA:</div>
   <div id="overlay-name" class="overlay-sector-name">---</div>
@@ -115,7 +122,8 @@
 
 <div class="page-header" style="border-bottom: none; margin-bottom: 0;">
   <div>
-    <h1 class="page-title">Pedido {{ pedido.numero_pedido }}</h1>
+    <div class="lote-header-badge">LOTE {{ lote_manual }}</div>
+    <h1 class="page-title" style="font-size: 1.2rem;">Pedido {{ pedido.numero_pedido }}</h1>
     <p class="page-subtitle">{{ pedido.cliente }}</p>
   </div>
   <div class="progress-stats">
@@ -214,7 +222,7 @@
     if (isProcessing || !code) return;
     isProcessing = true;
     feedback.textContent = "PROCESSANDO...";
-    overlay.style.display = 'none'; // Fecha overlay anterior se houver
+    overlay.style.display = 'none';
     
     try {
       const response = await fetch('/api/bipagem/bipagem/', {
@@ -237,16 +245,14 @@
       row.querySelector('.status-text').textContent = "BIPADA";
       row.scrollIntoView({ behavior: 'smooth', block: 'center' });
       
-      // Feedback Escandaloso (Overlay)
       const setorNome = data.peca.setor_destino || "NÃO DEFINIDO";
       const setorCor = MAPA_CORES[data.peca.plano_corte] || "#333";
       
       overlayName.textContent = setorNome;
       overlayId.textContent = `PEÇA: ${data.peca.id_peca}`;
-      overlay.style.backgroundColor = setorCor + 'F2'; // Adiciona transparência
+      overlay.style.backgroundColor = setorCor + 'F2';
       overlay.style.display = 'flex';
 
-      // Fecha overlay automaticamente após 3 segundos se não houver nova bipagem
       setTimeout(() => {
         if (overlay.style.display === 'flex' && overlayId.textContent.includes(data.peca.id_peca)) {
           overlay.style.display = 'none';

@@ -56,6 +56,14 @@
     outline: none;
     border-color: var(--text);
   }
+  .lote-badge {
+    background: var(--text);
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
 </style>
 {% endblock %}
 
@@ -63,19 +71,22 @@
 <div class="page-header">
   <div>
     <h1 class="page-title">Painel de Bipagem</h1>
-    <p class="page-subtitle">Selecione um pedido para iniciar a conferência</p>
+    <p class="page-subtitle">Selecione um lote para iniciar a conferência</p>
   </div>
 </div>
 
 <div class="search-box">
-  <input type="text" id="search-orders" placeholder="Buscar por pedido ou cliente..." autocomplete="off">
+  <input type="text" id="search-orders" placeholder="Buscar por lote, pedido ou cliente..." autocomplete="off">
 </div>
 
 <div class="dashboard-grid" id="orders-grid">
   {% for p in pedidos %}
-  <a href="{% url 'bipagem:pedido_detalhe' p.numero_pedido %}" class="card order-card" data-search="{{ p.numero_pedido }} {{ p.cliente_nome }}">
+  <a href="{% url 'bipagem:pedido_detalhe' p.numero_pedido %}" class="card order-card" data-search="{{ p.lote }} {{ p.numero_pedido }} {{ p.cliente_nome }}">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-      <span class="badge badge-pendente">PEDIDO {{ p.numero_pedido }}</span>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <span class="lote-badge">LOTE {{ p.lote }}</span>
+        <span class="badge badge-pendente" style="font-size: 0.6rem;">PED. {{ p.numero_pedido }}</span>
+      </div>
       <span class="mono" style="font-size: 0.75rem;">{{ p.percentual }}%</span>
     </div>
     <h3 style="font-size: 1.1rem; margin-bottom: 0.25rem;">{{ p.cliente_nome }}</h3>

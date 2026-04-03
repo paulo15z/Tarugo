@@ -113,7 +113,8 @@ class ProcessamentoPCPService:
         resumo_df.columns = ['roteiro', 'qtd']
         resumo = resumo_df.to_dict(orient='records')
 
-        resultado_bipagem = importar_de_pcp(df, uploaded_file.name)
+        # Passa o número do lote manual para o importador de bipagem
+        resultado_bipagem = importar_de_pcp(df, uploaded_file.name, numero_lote=str(lote))
 
         return {
             'pid': pid,

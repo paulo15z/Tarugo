@@ -42,13 +42,14 @@ def _extrair_numero_pedido(df: pd.DataFrame) -> str:
     return '999999'
 
 
-def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "") -> Dict:
+def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str = "") -> Dict:
     """
     Importa DataFrame tratado pelo PCP para o sistema de bipagem.
     
     Args:
         df: DataFrame já processado pelo pcp_service (com ROTEIRO e PLANO)
         arquivo_nome: Nome original do arquivo (para logging)
+        numero_lote: O número do lote inserido manualmente pelo usuário no app PCP
     
     Returns:
         Dict com resultado da importação
@@ -144,7 +145,7 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "") -> Dict:
                             peca = Peca(
                                 modulo=modulo,
                                 id_peca=id_peca,
-                                numero_lote_pcp=numero_pedido,
+                                numero_lote_pcp=str(numero_lote), # Usa o lote manual do PCP
                                 descricao=descricao,
                                 local=local,
                                 material=_limpar_valor(row.get('MATERIAL DA PEÇA', '')),
@@ -162,12 +163,13 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "") -> Dict:
                         Peca.objects.bulk_create(pecas_para_criar, batch_size=500)
                         total_pecas_criadas += len(pecas_para_criar)
 
-            mensagem = f'Importação concluída: {total_pecas_criadas} peças importadas (Pedido {numero_pedido})'
+            mensagem = f'Importação concluída: {total_pecas_criadas} peças importadas (Pedido {numero_pedido}, Lote {numero_lote})'
 
             return {
                 'sucesso': True,
                 'mensagem': mensagem,
                 'numero_pedido': numero_pedido,
+                'numero_lote': numero_lote,
                 'total_pecas': total_pecas_criadas,
                 'erros': erros,
                 'pedido_criado': pedido_criado
