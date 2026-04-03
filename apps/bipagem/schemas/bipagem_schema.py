@@ -16,6 +16,7 @@ class PecaOutput(BaseModel):
     quantidade: int
     roteiro: Optional[str] = None
     plano_corte: Optional[str] = None
+    setor_destino: Optional[str] = None # Novo campo
     data_bipagem: Optional[datetime] = None
     pedido_numero: Optional[str] = None
     modulo_nome: Optional[str] = None
