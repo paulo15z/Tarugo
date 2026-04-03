@@ -179,7 +179,8 @@
             historico: document.getElementById('url-historico').value,
             downloadBase: document.getElementById('url-download-base').value
         },
-        csrfToken: document.getElementById('csrf-token').value
+        // Pegar o token CSRF atualizado do input
+        getCsrfToken: () => document.getElementById('csrf-token').value
     };
 
     let arquivoAtual = null;
@@ -214,7 +215,6 @@
         return CONFIG.urls.downloadBase.replace('PID_PLACEHOLDER', pid);
     }
 
-    // Função segura contra undefined
     function renderRota(rota) {
         if (!rota || typeof rota !== 'string' || rota.trim() === '') {
             return '<span class="rota-chip bg-gray-200 text-gray-500">—</span>';
@@ -275,7 +275,8 @@
         const formData = new FormData();
         formData.append('arquivo', arquivoAtual);
         formData.append('lote', lote);
-        formData.append('csrfmiddlewaretoken', CONFIG.csrfToken);
+        // Garantir que o token CSRF seja enviado no cabeçalho ou no corpo
+        const csrfToken = CONFIG.getCsrfToken();
 
         document.getElementById('progress-wrap').classList.remove('hidden');
         document.getElementById('btn-processar').disabled = true;
@@ -283,16 +284,30 @@
         document.getElementById('alert-ok').classList.add('hidden');
 
         try {
-            const res = await fetch(CONFIG.urls.processar, { method: 'POST', body: formData });
-            const data = await res.json();
-
-            if (!res.ok) throw new Error(data.erro || 'Erro no servidor');
-
-            pidAtual = data.pid;
-            mostrarResultado(data);
-
-            document.getElementById('alert-ok').innerHTML = `✅ Processado com sucesso — <strong>${data.total}</strong> peças`;
-            document.getElementById('alert-ok').classList.remove('hidden');
+            const res = await fetch(CONFIG.urls.processar, { 
+                method: 'POST', 
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken
+                }
+            });
+            
+            // Verificar se a resposta é HTML (erro do Django) ou JSON
+            const contentType = res.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.erro || 'Erro no servidor');
+                pidAtual = data.pid;
+                mostrarResultado(data);
+                document.getElementById('alert-ok').innerHTML = `✅ Processado com sucesso — <strong>${data.total}</strong> peças`;
+                document.getElementById('alert-ok').classList.remove('hidden');
+            } else {
+                // Se for HTML, provavelmente é um erro 403 ou 500 renderizado pelo Django
+                if (res.status === 403) {
+                    throw new Error('Sessão expirada ou erro de segurança (CSRF). Por favor, recarregue a página.');
+                }
+                throw new Error(`Erro no servidor (${res.status}). Verifique os logs.`);
+            }
         } catch (e) {
             document.getElementById('alert-err').textContent = `❌ ${e.message}`;
             document.getElementById('alert-err').classList.remove('hidden');
@@ -303,7 +318,6 @@
     }
 
     function mostrarResultado(data) {
-        // Stats
         document.getElementById('stats').innerHTML = `
             <div class="bg-white p-6 rounded-2xl shadow border border-gray-100">
                 <div class="text-4xl font-bold text-indigo-600">${data.total}</div>
@@ -315,12 +329,10 @@
             </div>
         `;
 
-        // Download
         document.getElementById('btn-download').onclick = () => {
             window.location.href = getDownloadUrl(pidAtual);
         };
 
-        // Distribuição de roteiros
         const maxQtd = Math.max(...data.resumo.map(r => r.qtd), 1);
         document.getElementById('roteiro-list').innerHTML = data.resumo.map(r => `
             <div class="flex items-center gap-6">
@@ -332,7 +344,6 @@
             </div>
         `).join('');
 
-        // Prévia
         document.getElementById('previa-tbody').innerHTML = data.previa.map(p => `
             <tr class="table-row">
                 <td class="px-6 py-4"><span class="font-bold text-indigo-600">${p['LOTE'] || ''}</span></td>
@@ -347,7 +358,6 @@
         document.getElementById('resultado').classList.remove('hidden');
     }
 
-    // ==================== HISTÓRICO ====================
     async function carregarHistorico() {
         const tbody = document.getElementById('hist-tbody');
         const noData = document.getElementById('no-historico');
@@ -382,7 +392,6 @@
         }
     }
 
-    // Inicialização
     showTab(0);
 </script>
 </body>
