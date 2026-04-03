@@ -73,11 +73,11 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str =
             if '-' in cliente_nome:
                 cliente_nome = cliente_nome.split('-', 1)[1].strip()
             
-            pedido, pedido_criado = Pedido.objects.get_or_create(
+            # Usamos update_or_create para garantir que o nome do cliente seja atualizado se mudar
+            pedido, pedido_criado = Pedido.objects.update_or_create(
                 numero_pedido=numero_pedido,
                 defaults={
                     'cliente_nome': cliente_nome,
-                    'data_criacao': timezone.now()
                 }
             )
 
@@ -148,7 +148,7 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str =
                         if not lote_composto or lote_composto == 'nan':
                             lote_composto = f"{numero_lote}-{plano}" if plano else str(numero_lote)
 
-                        # Verifica se já existe
+                        # Verifica se já existe para evitar erro de integridade
                         if not Peca.objects.filter(modulo=modulo, id_peca=id_peca).exists():
                             peca = Peca(
                                 modulo=modulo,

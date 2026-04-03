@@ -18,9 +18,9 @@ def determinar_plano_de_corte(row: pd.Series, roteiro: str) -> str:
     if 'lamina' in material or 'lâmina' in material or 'folha' in material or '_lamina_' in obs:
         return '02'   # LÂMINAS OU FOLHAS
 
-    # Prioridade 3: Ripas (Deve vir antes de Portas/Frentes para evitar conflito de LOCAL)
+    # Prioridade 3: Ripas (Direcionado para MARCENARIA 03)
     if 'ripa' in desc or 'ripa' in local or '_ripa_' in obs:
-        return '11'   # GERAL / MARCENARIA (Ajustado para não cair em Portas)
+        return '03'   # MARCENARIA
 
     # Prioridade 4: Duplagem
     if 'DUP' in roteiro:
