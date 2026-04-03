@@ -12,44 +12,37 @@ from apps.bipagem.domain.tipos import StatusPeca
 
 @login_required
 def index(request):
-    """Página principal do scanner de bipagem (Dashboard Operacional)."""
-    # Agrupamos por pedido
-    pedidos_qs = Pedido.objects.annotate(
-        total=Count('ordens_producao__modulos__pecas'),
-        bipadas=Count('ordens_producao__modulos__pecas', filter=Q(ordens_producao__modulos__pecas__status=StatusPeca.BIPADA))
-    ).order_by('-data_criacao')
+    """Página principal do scanner de bipagem (Dashboard Operacional por LOTE)."""
+    # Agrupamos por LOTE em vez de Pedido para que cada lote seja uma unidade de trabalho
+    lotes_qs = Peca.objects.values(
+        'numero_lote_pcp', 
+        'modulo__ordem_producao__pedido__numero_pedido',
+        'modulo__ordem_producao__pedido__cliente_nome'
+    ).annotate(
+        total=Count('id'),
+        bipadas=Count('id', filter=Q(status=StatusPeca.BIPADA))
+    ).order_by('-modulo__ordem_producao__pedido__data_criacao', 'numero_lote_pcp')
     
-    pedidos = []
-    for p in pedidos_qs:
-        total = p.total or 0
-        bipadas = p.bipadas or 0
+    lotes = []
+    for item in lotes_qs:
+        total = item['total'] or 0
+        bipadas = item['bipadas'] or 0
         percentual = (bipadas / total * 100) if total > 0 else 0
         
-        # Buscar os lotes únicos deste pedido (ex: 573-01, 573-04)
-        # Filtramos valores vazios e usamos set() para garantir unicidade absoluta
-        lotes_raw = Peca.objects.filter(
-            modulo__ordem_producao__pedido=p
-        ).exclude(numero_lote_pcp='').values_list('numero_lote_pcp', flat=True).distinct()
-        
-        lotes_list = sorted(list(set(lotes_raw)))
-        
-        lote_display = ", ".join(lotes_list[:3])
-        if len(lotes_list) > 3:
-            lote_display += "..."
-        elif not lotes_list:
-            lote_display = p.numero_pedido # Fallback para o número do pedido se não houver lote
+        lote_val = item['numero_lote_pcp'] or "SEM LOTE"
+        pedido_val = item['modulo__ordem_producao__pedido__numero_pedido'] or "---"
 
-        pedidos.append({
-            'numero_pedido': p.numero_pedido,
-            'lote': lote_display,
-            'cliente_nome': p.cliente_nome,
+        lotes.append({
+            'lote': lote_val,
+            'numero_pedido': pedido_val,
+            'cliente_nome': item['modulo__ordem_producao__pedido__cliente_nome'] or "Cliente Desconhecido",
             'total': total,
             'bipadas': bipadas,
             'bipadas_neg': -bipadas,
             'percentual': round(percentual, 1)
         })
         
-    return render(request, 'bipagem/index.html', {'pedidos': pedidos})
+    return render(request, 'bipagem/index.html', {'lotes': lotes})
 
 @login_required
 def pedidos_list(request):
@@ -57,20 +50,51 @@ def pedidos_list(request):
 
 @login_required
 def pedido_detalhe(request, numero_pedido):
-    """Detalhes de um pedido e seus módulos para conferência real-time."""
-    resumo = get_resumo_pedido(numero_pedido)
-    if not resumo:
-        return render(request, 'bipagem/index.html', {'erro': 'Pedido não encontrado'})
+    """
+    Detalhes de um pedido. 
+    Se o numero_pedido contiver um hífen, tratamos como um LOTE específico.
+    """
+    # Verifica se o parâmetro é um LOTE (ex: 573-04) ou um Pedido (ex: 573)
+    is_lote = "-" in numero_pedido
+    
+    if is_lote:
+        pecas_qs = Peca.objects.filter(
+            numero_lote_pcp=numero_pedido
+        ).select_related('modulo__ordem_producao__pedido').order_by('modulo__nome_modulo', 'id_peca')
         
-    pecas_qs = Peca.objects.filter(
-        modulo__ordem_producao__pedido__numero_pedido=numero_pedido
-    ).select_related('modulo').order_by('modulo__nome_modulo', 'id_peca')
-    
-    # Pegar todos os lotes únicos de forma limpa e sem repetições
-    lotes_raw = pecas_qs.exclude(numero_lote_pcp='').values_list('numero_lote_pcp', flat=True).distinct()
-    lotes_unicos = sorted(list(set(lotes_raw)))
-    
-    lote_display = " / ".join(lotes_unicos) if lotes_unicos else numero_pedido
+        if not pecas_qs.exists():
+            return render(request, 'bipagem/index.html', {'erro': 'Lote não encontrado'})
+            
+        primeira = pecas_qs.first()
+        pedido_obj = primeira.modulo.ordem_producao.pedido
+        
+        # Criar um resumo fake baseado no lote
+        stats = pecas_qs.aggregate(
+            total=Count('id'),
+            bipadas=Count('id', filter=Q(status=StatusPeca.BIPADA))
+        )
+        
+        resumo = {
+            'numero_pedido': pedido_obj.numero_pedido,
+            'cliente': pedido_obj.cliente_nome,
+            'total_pecas': stats['total'],
+            'pecas_bipadas': stats['bipadas'],
+            'pecas_bipadas_neg': -stats['bipadas'],
+            'percentual': round((stats['bipadas'] / stats['total'] * 100), 1) if stats['total'] > 0 else 0
+        }
+        lote_display = numero_pedido
+    else:
+        # Comportamento original por Pedido
+        resumo = get_resumo_pedido(numero_pedido)
+        if not resumo:
+            return render(request, 'bipagem/index.html', {'erro': 'Pedido não encontrado'})
+            
+        pecas_qs = Peca.objects.filter(
+            modulo__ordem_producao__pedido__numero_pedido=numero_pedido
+        ).select_related('modulo').order_by('modulo__nome_modulo', 'id_peca')
+        
+        lotes_unicos = sorted(list(set(pecas_qs.exclude(numero_lote_pcp='').values_list('numero_lote_pcp', flat=True).distinct())))
+        lote_display = " / ".join(lotes_unicos) if lotes_unicos else numero_pedido
     
     return render(request, 'bipagem/pedido_detalhe.html', {
         'pedido': resumo,
