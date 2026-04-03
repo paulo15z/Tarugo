@@ -3,6 +3,7 @@ from .views import (
     BipagemView, PecaDetailView, BuscaPecaView,
     PedidoDetailView, ModuloDetailView
 )
+from bipagem.views import ImportarCSVView
 
 app_name = 'bipagem-api'
 
@@ -17,4 +18,6 @@ urlpatterns = [
     
     # Busca rápida
     path('buscar/', BuscaPecaView.as_view(), name='buscar'),
+
+    path("importar-csv/", ImportarCSVView.as_view()),
 ]
