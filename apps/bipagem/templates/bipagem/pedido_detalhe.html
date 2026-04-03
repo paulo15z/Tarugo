@@ -183,7 +183,7 @@
           <th class="col-status"></th>
           <th class="col-id">ID PEÇA</th>
           <th class="col-desc">DESCRIÇÃO</th>
-          <th class="col-dim">DIMENSÕES (mm)</th>
+          <th class="col-dim">DIMENSÕES (Largura x Altura) mm</th>
           <th class="col-lote">LOTE</th>
           <th class="col-destino">DESTINO</th>
           <th class="col-modulo">MÓDULO</th>
@@ -198,7 +198,7 @@
           <td class="col-desc">{{ p.descricao }}</td>
           <td class="col-dim">
             <span class="dim-badge">
-              {{ p.altura_mm|floatformat:0 }} x {{ p.largura_mm|floatformat:0 }}
+              {{ p.largura_mm|floatformat:0 }} x {{ p.altura_mm|floatformat:0 }}
             </span>
           </td>
           <td class="col-lote">{{ p.numero_lote_pcp|default:"---" }}</td>
