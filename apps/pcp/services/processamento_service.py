@@ -18,7 +18,7 @@ from apps.pcp.utils.parsers import ler_arquivo_dinabox
 from apps.pcp.utils.ripas import consolidar_ripas
 from apps.pcp.utils.roteiros import calcular_roteiro, determinar_plano_de_corte
 from apps.pcp.utils.excel import gerar_xls_roteiro
-
+from apps.bipagem.services.importador_pcp import importar_de_pcp
 
 def _normalizar_chave(chave: str) -> str:
     """Converte 'DESCRIÇÃO DA PEÇA' → 'DESCRICAO_DA_PECA' (válido no template Django)."""
@@ -112,6 +112,8 @@ class ProcessamentoPCPService:
         resumo_df = df['ROTEIRO'].fillna('SEM ROTEIRO').astype(str).value_counts().reset_index()
         resumo_df.columns = ['roteiro', 'qtd']
         resumo = resumo_df.to_dict(orient='records')
+
+        resultado_bipagem = importar_de_pcp(df, uploaded_file.name)
 
         return {
             'pid': pid,

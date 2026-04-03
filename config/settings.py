@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'apps.core',
     'apps.estoque',
     'apps.pcp',
+    'apps.bipagem',
   
 ]
 
