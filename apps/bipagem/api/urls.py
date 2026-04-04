@@ -9,7 +9,7 @@ from .views import (
 from .views_lots import (
     LotesListView, LoteDetailView, PecasPorLoteView
 )
-from apps.bipagem.views import ImportarCSVView
+from .views_import import ImportarCSVView
 
 app_name = 'bipagem-api'
 
