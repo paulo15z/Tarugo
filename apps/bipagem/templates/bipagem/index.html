@@ -1,142 +1,185 @@
-{% extends "bipagem/base.html" %}
-
-{% block title %}Dashboard Operacional{% endblock %}
+{% extends "base/base.html" %}
+{% load static %}
+{% block title %}Painel de Bipagem — Tarugo{% endblock %}
 
 {% block extra_css %}
 <style>
-  .dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
-    margin-top: 1.5rem;
-  }
-  .order-card {
-    transition: transform 0.15s, box-shadow 0.15s;
-    cursor: pointer;
-    text-decoration: none;
-    color: inherit;
-    display: block;
-  }
-  .order-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 16px rgba(0,0,0,0.08);
-    border-color: var(--text);
-  }
-  .progress-bar-container {
-    height: 10px;
-    background: var(--border);
-    border-radius: 5px;
-    overflow: hidden;
-    margin: 1rem 0;
-  }
-  .progress-bar-fill {
-    height: 100%;
-    background: var(--green);
-    transition: width 0.3s ease;
-  }
-  .order-meta {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.8rem;
-    font-family: var(--mono);
-    color: var(--text-muted);
-  }
-  .search-box {
-    max-width: 500px;
-    margin-bottom: 2rem;
-  }
-  .search-box input {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    border: 2px solid var(--border);
-    border-radius: 6px;
-    font-size: 1rem;
-  }
-  .search-box input:focus {
-    outline: none;
-    border-color: var(--text);
-  }
-  .lote-badge {
-    background: var(--text);
-    color: white;
-    padding: 0.2rem 0.6rem;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    font-weight: 900;
-    font-family: var(--mono);
-  }
-  .sub-lotes-list {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    font-family: var(--mono);
-    margin-top: 0.25rem;
-  }
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+    
+    .order-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-decoration: none;
+        color: inherit;
+        transition: var(--transition);
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .order-card:hover {
+        border-color: var(--accent);
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+    }
+    
+    .order-card.bloqueado {
+        opacity: 0.7;
+        background: #fff5f5;
+        border-color: #ffe3e3;
+    }
+    
+    .order-card.bloqueado::after {
+        content: 'BLOQUEADO PELO PCP';
+        position: absolute;
+        top: 1rem; right: -2rem;
+        background: var(--error);
+        color: white;
+        padding: 0.25rem 3rem;
+        font-size: 0.65rem;
+        font-weight: 800;
+        transform: rotate(45deg);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .lote-badge {
+        background: var(--text);
+        color: white;
+        padding: 0.3rem 0.75rem;
+        border-radius: 4px;
+        font-family: var(--mono);
+        font-weight: 800;
+        font-size: 1rem;
+        display: inline-block;
+    }
+
+    .progress-container {
+        height: 8px;
+        background: var(--surface-raised);
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 0.5rem 0;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: var(--success);
+        transition: width 0.5s ease-out;
+    }
+
+    .order-info h3 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+    .order-info p { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+
+    .stats-row {
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-muted);
+    }
+    
+    .stats-row strong { color: var(--text); }
+
+    .search-bar {
+        max-width: 600px;
+        position: relative;
+    }
+    
+    .search-bar input {
+        width: 100%;
+        padding: 1rem 1.5rem;
+        padding-left: 3rem;
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 600;
+        transition: var(--transition);
+    }
+    
+    .search-bar input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px var(--accent-glow);
+    }
+    
+    .search-bar i {
+        position: absolute;
+        left: 1.25rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-dim);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <div>
-    <h1 class="page-title">Painel de Bipagem</h1>
-    <p class="page-subtitle">Selecione um lote base para iniciar a conferência</p>
-  </div>
+    <div>
+        <h1 class="page-title">Painel de Bipagem</h1>
+        <p class="page-subtitle">Selecione um lote liberado para iniciar a conferência de peças</p>
+    </div>
 </div>
 
-<div class="search-box">
-  <input type="text" id="search-orders" placeholder="Buscar por lote, pedido ou cliente..." autocomplete="off">
+<div class="search-bar">
+    <i class="fas fa-search"></i>
+    <input type="text" id="search-input" placeholder="Buscar por Lote, Pedido ou Cliente..." autocomplete="off">
 </div>
 
-<div class="dashboard-grid" id="orders-grid">
-  {% for l in lotes %}
-  <a href="{% url 'bipagem:pedido_detalhe' l.lote %}" class="card order-card {% if l.bloqueado %}border-red-500 opacity-75{% endif %}" data-search="{{ l.lote }} {{ l.numero_pedido }} {{ l.cliente_nome }}">
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-      <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-          <span class="lote-badge">LOTE {{ l.lote }}</span>
-          {% if l.bloqueado %}
-            <span class="badge badge-critical" style="font-size: 0.6rem;">BLOQUEADO</span>
-          {% endif %}
+<div class="dashboard-grid" id="lotes-grid">
+    {% for l in lotes %}
+    <a href="{% url 'bipagem:pedido_detalhe' l.lote %}" class="order-card {% if l.bloqueado %}bloqueado{% endif %}" data-search="{{ l.lote }} {{ l.numero_pedido }} {{ l.cliente_nome }}">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <span class="lote-badge">LOTE {{ l.lote }}</span>
+            <span class="mono" style="font-weight: 800; color: var(--success);">{{ l.percentual }}%</span>
         </div>
-        <span class="sub-lotes-list">{{ l.sub_lotes_display }}</span>
-      </div>
-      <span class="mono" style="font-size: 0.75rem;">{{ l.percentual }}%</span>
+        
+        <div class="order-info">
+            <h3>{{ l.cliente_nome }}</h3>
+            <p>PEDIDO: {{ l.numero_pedido }}</p>
+            <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 0.25rem; font-family: var(--mono);">
+                {{ l.sub_lotes_display }}
+            </div>
+        </div>
+        
+        <div class="progress-container">
+            <div class="progress-fill" style="width: {{ l.percentual }}%;"></div>
+        </div>
+        
+        <div class="stats-row">
+            <span>BIPADAS: <strong>{{ l.bipadas }}</strong></span>
+            <span>TOTAL: <strong>{{ l.total }}</strong></span>
+            <span>RESTAM: <strong class="text-accent">{{ l.total|add:l.bipadas_neg }}</strong></span>
+        </div>
+    </a>
+    {% empty %}
+    <div class="card" style="grid-column: 1 / -1; padding: 4rem; text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.2;">📋</div>
+        <h3 style="margin-bottom: 0.5rem;">Nenhum lote liberado para bipagem</h3>
+        <p class="text-muted">Aguarde a liberação de novos roteiros pelo PCP.</p>
     </div>
-    <h3 style="font-size: 1.1rem; margin-bottom: 0.25rem;">{{ l.cliente_nome }}</h3>
-    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">PEDIDO: {{ l.numero_pedido }}</p>
-    
-    <div class="progress-bar-container">
-      <div class="progress-bar-fill" style="width: {{ l.percentual }}%;"></div>
-    </div>
-    
-    <div class="order-meta">
-      <span>{{ l.bipadas }} / {{ l.total }} PEÇAS</span>
-      <span>RESTAM {{ l.total|add:l.bipadas_neg }}</span>
-    </div>
-  </a>
-  {% empty %}
-  <div class="empty-state" style="grid-column: 1 / -1;">
-    <strong>Nenhum lote em aberto</strong>
-    <p>Importe novos roteiros pelo PCP para começar.</p>
-  </div>
-  {% endfor %}
+    {% endfor %}
 </div>
-{% endblock %}
 
-{% block extra_js %}
 <script>
-  const searchInput = document.getElementById('search-orders');
-  const orderCards = document.querySelectorAll('.order-card');
+    const searchInput = document.getElementById('search-input');
+    const cards = document.querySelectorAll('.order-card');
 
-  searchInput.addEventListener('input', (e) => {
-    const term = e.target.value.toLowerCase();
-    orderCards.forEach(card => {
-      const searchText = card.getAttribute('data-search').toLowerCase();
-      if (searchText.includes(term)) {
-        card.style.display = 'block';
-      } else {
-        card.style.display = 'none';
-      }
+    searchInput.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        cards.forEach(card => {
+            const text = card.getAttribute('data-search').toLowerCase();
+            card.style.display = text.includes(term) ? 'flex' : 'none';
+        });
     });
-  });
 </script>
 {% endblock %}
