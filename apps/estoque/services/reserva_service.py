@@ -38,7 +38,7 @@ class ReservaService:
             saldo_mdf, _ = SaldoMDF.objects.get_or_create(
                 produto=produto,
                 espessura=espessura,
-                defaults={\'quantidade\': 0}
+                defaults={'quantidade': 0}
             )
             if saldo_mdf.quantidade < quantidade:
                 raise ValidationError(
@@ -56,7 +56,7 @@ class ReservaService:
             quantidade=quantidade,
             usuario=usuario,
             observacao=observacao,
-            status=\'ativa\'
+            status='ativa'
         )
 
         return reserva
