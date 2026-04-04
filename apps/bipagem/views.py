@@ -30,12 +30,14 @@ def index(request):
 
     # 2. Filtrar as peças que pertencem a esses lotes
     # O numero_lote_pcp pode ser "500" ou "500-01"
-    # Usamos __in para os lotes exatos e __regex para os lotes com sufixo (ex: 500-01)
-    lotes_str = [str(l) for l in lotes_liberados]
-    regex_pattern = f"^({'|'.join(lotes_str)})(-.*)?$"
+    # Usamos uma query OR para garantir que pegamos o lote exato ou qualquer sub-lote
+    q_filter = Q()
+    for lote in lotes_liberados:
+        lote_str = str(lote)
+        q_filter |= Q(numero_lote_pcp=lote_str) | Q(numero_lote_pcp__startswith=f"{lote_str}-")
     
     pecas_qs = Peca.objects.filter(
-        numero_lote_pcp__regex=regex_pattern
+        q_filter
     ).select_related('modulo__ordem_producao__pedido').values(
         'numero_lote_pcp',
         'modulo__ordem_producao__pedido__numero_pedido',

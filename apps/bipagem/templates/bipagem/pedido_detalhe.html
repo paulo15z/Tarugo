@@ -260,10 +260,13 @@
   // Refinamento do Scanner: 
   // 1. Suporta Enter automático do scanner
   // 2. Debounce para evitar processamento parcial
+  // Lógica robusta para scanner: 
+  // 1. Prioriza o evento 'Enter' enviado pela maioria dos scanners.
+  // 2. Usa um buffer para acumular caracteres e processar apenas quando a entrada cessar.
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      const code = e.target.value.trim();
+      const code = input.value.trim();
       if (code) {
         if (scanTimeout) clearTimeout(scanTimeout);
         processScan(code);
@@ -272,13 +275,17 @@
   });
 
   input.addEventListener('input', (e) => {
-    const code = e.target.value.trim();
     if (scanTimeout) clearTimeout(scanTimeout);
     
-    // Se o código for longo o suficiente (ex: ID de peça Dinabox), 
-    // processa após um pequeno delay caso o scanner não envie Enter
-    if (code.length >= 8) {
-      scanTimeout = setTimeout(() => processScan(code), 500);
+    const code = input.value.trim();
+    if (code.length >= 6) {
+      // Debounce de 300ms: se o usuário parar de digitar ou o scanner terminar a rajada, processa.
+      scanTimeout = setTimeout(() => {
+        const finalCode = input.value.trim();
+        if (finalCode.length >= 6) {
+          processScan(finalCode);
+        }
+      }, 300);
     }
   });
 
