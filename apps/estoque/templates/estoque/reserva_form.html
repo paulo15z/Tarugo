@@ -160,8 +160,13 @@
       espessuraSelect.name = '';
     }
 
-    qtdHint.textContent = `Máximo disponível: ${qtd}`;
-    qtdInput.max = qtd;
+    if (qtd <= 0) {
+      qtdHint.innerHTML = `<span class="text-orange-500 font-bold">Atenção:</span> Estoque físico zerado. Esta será uma reserva preventiva.`;
+    } else {
+      qtdHint.textContent = `Estoque disponível: ${qtd}`;
+    }
+    // Removemos o limite de 'max' para permitir reservas preventivas pelo PCP
+    qtdInput.removeAttribute('max');
   }
 
   selectProduto.addEventListener('change', atualizarProdutoInfo);

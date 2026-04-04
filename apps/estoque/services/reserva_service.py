@@ -14,11 +14,18 @@ class ReservaService:
 
     @staticmethod
     @transaction.atomic
-    def criar_reserva(pedido_id: int, produto_id: int, quantidade: int, espessura: int = None, usuario=None) -> Reserva:
+    def criar_reserva(data: dict, usuario=None) -> Reserva:
         """
         Cria uma reserva de material para um pedido específico.
+        Suporta reservas preventivas (mesmo sem estoque físico).
         """
-        if quantidade <= 0:
+        produto_id = data.get('produto_id')
+        pedido_id = data.get('pedido_id')
+        quantidade = data.get('quantidade')
+        espessura = data.get('espessura')
+        observacao = data.get('observacao')
+
+        if not quantidade or quantidade <= 0:
             raise ValidationError("A quantidade da reserva deve ser maior que zero.")
 
         produto = ProdutoSelector.get_produto_para_movimentacao(produto_id)
@@ -29,36 +36,21 @@ class ReservaService:
             if not espessura:
                 raise ValidationError("Espessura é obrigatória para reservar produtos da família MDF.")
             
-            saldo_mdf = SaldoMDF.objects.filter(produto=produto, espessura=espessura).first()
-            if not saldo_mdf:
-                raise ValidationError(f"Não há saldo registrado para a espessura {espessura}mm.")
-
-            reservas_ativas = Reserva.objects.filter(
-                produto=produto, 
-                espessura=espessura, 
-                status='ativa'
-            ).aggregate(total=models.Sum('quantidade'))['total'] or 0
-            
-            disponivel = saldo_mdf.quantidade - reservas_ativas
-        else:
-            reservas_ativas = Reserva.objects.filter(
-                produto=produto, 
-                status='ativa'
-            ).aggregate(total=models.Sum('quantidade'))['total'] or 0
-            
-            disponivel = produto.quantidade - reservas_ativas
-
-        if disponivel < quantidade:
-            raise ValidationError(
-                f"Estoque insuficiente para reserva. Disponível: {disponivel}, Solicitado: {quantidade}."
+            # Garante que o registro de saldo existe para a espessura, mesmo que zerado
+            SaldoMDF.objects.get_or_create(
+                produto=produto,
+                espessura=espessura,
+                defaults={'quantidade': 0}
             )
 
+        # Criamos a reserva independentemente do saldo físico (Reserva Preventiva do PCP)
         reserva = Reserva.objects.create(
             produto=produto,
             pedido=pedido,
             espessura=espessura,
             quantidade=quantidade,
             usuario=usuario,
+            observacao=observacao,
             status='ativa'
         )
 
