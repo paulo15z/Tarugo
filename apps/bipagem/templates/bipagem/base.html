@@ -49,8 +49,7 @@
 <header>
   <div class="header-brand">Bipagem</div>
     <nav class="header-nav">
-    <a href="{% url 'bipagem:index' %}" {% if request.resolver_match.url_name == 'index' %}class="active"{% endif %}>Scanner</a>
-    <a href="{% url 'bipagem:pedidos' %}" {% if request.resolver_match.url_name == 'pedidos' %}class="active"{% endif %}>Pedidos</a>
+    <a href="{% url 'bipagem:index' %}" {% if request.resolver_match.url_name == 'index' %}class="active"{% endif %}>Painel de Bipagem</a>
     <a href="{% url 'integracoes:dashboard-discrepancias' %}" {% if request.resolver_match.url_name == 'dashboard-discrepancias' %}class="active"{% endif %}>Gêmeo Digital</a>
   </nav>
   <div class="header-user">
