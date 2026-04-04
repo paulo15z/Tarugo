@@ -35,6 +35,12 @@ class Reserva(models.Model):
         null=True,
         blank=True
     )
+    espessura = models.IntegerField(
+        verbose_name='Espessura (MDF)',
+        null=True,
+        blank=True,
+        help_text="Apenas para produtos da família MDF"
+    )
     quantidade = models.IntegerField(verbose_name='Quantidade')
     status = models.CharField(
         max_length=10,

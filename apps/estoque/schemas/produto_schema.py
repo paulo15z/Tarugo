@@ -41,6 +41,7 @@ class ProdutoCreateSchema(BaseModel):
     nome: str = Field(..., min_length=3)
     sku: str = Field(..., min_length=3)
     categoria_id: int = Field(..., gt=0)
+    familia: Optional[str] = None # Informado pelo front ou inferido pela categoria
     unidade_medida: str
     estoque_minimo: int = Field(0, ge=0)
     preco_custo: Optional[Decimal] = None

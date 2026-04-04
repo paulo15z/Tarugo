@@ -2,8 +2,9 @@
 from django.db import transaction
 from django.core.exceptions import ValidationError
 
-from apps.estoque.models import Produto, Movimentacao
+from apps.estoque.models import Produto, Movimentacao, SaldoMDF
 from apps.estoque.selectors.produto_selector import ProdutoSelector
+from apps.estoque.domain.tipos import FamiliaProduto
 
 
 class MovimentacaoService:
@@ -19,35 +20,67 @@ class MovimentacaoService:
         produto_id = data['produto_id']
         tipo = data['tipo']
         quantidade = data['quantidade']
+        espessura = data.get('espessura')
         observacao = data.get('observacao')
 
         # Lock de concorrência (evita race condition)
         produto = ProdutoSelector.get_produto_para_movimentacao(produto_id)
+        familia = produto.categoria.familia
 
-        # Validações de negócio
-        if tipo == 'saida' and produto.quantidade < quantidade:
-            raise ValidationError(
-                f"Estoque insuficiente. Disponível: {produto.quantidade}, solicitado: {quantidade}."
+        # Lógica específica para MDF (por espessura)
+        if familia == FamiliaProduto.MDF:
+            if not espessura:
+                raise ValidationError("Espessura é obrigatória para produtos da família MDF.")
+            
+            saldo_mdf, _ = SaldoMDF.objects.get_or_create(
+                produto=produto, 
+                espessura=espessura
             )
 
-        if tipo == 'ajuste' and quantidade < 0:
-            raise ValidationError("Quantidade de ajuste não pode ser negativa.")
+            if tipo == 'saida' and saldo_mdf.quantidade < quantidade:
+                raise ValidationError(
+                    f"Estoque insuficiente para {espessura}mm. Disponível: {saldo_mdf.quantidade}, solicitado: {quantidade}."
+                )
 
-        # Atualiza estoque conforme tipo
-        if tipo == 'entrada':
-            produto.quantidade += quantidade
-        elif tipo == 'saida':
-            produto.quantidade -= quantidade
-        elif tipo == 'ajuste':
-            # Ajuste absoluto: define o valor exato do estoque
-            produto.quantidade = quantidade
-        # 'transferencia' não altera estoque diretamente neste endpoint
+            if tipo == 'ajuste' and quantidade < 0:
+                raise ValidationError("Quantidade de ajuste não pode ser negativa.")
 
-        produto.save()
+            if tipo == 'entrada':
+                saldo_mdf.quantidade += quantidade
+            elif tipo == 'saida':
+                saldo_mdf.quantidade -= quantidade
+            elif tipo == 'ajuste':
+                saldo_mdf.quantidade = quantidade
+            
+            saldo_mdf.save()
+            
+            # Opcional: Manter produto.quantidade como a soma de todas as espessuras
+            # produto.quantidade = SaldoMDF.objects.filter(produto=produto).aggregate(total=models.Sum('quantidade'))['total'] or 0
+            # produto.save()
+
+        else:
+            # Lógica para demais itens (Ferragens, Fitas, etc.)
+            if tipo == 'saida' and produto.quantidade < quantidade:
+                raise ValidationError(
+                    f"Estoque insuficiente. Disponível: {produto.quantidade}, solicitado: {quantidade}."
+                )
+
+            if tipo == 'ajuste' and quantidade < 0:
+                raise ValidationError("Quantidade de ajuste não pode ser negativa.")
+
+            if tipo == 'entrada':
+                produto.quantidade += quantidade
+            elif tipo == 'saida':
+                produto.quantidade -= quantidade
+            elif tipo == 'ajuste':
+                produto.quantidade = quantidade
+            
+            produto.save()
 
         movimentacao = Movimentacao.objects.create(
             produto=produto,
             tipo=tipo,
+            espessura=espessura,
             quantidade=quantidade,
             usuario=usuario,
             observacao=observacao,

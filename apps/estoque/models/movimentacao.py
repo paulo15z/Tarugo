@@ -19,6 +19,11 @@ class Movimentacao(models.Model):
         choices=TipoMovimentacao.choices(),
         verbose_name="Tipo",
     )
+    espessura = models.IntegerField(
+        verbose_name="Espessura (MDF)",
+        null=True,
+        blank=True
+    )
     quantidade = models.PositiveIntegerField(verbose_name="Quantidade")
     usuario = models.ForeignKey(
         User,

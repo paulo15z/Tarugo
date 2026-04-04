@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils.text import slugify
+from apps.estoque.domain.tipos import FamiliaProduto
 
 
 class CategoriaProduto(models.Model):
@@ -20,6 +21,12 @@ class CategoriaProduto(models.Model):
     )
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição")
     ordem = models.PositiveIntegerField(default=0, verbose_name="Ordem")
+    familia = models.CharField(
+        max_length=30,
+        choices=FamiliaProduto.choices(),
+        default=FamiliaProduto.OUTROS,
+        verbose_name="Família de Produto"
+    )
 
     class Meta:
         verbose_name = "Categoria de Produto"
