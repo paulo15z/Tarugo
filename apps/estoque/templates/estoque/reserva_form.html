@@ -56,6 +56,9 @@
                 data-qtd="{{ produto.quantidade }}"
                 data-sku="{{ produto.sku }}"
                 data-familia="{{ produto.categoria.familia }}"
+                {% if produto.categoria.familia == FAMILIA_MDF %}
+                data-saldos='{ {% for saldo in produto.saldos_mdf.all %}"{{ saldo.espessura }}": {{ saldo.quantidade }}{% if not forloop.last %}, {% endif %}{% endfor %} }'
+                {% endif %}
                 {% if request.GET.produto_id == produto.id|stringformat:"s" %}selected{% endif %}>
           {{ produto.nome }} — {{ produto.sku }} ({{ produto.categoria.nome }})
         </option>
@@ -143,33 +146,62 @@
       return; 
     }
 
-    const qtd = parseFloat(opt.dataset.qtd);
     const familia = opt.dataset.familia;
-
-    infoQtd.textContent = qtd;
+    const isMDF = (familia === FAMILIA_MDF);
+    
     infoSku.textContent = opt.dataset.sku;
     infoBox.classList.add('visible');
 
-    if (familia === FAMILIA_MDF) {
+    if (isMDF) {
       espessuraGroup.style.display = 'block';
       espessuraSelect.required = true;
       espessuraSelect.name = 'espessura';
+      atualizarSaldoPorEspessura();
     } else {
       espessuraGroup.style.display = 'none';
       espessuraSelect.required = false;
       espessuraSelect.name = '';
+      
+      const qtd = parseFloat(opt.dataset.qtd);
+      infoQtd.textContent = qtd;
+      if (qtd <= 0) {
+        qtdHint.innerHTML = `<span class="text-orange-500 font-bold">Atenção:</span> Estoque físico zerado. Esta será uma reserva preventiva.`;
+      } else {
+        qtdHint.textContent = `Estoque disponível: ${qtd}`;
+      }
     }
-
-    if (qtd <= 0) {
-      qtdHint.innerHTML = `<span class="text-orange-500 font-bold">Atenção:</span> Estoque físico zerado. Esta será uma reserva preventiva.`;
-    } else {
-      qtdHint.textContent = `Estoque disponível: ${qtd}`;
-    }
-    // Removemos o limite de 'max' para permitir reservas preventivas pelo PCP
     qtdInput.removeAttribute('max');
   }
 
+  function atualizarSaldoPorEspessura() {
+    const opt = selectProduto.options[selectProduto.selectedIndex];
+    const esp = espessuraSelect.value;
+    
+    if (!opt.value || opt.dataset.familia !== FAMILIA_MDF) return;
+
+    let saldos = {};
+    try {
+      saldos = JSON.parse(opt.dataset.saldos || '{}');
+    } catch(e) { console.error("Erro ao ler saldos:", e); }
+
+    if (!esp) {
+      infoQtd.textContent = "Selecione espessura";
+      qtdHint.textContent = "Selecione a espessura para ver o saldo disponível.";
+      return;
+    }
+
+    const qtdEsp = parseFloat(saldos[esp] || 0);
+    infoQtd.textContent = qtdEsp;
+    
+    if (qtdEsp <= 0) {
+      qtdHint.innerHTML = `<span class="text-orange-500 font-bold">Atenção:</span> Estoque físico para ${esp}mm está zerado. Reserva preventiva.`;
+    } else {
+      qtdHint.textContent = `Estoque disponível para ${esp}mm: ${qtdEsp}`;
+    }
+  }
+
   selectProduto.addEventListener('change', atualizarProdutoInfo);
+  espessuraSelect.addEventListener('change', atualizarSaldoPorEspessura);
   if (selectProduto.value) atualizarProdutoInfo();
 </script>
 {% endblock %}

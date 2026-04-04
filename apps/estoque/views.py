@@ -134,7 +134,7 @@ def reserva_create(request):
         except Exception as e:
             messages.error(request, f"Erro ao criar reserva: {str(e)}")
 
-    produtos = Produto.objects.select_related('categoria').all()
+    produtos = Produto.objects.select_related('categoria').prefetch_related('saldos_mdf').all()
     pedidos = Pedido.objects.all()
     return render(request, "estoque/reserva_form.html", {
         "produtos": produtos,
