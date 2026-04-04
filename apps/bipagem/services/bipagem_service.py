@@ -107,8 +107,8 @@ def registrar_bipagem(data: Dict[str, Any]) -> Dict[str, Any]:
 
 @transaction.atomic
 def toggle_bloqueio_pedido(pedido_id: int) -> bool:
-    """Alterna o estado de bloqueio de um pedido"""
-    from apps.bipagem.models import Pedido
+    """Alterna o estado de bloqueio de um pedido (Bipagem)"""
+    from apps.bipagem.models.pedido import Pedido
     pedido = Pedido.objects.select_for_update().get(id=pedido_id)
     pedido.bloqueado = not pedido.bloqueado
     pedido.save(update_fields=['bloqueado'])

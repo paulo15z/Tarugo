@@ -100,19 +100,12 @@
                 <span class="badge {% if r.status == 'ATIVA' %}badge-success{% else %}badge-neutral{% endif %}">
                     {{ r.status }}
                 </span>
-                {% if r.pedido.bloqueado %}
-                <span class="badge badge-error">BIPAGEM BLOQUEADA</span>
-                {% endif %}
+                <!-- Status de bloqueio visível apenas na Bipagem -->
             </div>
         </div>
         
         <div class="actions-group">
-            <form method="POST" action="{% url 'estoque:pedido_toggle_bloqueio' r.pedido.id %}" style="display: inline;">
-                {% csrf_token %}
-                <button type="submit" class="btn-icon {% if r.pedido.bloqueado %}text-error{% endif %}" title="{% if r.pedido.bloqueado %}Desbloquear Bipagem{% else %}Bloquear Bipagem{% endif %}">
-                    <i class="fas {% if r.pedido.bloqueado %}fa-lock{% else %}fa-lock-open{% endif %}"></i>
-                </button>
-            </form>
+            <!-- Ações de bloqueio movidas para o Painel de Bipagem -->
             
             <a href="#" class="btn-icon success" title="Liberar Reserva">
                 <i class="fas fa-check"></i>

@@ -152,3 +152,32 @@ def modulo_detalhe(request, referencia_modulo):
         },
         'pecas': pecas
     })
+
+@login_required
+def toggle_bloqueio_pedido(request, numero_pedido):
+    """Bloqueia ou libera a bipagem de um pedido a partir do número do pedido ou lote base"""
+    from apps.bipagem.services.bipagem_service import toggle_bloqueio_pedido as service_toggle
+    
+    # Tenta buscar o pedido pelo número ou pelo lote base associado às peças
+    pedido = Pedido.objects.filter(numero_pedido=numero_pedido).first()
+    
+    if not pedido:
+        # Se não achou pelo número, tenta buscar um pedido que tenha peças com esse lote base
+        peca = Peca.objects.filter(
+            Q(numero_lote_pcp=numero_pedido) | Q(numero_lote_pcp__startswith=f"{numero_pedido}-")
+        ).select_related('modulo__ordem_producao__pedido').first()
+        if peca:
+            pedido = peca.modulo.ordem_producao.pedido
+
+    if not pedido:
+        messages.error(request, f"Pedido ou Lote {numero_pedido} não encontrado.")
+        return redirect('bipagem:index')
+
+    try:
+        bloqueado = service_toggle(pedido.id)
+        status = "BLOQUEADO" if bloqueado else "LIBERADO"
+        messages.success(request, f"Pedido {pedido.numero_pedido} {status} com sucesso!")
+    except Exception as e:
+        messages.error(request, f"Erro ao alterar status: {str(e)}")
+        
+    return redirect('bipagem:index')

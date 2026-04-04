@@ -11,4 +11,5 @@ urlpatterns = [
     
     # Scanner interface (MVP)
     path('scanner/', BipagemScannerView.as_view(), name='scanner'),
+    path('pedido/<str:numero_pedido>/toggle-bloqueio/', views.toggle_bloqueio_pedido, name='toggle_bloqueio'),
 ]

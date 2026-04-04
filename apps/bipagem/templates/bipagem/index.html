@@ -23,7 +23,7 @@
         flex-direction: column;
         gap: 1rem;
         position: relative;
-        overflow: hidden;
+        overflow: visible;
     }
     
     .order-card:hover {
@@ -39,13 +39,13 @@
     }
     
     .order-card.bloqueado::after {
-        content: 'BLOQUEADO PELO PCP';
+        content: 'BLOQUEADO';
         position: absolute;
-        top: 1rem; right: -2rem;
+        top: 0.75rem; right: -1.5rem;
         background: var(--error);
         color: white;
-        padding: 0.25rem 3rem;
-        font-size: 0.65rem;
+        padding: 0.2rem 2.5rem;
+        font-size: 0.6rem;
         font-weight: 800;
         transform: rotate(45deg);
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
@@ -119,6 +119,26 @@
         transform: translateY(-50%);
         color: var(--text-dim);
     }
+
+    .toggle-bloqueio-btn {
+        position: absolute;
+        top: 1.5rem;
+        right: 1.5rem;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        border: 1px solid var(--border-strong);
+        background: var(--surface);
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .toggle-bloqueio-btn:hover {
+        background: var(--surface-raised);
+    }
 </style>
 {% endblock %}
 
@@ -160,6 +180,13 @@
             <span>TOTAL: <strong>{{ l.total }}</strong></span>
             <span>RESTAM: <strong class="text-accent">{{ l.total|add:l.bipadas_neg }}</strong></span>
         </div>
+        
+        <form method="POST" action="{% url 'bipagem:toggle_bloqueio' l.lote %}" style="display: inline;" onclick="event.stopPropagation();">
+            {% csrf_token %}
+            <button type="submit" class="toggle-bloqueio-btn" title="{% if l.bloqueado %}Liberar Bipagem{% else %}Bloquear Bipagem{% endif %}">
+                <i class="fas {% if l.bloqueado %}fa-lock{% else %}fa-lock-open{% endif %}" style="color: {% if l.bloqueado %}#c92a2a{% else %}#2b8a3e{% endif %}; font-size: 1.1rem;"></i>
+            </button>
+        </form>
     </a>
     {% empty %}
     <div class="card" style="grid-column: 1 / -1; padding: 4rem; text-align: center;">
