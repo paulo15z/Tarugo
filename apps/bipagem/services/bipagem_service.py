@@ -68,10 +68,18 @@ def registrar_bipagem(data: dict) -> dict:
                 data_hora=agora
             )
 
+            # Determinar destino com base no plano de corte
+            if peca.plano_corte and "Corte" in peca.plano_corte:
+                peca.destino = "Corte"
+            elif peca.plano_corte and "Bordo" in peca.plano_corte:
+                peca.destino = "Bordo"
+            else:
+                peca.destino = "Desconhecido" # Ou deixar None/blank se preferir
+
             # atualizar peça
             peca.status = "BIPADA"
             peca.data_bipagem = agora
-            peca.save(update_fields=["status", "data_bipagem"])
+            peca.save(update_fields=["status", "data_bipagem", "destino"])
 
             return BipagemOutput(
                 sucesso=True,

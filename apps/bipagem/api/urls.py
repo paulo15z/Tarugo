@@ -3,11 +3,19 @@ from .views import (
     BipagemView, PecaDetailView, BuscaPecaView,
     PedidoDetailView, ModuloDetailView
 )
-from bipagem.views import ImportarCSVView
+from .views_lots import (
+    LotesListView, LoteDetailView, PecasPorLoteView
+)
+from apps.bipagem.views import ImportarCSVView
 
 app_name = 'bipagem-api'
 
 urlpatterns = [
+    # Lotes (para interface de scanning)
+    path('lotes/', LotesListView.as_view(), name='lotes-list'),
+    path('lotes/<int:lote_id>/', LoteDetailView.as_view(), name='lote-detail'),
+    path('lotes/<int:lote_id>/pecas/', PecasPorLoteView.as_view(), name='pecas-por-lote'),
+    
     # Bipagem principal (scanner)
     path('bipagem/', BipagemView.as_view(), name='bipagem'),
     

@@ -32,6 +32,7 @@ class Peca(models.Model):
     plano_corte = models.CharField(max_length=10, blank=True)
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDENTE', db_index=True)
+    destino = models.CharField(max_length=100, blank=True, null=True)
     data_bipagem = models.DateTimeField(null=True, blank=True)
     data_criacao = models.DateTimeField(default=timezone.now)
 
