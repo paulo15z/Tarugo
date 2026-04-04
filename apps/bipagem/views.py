@@ -25,20 +25,22 @@ def index(request):
         liberado_para_bipagem=True
     ).values_list('lote', flat=True)
     
-    # 2. Filtrar as peças que pertencem a esses lotes
-    # O numero_lote_pcp pode ser "500" ou "500-01"
-    # Precisamos de uma query que pegue ambos
-    q_filter = Q()
-    for lote in lotes_liberados:
-        q_filter |= Q(numero_lote_pcp=str(lote)) | Q(numero_lote_pcp__startswith=f"{lote}-")
-    
     if not lotes_liberados:
         return render(request, 'bipagem/index.html', {'lotes': []})
 
-    pecas_qs = Peca.objects.filter(q_filter).select_related('modulo__ordem_producao__pedido').values(
+    # 2. Filtrar as peças que pertencem a esses lotes
+    # O numero_lote_pcp pode ser "500" ou "500-01"
+    # Usamos __in para os lotes exatos e __regex para os lotes com sufixo (ex: 500-01)
+    lotes_str = [str(l) for l in lotes_liberados]
+    regex_pattern = f"^({'|'.join(lotes_str)})(-.*)?$"
+    
+    pecas_qs = Peca.objects.filter(
+        numero_lote_pcp__regex=regex_pattern
+    ).select_related('modulo__ordem_producao__pedido').values(
         'numero_lote_pcp',
         'modulo__ordem_producao__pedido__numero_pedido',
         'modulo__ordem_producao__pedido__cliente_nome',
+        'modulo__ordem_producao__pedido__bloqueado',
         'status'
     )
     
@@ -53,6 +55,7 @@ def index(request):
                 'lote_base': lote_base,
                 'numero_pedido': p['modulo__ordem_producao__pedido__numero_pedido'] or "---",
                 'cliente_nome': p['modulo__ordem_producao__pedido__cliente_nome'] or "Cliente Desconhecido",
+                'bloqueado': p['modulo__ordem_producao__pedido__bloqueado'],
                 'total': 0,
                 'bipadas': 0,
                 'sub_lotes': set() # Usando set para evitar repetições
@@ -82,6 +85,7 @@ def index(request):
             'sub_lotes_display': sub_lotes_display,
             'numero_pedido': lb['numero_pedido'],
             'cliente_nome': lb['cliente_nome'],
+            'bloqueado': lb['bloqueado'],
             'total': total,
             'bipadas': bipadas,
             'bipadas_neg': -bipadas,
@@ -91,9 +95,7 @@ def index(request):
     lotes_finais.sort(key=lambda x: x['lote'], reverse=True)
     return render(request, 'bipagem/index.html', {'lotes': lotes_finais})
 
-@login_required
-def pedidos_list(request):
-    return index(request)
+# pedidos_list removida para unificação de rotas
 
 @login_required
 def pedido_detalhe(request, numero_pedido):
@@ -130,6 +132,7 @@ def pedido_detalhe(request, numero_pedido):
     
     return render(request, 'bipagem/pedido_detalhe.html', {
         'pedido': resumo,
+        'pedido_obj': pedido_obj,
         'lote_manual': lote_display,
         'pecas': pecas_qs,
         'status_bipada': StatusPeca.BIPADA

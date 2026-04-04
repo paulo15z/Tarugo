@@ -43,6 +43,14 @@ def registrar_bipagem(data: Dict[str, Any]) -> Dict[str, Any]:
         ).model_dump()
 
     # 2. Validar estados impeditivos
+    pedido = peca.modulo.ordem_producao.pedido
+    if pedido.bloqueado:
+        return BipagemOutput(
+            sucesso=False,
+            mensagem="Bipagem bloqueada pelo PCP",
+            erro=f"O pedido {pedido.numero_pedido} está bloqueado para novas bipagens."
+        ).model_dump()
+
     if peca.status in [StatusPeca.CONCLUIDA, StatusPeca.CANCELADA]:
         return BipagemOutput(
             sucesso=False,
@@ -95,3 +103,13 @@ def registrar_bipagem(data: Dict[str, Any]) -> Dict[str, Any]:
         mensagem="Bipagem realizada com sucesso",
         peca=map_peca_to_output(peca)
     ).model_dump()
+
+
+@transaction.atomic
+def toggle_bloqueio_pedido(pedido_id: int) -> bool:
+    """Alterna o estado de bloqueio de um pedido"""
+    from apps.bipagem.models import Pedido
+    pedido = Pedido.objects.select_for_update().get(id=pedido_id)
+    pedido.bloqueado = not pedido.bloqueado
+    pedido.save(update_fields=['bloqueado'])
+    return pedido.bloqueado

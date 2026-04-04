@@ -80,3 +80,23 @@ class ProdutoService:
 
         produto.save()
         return produto
+
+    @staticmethod
+    @transaction.atomic
+    def atualizar_configuracoes_mdf(produto_id: int, espessura: int, estoque_minimo: int = None, preco_custo: Decimal = None) -> SaldoMDF:
+        """Atualiza estoque mínimo e preço de custo por espessura"""
+        try:
+            produto = Produto.objects.get(id=produto_id)
+            saldo = SaldoMDF.objects.get(produto=produto, espessura=espessura)
+        except (Produto.DoesNotExist, SaldoMDF.DoesNotExist):
+            raise ValueError(f"Configuração para {espessura}mm não encontrada.")
+
+        if estoque_minimo is not None:
+            produto.estoque_minimo = estoque_minimo
+            produto.save(update_fields=['estoque_minimo'])
+        
+        if preco_custo is not None:
+            saldo.preco_custo = preco_custo
+            saldo.save(update_fields=['preco_custo'])
+            
+        return saldo

@@ -21,6 +21,7 @@ class Pedido(models.Model):
         ('CANCELADO', 'Cancelado'),
     ]
     status = models.CharField(max_length=20, choices=STATUS_PROJETO, default='APROVADO', db_index=True)
+    bloqueado = models.BooleanField(default=False, verbose_name="Bipagem Bloqueada")
     data_entrega_prevista = models.DateField(null=True, blank=True)
     data_conclusao = models.DateTimeField(null=True, blank=True)
     observacoes = models.TextField(blank=True, null=True)
