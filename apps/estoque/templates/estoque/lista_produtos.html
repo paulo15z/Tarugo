@@ -60,6 +60,82 @@
     .badge-ok { background: rgba(76, 175, 80, 0.1); color: #81c784; }
     .badge-warning { background: rgba(255, 193, 7, 0.1); color: #ffd54f; }
     .badge-critical { background: rgba(244, 67, 54, 0.1); color: #e57373; }
+
+    /* Menu de Opções */
+    .options-menu {
+        position: relative;
+        display: inline-block;
+    }
+
+    .options-btn {
+        background: none;
+        border: none;
+        color: var(--text-dim);
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 50%;
+        transition: all 0.2s;
+    }
+
+    .options-btn:hover {
+        background: rgba(255,255,255,0.05);
+        color: var(--text);
+    }
+
+    .options-dropdown {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        background: var(--surface-raised);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 100;
+        min-width: 180px;
+        overflow: hidden;
+    }
+
+    .options-dropdown.show { display: block; }
+
+    .options-dropdown a, .options-dropdown button {
+        display: block;
+        width: 100%;
+        padding: 10px 16px;
+        text-align: left;
+        font-size: 0.85rem;
+        color: var(--text);
+        background: none;
+        border: none;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .options-dropdown a:hover, .options-dropdown button:hover {
+        background: rgba(255,255,255,0.05);
+    }
+
+    /* Modal Simples */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.7);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.show { display: flex; }
+
+    .modal-content {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 2rem;
+        width: 100%;
+        max-width: 400px;
+    }
 </style>
 {% endblock %}
 
@@ -72,7 +148,7 @@
     </div>
     <div style="display: flex; gap: 0.75rem;">
         {% if pode_cadastrar or user.is_superuser %}
-        <a href="{% url 'estoque:produto_create' %}" class="btn btn-secondary">Novo Produto</a>
+        <a href="{% url 'estoque:produto_create' %}" class="btn btn-secondary">Novo Acabamento</a>
         {% endif %}
         {% if pode_movimentar or user.is_superuser %}
         <a href="{% url 'estoque:movimentacao_create' %}" class="btn btn-primary">Registrar Movimentação</a>
@@ -127,6 +203,9 @@
                                 <div class="card" style="padding: 4px 8px; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1);">
                                     <span class="mono" style="font-weight: 700; color: var(--accent);">{{ saldo.espessura }}mm:</span>
                                     <span class="mono" style="font-weight: 600;">{{ saldo.quantidade }}</span>
+                                    {% if saldo.preco_custo %}
+                                        <div style="font-size: 0.6rem; color: var(--text-dim);">R$ {{ saldo.preco_custo|floatformat:2 }}</div>
+                                    {% endif %}
                                 </div>
                             {% empty %}
                                 <span class="text-dim italic" style="font-size: 0.75rem;">Sem saldo por espessura</span>
@@ -162,11 +241,20 @@
                     {% endif %}
                 </td>
                 <td style="text-align: right;">
-                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                        <a href="{% url 'estoque:movimentacao_create' %}?produto_id={{ produto.id }}" 
-                           class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.75rem;" title="Movimentar">
-                            <i class="fas fa-exchange-alt"></i>
-                        </a>
+                    <div class="options-menu">
+                        <button class="options-btn" onclick="toggleMenu('menu-{{ produto.id }}')">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div id="menu-{{ produto.id }}" class="options-dropdown">
+                            <a href="{% url 'estoque:movimentacao_create' %}?produto_id={{ produto.id }}">
+                                <i class="fas fa-exchange-alt mr-2"></i> Movimentar
+                            </a>
+                            {% if pode_cadastrar or user.is_superuser %}
+                            <button onclick="openConfigModal('{{ produto.id }}', '{{ produto.nome }}', '{{ produto.estoque_minimo }}')">
+                                <i class="fas fa-cog mr-2"></i> Configurar
+                            </button>
+                            {% endif %}
+                        </div>
                     </div>
                 </td>
             </tr>
@@ -182,4 +270,71 @@
     {% endif %}
 </div>
 
+<!-- Modal de Configuração -->
+<div id="configModal" class="modal">
+    <div class="modal-content">
+        <h2 id="modalTitle" class="display text-xl mb-4">Configurar Produto</h2>
+        <form id="configForm" method="POST">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Estoque Mínimo (Geral)</label>
+                <input type="number" name="estoque_minimo" id="modalMinimo" required>
+            </div>
+            <div class="form-group">
+                <label>Espessura para Preço</label>
+                <select name="espessura" id="modalEspessura">
+                    <option value="6">6 mm</option>
+                    <option value="15">15 mm</option>
+                    <option value="18">18 mm</option>
+                    <option value="25">25 mm</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Preço de Custo (Chapa)</label>
+                <input type="number" name="preco_custo" step="0.01" placeholder="0.00">
+            </div>
+            <div class="flex gap-2 mt-6">
+                <button type="submit" class="btn btn-primary flex-1">Salvar</button>
+                <button type="button" class="btn btn-outline flex-1" onclick="closeModal()">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleMenu(id) {
+        // Fecha outros menus abertos
+        document.querySelectorAll('.options-dropdown').forEach(m => {
+            if (m.id !== id) m.classList.remove('show');
+        });
+        document.getElementById(id).classList.toggle('show');
+    }
+
+    // Fecha menus ao clicar fora
+    window.onclick = function(event) {
+        if (!event.target.matches('.options-btn') && !event.target.matches('.fa-ellipsis-v')) {
+            document.querySelectorAll('.options-dropdown').forEach(m => m.classList.remove('show'));
+        }
+    }
+
+    function openConfigModal(id, nome, minimo) {
+        const modal = document.getElementById('configModal');
+        const form = document.getElementById('configForm');
+        const title = document.getElementById('modalTitle');
+        const inputMin = document.getElementById('modalMinimo');
+        
+        form.action = `/estoque/produtos/${id}/config/`;
+        title.textContent = `Configurar: ${nome}`;
+        inputMin.value = minimo;
+        
+        modal.classList.add('show');
+    }
+
+    function closeModal() {
+        document.getElementById('configModal').classList.remove('show');
+    }
+</script>
 {% endblock %}

@@ -145,3 +145,37 @@ def reserva_create(request):
         "pedidos": pedidos,
         "FAMILIA_MDF": FamiliaProduto.MDF,
     })
+
+@grupo_requerido('estoque.03')
+def produto_config_update(request, produto_id):
+    """Atualiza estoque mínimo e preço por espessura"""
+    if request.method == 'POST':
+        try:
+            espessura = int(request.POST.get('espessura'))
+            estoque_minimo = int(request.POST.get('estoque_minimo'))
+            preco_custo = Decimal(request.POST.get('preco_custo')) if request.POST.get('preco_custo') else None
+            
+            ProdutoService.atualizar_configuracoes_mdf(
+                produto_id=produto_id,
+                espessura=espessura,
+                estoque_minimo=estoque_minimo,
+                preco_custo=preco_custo
+            )
+            messages.success(request, "Configurações atualizadas com sucesso!")
+        except Exception as e:
+            messages.error(request, f"Erro ao atualizar: {str(e)}")
+            
+    return redirect('estoque:lista_produtos')
+
+@login_required
+def pedido_toggle_bloqueio(request, pedido_id):
+    """Bloqueia ou libera a bipagem de um pedido"""
+    from apps.bipagem.services.bipagem_service import toggle_bloqueio_pedido
+    try:
+        bloqueado = toggle_bloqueio_pedido(pedido_id)
+        status = "bloqueada" if bloqueado else "liberada"
+        messages.success(request, f"Bipagem do pedido {status} com sucesso!")
+    except Exception as e:
+        messages.error(request, f"Erro ao alterar status de bloqueio: {str(e)}")
+        
+    return redirect('estoque:lista_reservas')
