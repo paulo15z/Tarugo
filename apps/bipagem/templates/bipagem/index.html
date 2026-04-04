@@ -88,10 +88,15 @@
 
 <div class="dashboard-grid" id="orders-grid">
   {% for l in lotes %}
-  <a href="{% url 'bipagem:pedido_detalhe' l.lote %}" class="card order-card" data-search="{{ l.lote }} {{ l.numero_pedido }} {{ l.cliente_nome }}">
+  <a href="{% url 'bipagem:pedido_detalhe' l.lote %}" class="card order-card {% if l.bloqueado %}border-red-500 opacity-75{% endif %}" data-search="{{ l.lote }} {{ l.numero_pedido }} {{ l.cliente_nome }}">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
       <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-        <span class="lote-badge">LOTE {{ l.lote }}</span>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span class="lote-badge">LOTE {{ l.lote }}</span>
+          {% if l.bloqueado %}
+            <span class="badge badge-critical" style="font-size: 0.6rem;">BLOQUEADO</span>
+          {% endif %}
+        </div>
         <span class="sub-lotes-list">{{ l.sub_lotes_display }}</span>
       </div>
       <span class="mono" style="font-size: 0.75rem;">{{ l.percentual }}%</span>

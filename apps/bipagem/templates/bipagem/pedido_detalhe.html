@@ -158,7 +158,12 @@
 <div class="page-header" style="border-bottom: none; margin-bottom: 0;">
   <div>
     <div class="lote-header-badge">LOTE {{ lote_manual }}</div>
-    <h1 class="page-title" style="font-size: 1.2rem;">Pedido {{ pedido.numero_pedido }}</h1>
+    <h1 class="page-title" style="font-size: 1.2rem;">
+      Pedido {{ pedido.numero_pedido }}
+      {% if pedido_obj.bloqueado %}
+        <span class="badge badge-critical ml-2">BLOQUEADO PELO PCP</span>
+      {% endif %}
+    </h1>
     <p class="page-subtitle">{{ pedido.cliente }}</p>
   </div>
   <div class="progress-stats">
@@ -229,7 +234,7 @@
     '05': '#ff9800', '06': '#e91e63', '10': '#00bcd4', '11': '#607d8b'
   };
   const MAPA_NOMES = {
-    '01': 'PINTURA', '02': 'LÂMINAS/FOLHAS', '03': 'RIPAS', '04': 'MONTAGEM CAIXA',
+    '01': 'PINTURA', '02': 'LÂMINAS/FOLHAS', '03': 'RIPAS', '04': 'MONTAGEM DE CAIXA',
     '05': 'DUPLAGEM', '06': 'PORTAS/FRENTES', '10': 'PRÉ-MONTAGEM', '11': 'GERAL / OUTROS'
   };
 
@@ -291,7 +296,10 @@
         body: JSON.stringify({ codigo: code, usuario: '{{ user.username|default:"OPERADOR" }}', localizacao: 'EXPEDIÇÃO' })
       });
       const data = await response.json();
-      if (response.ok) handleSuccess(data);
+      if (response.ok) {
+        if (data.sucesso === false) handleError(data.mensagem || data.erro || "BLOQUEADO");
+        else handleSuccess(data);
+      }
       else handleError(data.erro || "ERRO");
     } catch (err) { handleError("ERRO CONEXÃO"); }
     finally { isProcessing = false; input.value = ""; input.focus(); }
