@@ -59,5 +59,12 @@ class Reserva(models.Model):
         verbose_name_plural = 'Reservas'
         ordering = ['-criado_em']
 
+    @property
+    def projeto(self):
+        """Retorna o nome do projeto, seja via Pedido ou Legado."""
+        if self.pedido:
+            return str(self.pedido)
+        return self.projeto_legado or "Sem Projeto"
+
     def __str__(self):
         return f"Reserva {self.projeto} — {self.produto.nome} ({self.quantidade})"
