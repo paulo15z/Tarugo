@@ -1,99 +1,154 @@
-{% extends "estoque/base.html" %}
-{% block title %}Produtos — Estoque{% endblock %}
+{% extends "base/base.html" %}
+{% block title %}Produtos — Tarugo{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
+    }
+    
+    .stat-card {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stat-card::after {
+        content: '';
+        position: absolute;
+        top: 0; right: 0;
+        width: 64px; height: 64px;
+        background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.03) 50%);
+    }
+
+    .stat-label {
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-dim);
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+        font-family: var(--display);
+        font-size: 2.5rem;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: -0.05em;
+    }
+
+    .stat-card.alert {
+        border-color: var(--accent-muted);
+        background: rgba(255, 87, 34, 0.05);
+    }
+    
+    .stat-card.alert .stat-value { color: var(--accent); }
+
+    .badge {
+        padding: 0.25rem 0.6rem;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .badge-ok { background: rgba(76, 175, 80, 0.1); color: #81c784; }
+    .badge-warning { background: rgba(255, 193, 7, 0.1); color: #ffd54f; }
+    .badge-critical { background: rgba(244, 67, 54, 0.1); color: #e57373; }
+</style>
+{% endblock %}
 
 {% block content %}
 
-{# ── STATS ── #}
-{% with total=produtos|length %}
-<div class="stats-grid">
-  <div class="stat-card">
-    <div class="stat-label">Total de produtos</div>
-    <div class="stat-value">{{ total }}</div>
-  </div>
-
-  {% with baixo=produtos_baixo_estoque %}
-  {% if baixo %}
-  <div class="stat-card alert-card">
-    <div class="stat-label">Abaixo do mínimo</div>
-    <div class="stat-value">{{ baixo|length }}</div>
-  </div>
-  {% endif %}
-  {% endwith %}
-</div>
-{% endwith %}
-
-{# ── HEADER DA PÁGINA ── #}
 <div class="page-header">
-  <div>
-    <h1 class="page-title">Produtos</h1>
-    <p class="page-subtitle">Catálogo completo com saldos atuais</p>
-  </div>
-  {% if pode_movimentar %}
-  <a href="{% url 'estoque:movimentacao_create' %}" class="btn btn-primary">+ Movimentar estoque</a>
-  {% endif %}
-  {% if pode_cadastrar %}
-  <a href="{% url 'estoque:produto_create' %}" class="btn btn-outline">+ Novo produto</a>
-  {% endif %}
+    <div>
+        <h1 class="page-title">Estoque de Materiais</h1>
+        <p class="page-subtitle">Controle em tempo real do inventário industrial</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem;">
+        {% if pode_cadastrar or user.is_superuser %}
+        <a href="{% url 'estoque:produto_create' %}" class="btn btn-secondary">Novo Produto</a>
+        {% endif %}
+        {% if pode_movimentar or user.is_superuser %}
+        <a href="{% url 'estoque:movimentacao_create' %}" class="btn btn-primary">Registrar Movimentação</a>
+        {% endif %}
+    </div>
 </div>
 
-{# ── TABELA ── #}
-<div class="card">
-  {% if produtos %}
-  <div class="table-wrap">
+<div class="stats-grid">
+    <div class="card stat-card">
+        <div class="stat-label">Total de Itens</div>
+        <div class="stat-value">{{ produtos|length }}</div>
+    </div>
+
+    {% if produtos_baixo_estoque %}
+    <div class="card stat-card alert">
+        <div class="stat-label">Abaixo do Mínimo</div>
+        <div class="stat-value">{{ produtos_baixo_estoque|length }}</div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="table-container">
+    {% if produtos %}
     <table>
-      <thead>
-        <tr>
-          <th>Nome</th>
-          <th>SKU</th>
-          <th>Quantidade</th>
-          <th>Estoque mínimo</th>
-          <th>Status</th>
-          <th>Criado em</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for produto in produtos %}
-        <tr>
-          <td><strong>{{ produto.nome }}</strong></td>
-          <td><span class="mono">{{ produto.sku }}</span></td>
-          <td>
-            {% if produto.quantidade <= produto.estoque_minimo %}
-              <span style="font-weight: 600; color: var(--accent);">{{ produto.quantidade }}</span>
-            {% else %}
-              <span style="font-weight: 600;">{{ produto.quantidade }}</span>
-            {% endif %}
-          </td>
-          <td><span class="mono">{{ produto.estoque_minimo }}</span></td>
-          <td>
-            {% if produto.quantidade == 0 %}
-              <span class="badge badge-saida">Sem estoque</span>
-            {% elif produto.quantidade <= produto.estoque_minimo %}
-              <span class="badge badge-warning">Baixo</span>
-            {% else %}
-              <span class="badge badge-entrada">OK</span>
-            {% endif %}
-          </td>
-          <td><span class="mono" style="color: var(--text-muted);">{{ produto.criado_em|date:"d/m/Y" }}</span></td>
-          <td style="text-align: right;">
-            {% if pode_movimentar %}
-            <a href="{% url 'estoque:movimentacao_create' %}?produto_id={{ produto.id }}"
-               class="btn btn-outline" style="padding: 0.35rem 0.7rem; font-size: 0.76rem;">
-              Movimentar
-            </a>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
+        <thead>
+            <tr>
+                <th>Material / SKU</th>
+                <th>Saldo Atual</th>
+                <th>Mínimo</th>
+                <th>Status</th>
+                <th>Última Atualização</th>
+                <th style="text-align: right;">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for produto in produtos %}
+            <tr>
+                <td>
+                    <div style="font-weight: 600; font-family: var(--display);">{{ produto.nome }}</div>
+                    <div class="mono" style="color: var(--text-dim); font-size: 0.75rem;">{{ produto.sku }}</div>
+                </td>
+                <td>
+                    <span style="font-size: 1.1rem; font-weight: 700; font-family: var(--mono);">
+                        {{ produto.quantidade }}
+                    </span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">{{ produto.unidade_medida }}</span>
+                </td>
+                <td class="mono" style="color: var(--text-muted);">{{ produto.estoque_minimo }}</td>
+                <td>
+                    {% if produto.quantidade == 0 %}
+                        <span class="badge badge-critical">Esgotado</span>
+                    {% elif produto.quantidade <= produto.estoque_minimo %}
+                        <span class="badge badge-warning">Crítico</span>
+                    {% else %}
+                        <span class="badge badge-ok">Disponível</span>
+                    {% endif %}
+                </td>
+                <td class="mono" style="color: var(--text-dim); font-size: 0.8rem;">
+                    {{ produto.atualizado_em|date:"d/m/Y H:i" }}
+                </td>
+                <td style="text-align: right;">
+                    <a href="{% url 'estoque:movimentacao_create' %}?produto_id={{ produto.id }}" 
+                       class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.75rem;">
+                        Movimentar
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
     </table>
-  </div>
-  {% else %}
-  <div class="empty-state">
-    <strong>Nenhum produto cadastrado</strong>
-    Produtos serão listados aqui após cadastro via API ou admin.
-  </div>
-  {% endif %}
+    {% else %}
+    <div style="padding: 4rem; text-align: center; color: var(--text-dim);">
+        <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.2;">📦</div>
+        <h3 style="color: var(--text); margin-bottom: 0.5rem;">Nenhum material encontrado</h3>
+        <p>Inicie o inventário cadastrando seu primeiro produto.</p>
+    </div>
+    {% endif %}
 </div>
 
 {% endblock %}

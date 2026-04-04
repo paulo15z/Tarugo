@@ -1,0 +1,363 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Tarugo{% endblock %}</title>
+    
+    <!-- Typography: Distinctive & Professional -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Outfit:wght@300;400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* Palette: Industrial Refined */
+            --bg: #0f1115;
+            --surface: #1a1d23;
+            --surface-raised: #242830;
+            --border: #2d333d;
+            --border-strong: #3f4754;
+            
+            --text: #e2e4e9;
+            --text-muted: #9ba1b0;
+            --text-dim: #636c7e;
+            
+            --accent: #ff5722;
+            --accent-glow: rgba(255, 87, 34, 0.15);
+            --accent-muted: #c8401a;
+            
+            --success: #4caf50;
+            --warning: #ffc107;
+            --error: #f44336;
+            
+            --sans: 'Outfit', sans-serif;
+            --display: 'Space Grotesk', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+            
+            --header-height: 64px;
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── UTILITIES ── */
+        .mono { font-family: var(--mono); font-size: 0.85em; letter-spacing: -0.02em; }
+        .display { font-family: var(--display); }
+        .text-accent { color: var(--accent); }
+
+        /* ── HEADER ── */
+        header {
+            background: rgba(15, 17, 21, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            height: var(--header-height);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            padding: 0 2rem;
+        }
+
+        .header-container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: var(--text);
+            font-family: var(--display);
+            font-weight: 700;
+            font-size: 1.25rem;
+            letter-spacing: -0.03em;
+            text-transform: uppercase;
+        }
+
+        .brand-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--accent);
+            border-radius: 2px;
+            transform: rotate(45deg);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .nav-main {
+            display: flex;
+            gap: 0.5rem;
+            background: var(--surface);
+            padding: 0.25rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .nav-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: var(--transition);
+        }
+
+        .nav-link:hover {
+            color: var(--text);
+            background: var(--surface-raised);
+        }
+
+        .nav-link.active {
+            color: var(--accent);
+            background: var(--bg);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .user-meta {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .user-info {
+            text-align: right;
+        }
+
+        .user-name {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            padding: 0;
+            transition: var(--transition);
+        }
+
+        .logout-btn:hover { color: var(--error); }
+
+        /* ── LAYOUT ── */
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2.5rem 2rem;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page-header {
+            margin-bottom: 2.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .page-title {
+            font-family: var(--display);
+            font-size: 2.25rem;
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            line-height: 1.1;
+        }
+
+        .page-subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 0.5rem;
+        }
+
+        /* ── COMPONENTS ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            border-color: var(--border-strong);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            border: 1px solid transparent;
+            transition: var(--transition);
+            font-family: var(--display);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #ff7043;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .btn-secondary {
+            background: var(--surface-raised);
+            color: var(--text);
+            border-color: var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        /* ── TABLES ── */
+        .table-container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: var(--surface-raised);
+            text-align: left;
+            padding: 1rem 1.5rem;
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+
+        /* ── MESSAGES ── */
+        .messages {
+            margin-bottom: 2rem;
+        }
+
+        .alert {
+            padding: 1rem 1.25rem;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border: 1px solid transparent;
+        }
+
+        .alert-success { background: rgba(76, 175, 80, 0.1); border-color: rgba(76, 175, 80, 0.2); color: #81c784; }
+        .alert-error { background: rgba(244, 67, 54, 0.1); border-color: rgba(244, 67, 54, 0.2); color: #e57373; }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 768px) {
+            header { padding: 0 1rem; }
+            .nav-main { display: none; }
+            .main-content { padding: 1.5rem 1rem; }
+            .page-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<header>
+    <div class="header-container">
+        <a href="/" class="brand">
+            <div class="brand-dot"></div>
+            <span>Tarugo</span>
+        </a>
+
+        <nav class="nav-main">
+            <a href="{% url 'estoque:lista_produtos' %}" class="nav-link {% if 'estoque' in request.path %}active{% endif %}">Estoque</a>
+            <a href="{% url 'pcp:index' %}" class="nav-link {% if 'pcp' in request.path %}active{% endif %}">PCP</a>
+            <a href="{% url 'bipagem:index' %}" class="nav-link {% if 'bipagem' in request.path %}active{% endif %}">Bipagem</a>
+            <a href="{% url 'integracoes:dashboard-discrepancias' %}" class="nav-link {% if 'integracoes' in request.path %}active{% endif %}">Gêmeo Digital</a>
+        </nav>
+
+        <div class="user-meta">
+            {% if user.is_authenticated %}
+            <div class="user-info">
+                <span class="user-name">{{ user.username }}</span>
+                <form method="POST" action="{% url 'logout' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="logout-btn">Sair</button>
+                </form>
+            </div>
+            {% else %}
+            <a href="{% url 'login' %}" class="nav-link">Entrar</a>
+            {% endif %}
+        </div>
+    </div>
+</header>
+
+<main class="main-content">
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+</main>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>
