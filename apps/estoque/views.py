@@ -8,13 +8,14 @@ from apps.estoque.permissions import grupo_requerido
 from apps.estoque.services.movimentacao_service import MovimentacaoService
 from apps.estoque.schemas.movimentacao import MovimentacaoCreateSchema
 from apps.estoque.selectors.produto_selector import ProdutoSelector, get_produtos_com_saldo_baixo
-from apps.estoque.models import Produto
+from apps.estoque.models import Produto, SaldoMDF
 from apps.estoque.services.produto_service import ProdutoService
+from apps.estoque.domain.tipos import FamiliaProduto
 
 
 @login_required
 def lista_produtos(request):
-    produtos = ProdutoSelector.get_all_produtos()
+    produtos = ProdutoSelector.get_all_produtos().select_related('categoria').prefetch_related('saldos_mdf')
     produtos_baixo_estoque = get_produtos_com_saldo_baixo()
 
     grupos = set(request.user.groups.values_list('name', flat=True))
@@ -26,6 +27,7 @@ def lista_produtos(request):
         'produtos_baixo_estoque': produtos_baixo_estoque,
         'pode_movimentar': pode_movimentar,
         'pode_cadastrar': pode_cadastrar,
+        'FAMILIA_MDF': FamiliaProduto.MDF,
     })
 
 
@@ -33,20 +35,28 @@ def lista_produtos(request):
 def movimentacao_create(request):
     if request.method == 'POST':
         try:
-            schema = MovimentacaoCreateSchema(
-                produto_id=int(request.POST['produto_id']),
-                tipo=request.POST['tipo'],
-                quantidade=int(request.POST['quantidade']),
-                observacao=request.POST.get('observacao') or None,
-            )
-            MovimentacaoService.processar_movimentacao(schema.model_dump(), request.user)
+            data = {
+                'produto_id': int(request.POST['produto_id']),
+                'tipo': request.POST['tipo'],
+                'quantidade': int(request.POST['quantidade']),
+                'espessura': request.POST.get('espessura') or None,
+                'observacao': request.POST.get('observacao') or None,
+            }
+            
+            if data['espessura']:
+                data['espessura'] = int(data['espessura'])
+
+            MovimentacaoService.processar_movimentacao(data, request.user)
             messages.success(request, 'Movimentação registrada com sucesso!')
             return redirect('estoque:lista_produtos')
         except Exception as e:
             messages.error(request, str(e))
 
-    produtos = ProdutoSelector.get_all_produtos()
-    return render(request, 'estoque/movimentacao_form.html', {'produtos': produtos})
+    produtos = ProdutoSelector.get_all_produtos().select_related('categoria')
+    return render(request, 'estoque/movimentacao_form.html', {
+        'produtos': produtos,
+        'FAMILIA_MDF': FamiliaProduto.MDF,
+    })
 
 
 @grupo_requerido('estoque.03')
@@ -56,6 +66,13 @@ def produto_create(request):
     if request.method == 'POST':
         try:
             # Prepara os dados para o Service (padrão Tarugo)
+            import json
+            atributos_raw = request.POST.get('atributos_especificos', '{}')
+            try:
+                atributos = json.loads(atributos_raw)
+            except:
+                atributos = {}
+
             data = {
                 'nome': request.POST.get('nome', '').strip(),
                 'sku': request.POST.get('sku', '').strip().upper(),
@@ -65,7 +82,7 @@ def produto_create(request):
                 'preco_custo': float(request.POST.get('preco_custo')) if request.POST.get('preco_custo') else None,
                 'lote': request.POST.get('lote', '').strip() or None,
                 'localizacao': request.POST.get('localizacao', '').strip() or None,
-                'atributos_especificos': {},   # Vamos melhorar na próxima etapa
+                'atributos_especificos': atributos,
             }
 
             # Chama o Service (regra de negócio central)

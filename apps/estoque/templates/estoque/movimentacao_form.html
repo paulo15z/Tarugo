@@ -1,4 +1,5 @@
-{% extends "estoque/base.html" %}
+{% extends "base/base.html" %}
+{% load static %}
 {% block title %}Movimentar Estoque{% endblock %}
 
 {% block extra_css %}
@@ -96,8 +97,9 @@
                 data-qtd="{{ produto.quantidade }}"
                 data-min="{{ produto.estoque_minimo }}"
                 data-sku="{{ produto.sku }}"
+                data-familia="{{ produto.categoria.familia }}"
                 {% if request.GET.produto_id == produto.id|stringformat:"s" %}selected{% endif %}>
-          {{ produto.nome }} — {{ produto.sku }}
+          {{ produto.nome }} — {{ produto.sku }} ({{ produto.categoria.nome }})
         </option>
         {% endfor %}
       </select>
@@ -138,6 +140,19 @@
       <p class="form-hint" id="tipo-hint">Entrada adiciona ao saldo atual.</p>
     </div>
 
+    {# ── ESPESSURA (Apenas para MDF) ── #}
+    <div class="form-group" id="espessura-group" style="display: none;">
+      <label for="espessura">Espessura (mm) <span class="text-orange-500">*</span></label>
+      <select name="espessura" id="espessura">
+        <option value="">Selecione a espessura...</option>
+        <option value="6">6 mm</option>
+        <option value="15">15 mm</option>
+        <option value="18">18 mm</option>
+        <option value="25">25 mm</option>
+      </select>
+      <p class="form-hint">Obrigatório para produtos da família MDF.</p>
+    </div>
+
     {# ── QUANTIDADE ── #}
     <div class="form-group">
       <label for="quantidade" id="qtd-label">Quantidade</label>
@@ -172,6 +187,10 @@
   const qtdHint       = document.getElementById('qtd-hint');
   const qtdLabel      = document.getElementById('qtd-label');
   const qtdInput      = document.getElementById('quantidade');
+  const espessuraGroup = document.getElementById('espessura-group');
+  const espessuraSelect = document.getElementById('espessura');
+
+  const FAMILIA_MDF = "{{ FAMILIA_MDF }}";
 
   const hints = {
     entrada:  'Entrada adiciona ao saldo atual.',
@@ -181,16 +200,30 @@
 
   function atualizarProdutoInfo() {
     const opt = selectProduto.options[selectProduto.selectedIndex];
-    if (!opt.value) { infoBox.classList.remove('visible'); return; }
+    if (!opt.value) { 
+      infoBox.classList.remove('visible'); 
+      espessuraGroup.style.display = 'none';
+      espessuraSelect.required = false;
+      return; 
+    }
 
     const qtd = parseInt(opt.dataset.qtd);
     const min = parseInt(opt.dataset.min);
+    const familia = opt.dataset.familia;
 
     infoQtd.textContent = qtd;
     infoQtd.className   = qtd <= min ? 'baixo' : '';
     infoMin.textContent = min;
     infoSku.textContent = opt.dataset.sku;
     infoBox.classList.add('visible');
+
+    if (familia === FAMILIA_MDF) {
+      espessuraGroup.style.display = 'block';
+      espessuraSelect.required = true;
+    } else {
+      espessuraGroup.style.display = 'none';
+      espessuraSelect.required = false;
+    }
   }
 
   function atualizarTipo() {
