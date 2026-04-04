@@ -30,6 +30,9 @@ class ProdutoService:
         except CategoriaProduto.DoesNotExist:
             raise ValueError(f"Categoria ID {schema.categoria_id} não encontrada.")
 
+        # Se a família não foi informada, inferimos da categoria
+        familia = schema.familia or categoria.familia
+
         produto = Produto.objects.create(
             nome=schema.nome,
             sku=schema.sku,
