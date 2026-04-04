@@ -209,7 +209,7 @@
 
     const qtd = parseInt(opt.dataset.qtd);
     const min = parseInt(opt.dataset.min);
-    const familia = opt.dataset.familia;
+    const familia = opt.dataset.familia.toLowerCase();
 
     infoQtd.textContent = qtd;
     infoQtd.className   = qtd <= min ? 'baixo' : '';
@@ -217,14 +217,14 @@
     infoSku.textContent = opt.dataset.sku;
     infoBox.classList.add('visible');
 
-    if (familia === FAMILIA_MDF) {
+    if (familia === 'mdf') {
       espessuraGroup.style.display = 'block';
       espessuraSelect.required = true;
-      espessuraSelect.name = 'espessura'; // Garante que o nome está correto
+      espessuraSelect.name = 'espessura';
     } else {
       espessuraGroup.style.display = 'none';
       espessuraSelect.required = false;
-      espessuraSelect.name = ''; // Remove o nome para não enviar se não for MDF
+      espessuraSelect.name = '';
     }
   }
 
