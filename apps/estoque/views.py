@@ -114,6 +114,7 @@ def lista_reservas(request):
     reservas = Reserva.objects.select_related('produto', 'pedido').all()
     return render(request, "estoque/lista_reservas.html", {
         "reservas": reservas,
+        "FAMILIA_MDF": FamiliaProduto.MDF,
     })
 
 
