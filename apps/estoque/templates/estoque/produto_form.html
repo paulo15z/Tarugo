@@ -1,4 +1,5 @@
-{% extends "estoque/base.html" %}
+{% extends "base/base.html" %}
+{% load static %}
 {% block title %}Novo Produto — Estoque{% endblock %}
 
 {% block extra_css %}
@@ -77,6 +78,7 @@
             <optgroup label="{{ cat.nome }}">
               {% for sub in cat.subcategorias.all %}
                 <option value="{{ sub.id }}" 
+                        data-familia="{{ sub.familia }}"
                         {% if request.POST.categoria_id == sub.id|stringformat:"s" %}selected{% endif %}>
                   {{ sub.nome }}
                 </option>
@@ -146,7 +148,6 @@
 const camposPorCategoria = {
   "MDF": [
     {name: "acabamento", label: "Acabamento", type: "text", required: true},
-    {name: "espessura", label: "Espessura (mm)", type: "number", required: true},
     {name: "fabricante", label: "Fabricante", type: "text", required: true}
   ],
   "Compensado": [
