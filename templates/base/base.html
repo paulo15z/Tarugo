@@ -322,7 +322,8 @@
         </a>
 
         <nav class="nav-main">
-            <a href="{% url 'estoque:lista_produtos' %}" class="nav-link {% if 'estoque' in request.path %}active{% endif %}">Estoque</a>
+            <a href="{% url 'estoque:lista_produtos' %}" class="nav-link {% if 'estoque' in request.path and 'reservas' not in request.path %}active{% endif %}">Estoque</a>
+            <a href="{% url 'estoque:lista_reservas' %}" class="nav-link {% if 'reservas' in request.path %}active{% endif %}">Reservas</a>
             <a href="{% url 'pcp:index' %}" class="nav-link {% if 'pcp' in request.path %}active{% endif %}">PCP</a>
             <a href="{% url 'bipagem:index' %}" class="nav-link {% if 'bipagem' in request.path %}active{% endif %}">Bipagem</a>
             <a href="{% url 'integracoes:dashboard-discrepancias' %}" class="nav-link {% if 'integracoes' in request.path %}active{% endif %}">Gêmeo Digital</a>

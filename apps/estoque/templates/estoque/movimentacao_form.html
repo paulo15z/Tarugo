@@ -220,9 +220,11 @@
     if (familia === FAMILIA_MDF) {
       espessuraGroup.style.display = 'block';
       espessuraSelect.required = true;
+      espessuraSelect.name = 'espessura'; // Garante que o nome está correto
     } else {
       espessuraGroup.style.display = 'none';
       espessuraSelect.required = false;
+      espessuraSelect.name = ''; // Remove o nome para não enviar se não for MDF
     }
   }
 

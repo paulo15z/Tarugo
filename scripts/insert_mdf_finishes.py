@@ -9,7 +9,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 sys.path.append(os.getcwd())
 django.setup()
 
-from apps.estoque.models import Produto, CategoriaProduto
+from apps.estoque.models import Produto, CategoriaProduto, SaldoMDF
 from apps.estoque.services.produto_service import ProdutoService
 
 def run():
@@ -92,8 +92,17 @@ def run():
         
         try:
             # Check if product already exists
-            if Produto.objects.filter(sku=sku).exists():
-                print(f"⚠️ {i:02d}/50: {nome} ({fabricante}) - SKU {sku} já existe. Pulando.")
+            produto = Produto.objects.filter(sku=sku).first()
+            if produto:
+                print(f"⚠️ {i:02d}/50: {nome} ({fabricante}) - SKU {sku} já existe. Inicializando espessuras...")
+                # Inicializa espessuras padrão se for MDF
+                espessuras_padrao = [6, 15, 18, 25]
+                for esp in espessuras_padrao:
+                    SaldoMDF.objects.get_or_create(
+                        produto=produto,
+                        espessura=esp,
+                        defaults={'quantidade': 0}
+                    )
                 continue
                 
             ProdutoService.criar_produto(data)

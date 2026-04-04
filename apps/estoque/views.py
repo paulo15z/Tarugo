@@ -8,9 +8,12 @@ from apps.estoque.permissions import grupo_requerido
 from apps.estoque.services.movimentacao_service import MovimentacaoService
 from apps.estoque.schemas.movimentacao import MovimentacaoCreateSchema
 from apps.estoque.selectors.produto_selector import ProdutoSelector, get_produtos_com_saldo_baixo
-from apps.estoque.models import Produto, SaldoMDF
+from apps.estoque.models import Produto, SaldoMDF, Reserva
 from apps.estoque.services.produto_service import ProdutoService
+from apps.estoque.services.reserva_service import ReservaService
 from apps.estoque.domain.tipos import FamiliaProduto
+from apps.bipagem.models.pedido import Pedido
+from decimal import Decimal
 
 
 @login_required
@@ -101,4 +104,40 @@ def produto_create(request):
 
     return render(request, 'estoque/produto_form.html', {
         'categorias': categorias,
+    })
+
+
+@login_required
+def lista_reservas(request):
+    """Lista todas as reservas ativas no estoque"""
+    reservas = Reserva.objects.select_related('produto', 'pedido').all()
+    return render(request, "estoque/lista_reservas.html", {
+        "reservas": reservas,
+    })
+
+
+@grupo_requerido('estoque.02', 'estoque.03')
+def reserva_create(request):
+    """Cria uma nova reserva para um projeto/pedido"""
+    if request.method == "POST":
+        try:
+            data = {
+                "produto_id": int(request.POST.get("produto_id")),
+                "pedido_id": int(request.POST.get("pedido_id")),
+                "quantidade": Decimal(request.POST.get("quantidade")),
+                "espessura": int(request.POST.get("espessura")) if request.POST.get("espessura") else None,
+                "observacao": request.POST.get("observacao"),
+            }
+            ReservaService.criar_reserva(data)
+            messages.success(request, "Reserva criada com sucesso!")
+            return redirect("estoque:lista_reservas")
+        except Exception as e:
+            messages.error(request, f"Erro ao criar reserva: {str(e)}")
+
+    produtos = Produto.objects.select_related('categoria').all()
+    pedidos = Pedido.objects.all()
+    return render(request, "estoque/reserva_form.html", {
+        "produtos": produtos,
+        "pedidos": pedidos,
+        "FAMILIA_MDF": FamiliaProduto.MDF,
     })

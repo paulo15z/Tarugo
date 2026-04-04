@@ -7,6 +7,8 @@ from pydantic import ValidationError
 
 from apps.estoque.models.produto import Produto
 from apps.estoque.models.categoria import CategoriaProduto
+from apps.estoque.models.saldo_mdf import SaldoMDF
+from apps.estoque.domain.tipos import FamiliaProduto
 from apps.estoque.schemas.produto_schema import (
     ProdutoCreateSchema,
     ProdutoUpdateSchema,
@@ -44,6 +46,16 @@ class ProdutoService:
             localizacao=schema.localizacao,
             atributos_especificos=schema.atributos_especificos or {},
         )
+
+        # Inicializa espessuras padrão se for MDF
+        if familia == FamiliaProduto.MDF:
+            espessuras_padrao = [6, 15, 18, 25]
+            for esp in espessuras_padrao:
+                SaldoMDF.objects.get_or_create(
+                    produto=produto,
+                    espessura=esp,
+                    defaults={'quantidade': 0}
+                )
 
         return produto
 
