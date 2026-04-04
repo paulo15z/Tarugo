@@ -10,30 +10,41 @@ def determinar_plano_de_corte(row: pd.Series, roteiro: str) -> str:
     local = str(row.get('LOCAL', '')).strip().lower()
     material = str(row.get('MATERIAL DA PEÇA', '')).strip().lower()
 
+    # Prioridade 1: Pintura
     if 'PIN' in roteiro:
-        return '01'   # PEÇAS COM PINTURA - tudo 3
+        return '01'   # PEÇAS COM PINTURA
 
+    # Prioridade 2: Lâminas
     if 'lamina' in material or 'lâmina' in material or 'folha' in material or '_lamina_' in obs:
-        return '02'   # LÂMINAS OU FOLHAS - tudo 3
+        return '02'   # LÂMINAS OU FOLHAS
 
+    # Prioridade 3: Ripas (Direcionado para RIPAS 03)
+    # Refinado para evitar falsos positivos: deve conter 'ripa' mas não 'porta' ou 'frente' no mesmo campo se for ambíguo
+    eh_ripa = 'ripa' in desc or 'ripa' in local or '_ripa_' in obs
+    if eh_ripa:
+        return '03'   # RIPAS
+
+    # Prioridade 4: Duplagem
     if 'DUP' in roteiro:
-        return '05'   # ENGROSSADAS/DUPLADAS - b.o
+        return '05'   # ENGROSSADAS/DUPLADAS
 
+    # Prioridade 5: Pré-Montagem
     if 'PRÉ' in roteiro or 'pré' in desc or 'pre montagem' in obs or 'prem' in obs or '_pre_' in obs:
-        return '10'   # PRÉ MONTAGEM - nao sei se o Pré-Montagem do dinabox é funcional
+        return '10'   # PRÉ MONTAGEM
 
+    # Prioridade 6: Montagem de Caixa
     if 'MCX' in roteiro:
-        return '04'   # MONTAGEM DE CAIXAS E GAVETAS - extremo cuidado
+        return '04'   # MONTAGEM DE CAIXAS E GAVETAS
 
+    # Prioridade 7: Portas e Frentes
     if 'MPE' in roteiro or 'porta' in desc or 'porta' in local or 'frontal' in desc or 'frontal' in local or 'frente' in desc or 'frente' in local:
         return '06'   # PORTAS E FRENTES
 
-    return '11'       # OUTROS
+    return '11'       # OUTROS / GERAL
 
 
 def calcular_roteiro(row: pd.Series) -> str:
-
-    """Calculj o roteiro completo da peça"""
+    """Calcula o roteiro completo da peça"""
     desc = str(row.get('DESCRIÇÃO DA PEÇA', '')).strip().lower()
     local = str(row.get('LOCAL', '')).strip().lower()
     duplagem = str(row.get('DUPLAGEM', '')).strip().lower()
@@ -44,10 +55,16 @@ def calcular_roteiro(row: pd.Series) -> str:
     tem_furo = furo not in ('', 'nan', 'none')
     tem_duplagem = duplagem not in ('', 'nan', 'none')
     tem_puxador = 'puxador' in desc or 'tampa' in desc
-    eh_porta = 'porta' in local or 'porta' in desc
+    
+    # Lógica refinada para Ripas
+    eh_ripa = 'ripa' in desc or 'ripa' in local or '_ripa_' in obs
+    
+    # Portas e Frentes só se não for ripa
+    eh_porta = ('porta' in local or 'porta' in desc) and not eh_ripa
     eh_gaveta = 'gaveta' in desc or 'gaveteiro' in desc or 'gaveta' in local
     eh_caixa = 'caixa' in local
-    eh_frontal = 'frontal' in local or 'frontal' in desc
+    eh_frontal = ('frontal' in local or 'frontal' in desc) and not eh_ripa
+    
     eh_tamponamento = 'tamponamento' in local
     eh_painel = '_painel_' in obs
 
@@ -66,13 +83,14 @@ def calcular_roteiro(row: pd.Series) -> str:
         rota.append('USI')
         rota.append('FUR')
 
-    if (eh_gaveta or eh_caixa) and not eh_painel and not tem_duplagem: # remover o eh_painel em breve ufa 
+    if (eh_gaveta or eh_caixa) and not eh_painel and not tem_duplagem:
         rota.append('MCX')
-    elif tem_puxador or eh_porta or eh_frontal:
+    elif (tem_puxador or eh_porta or eh_frontal) and not eh_ripa:
         rota.append('MPE')
         rota.append('MAR')
 
-    if eh_painel or (eh_tamponamento and not eh_gaveta):
+    # Ripas vão para Marcenaria (MAR)
+    if eh_painel or (eh_tamponamento and not eh_gaveta) or eh_ripa:
         rota.append('MAR')
 
     if tem_pintura:
@@ -81,8 +99,8 @@ def calcular_roteiro(row: pd.Series) -> str:
         rota.append('TAP')
     if tem_eletrica:
         rota.append('MEL')
-    if tem_curvo:   #mudar esse nome
+    if tem_curvo:
         rota.append('XMAR')
 
-    rota.extend(['CQL', 'EXP']) #padrao, tudo tem q verificar e expedir
+    rota.extend(['CQL', 'EXP'])
     return ' > '.join(rota)

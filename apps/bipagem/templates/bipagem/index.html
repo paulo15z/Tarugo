@@ -1,0 +1,137 @@
+{% extends "bipagem/base.html" %}
+
+{% block title %}Dashboard Operacional{% endblock %}
+
+{% block extra_css %}
+<style>
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  .order-card {
+    transition: transform 0.15s, box-shadow 0.15s;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  .order-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+    border-color: var(--text);
+  }
+  .progress-bar-container {
+    height: 10px;
+    background: var(--border);
+    border-radius: 5px;
+    overflow: hidden;
+    margin: 1rem 0;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--green);
+    transition: width 0.3s ease;
+  }
+  .order-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    font-family: var(--mono);
+    color: var(--text-muted);
+  }
+  .search-box {
+    max-width: 500px;
+    margin-bottom: 2rem;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    font-size: 1rem;
+  }
+  .search-box input:focus {
+    outline: none;
+    border-color: var(--text);
+  }
+  .lote-badge {
+    background: var(--text);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 900;
+    font-family: var(--mono);
+  }
+  .sub-lotes-list {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    margin-top: 0.25rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Painel de Bipagem</h1>
+    <p class="page-subtitle">Selecione um lote base para iniciar a conferência</p>
+  </div>
+</div>
+
+<div class="search-box">
+  <input type="text" id="search-orders" placeholder="Buscar por lote, pedido ou cliente..." autocomplete="off">
+</div>
+
+<div class="dashboard-grid" id="orders-grid">
+  {% for l in lotes %}
+  <a href="{% url 'bipagem:pedido_detalhe' l.lote %}" class="card order-card" data-search="{{ l.lote }} {{ l.numero_pedido }} {{ l.cliente_nome }}">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+      <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+        <span class="lote-badge">LOTE {{ l.lote }}</span>
+        <span class="sub-lotes-list">{{ l.sub_lotes_display }}</span>
+      </div>
+      <span class="mono" style="font-size: 0.75rem;">{{ l.percentual }}%</span>
+    </div>
+    <h3 style="font-size: 1.1rem; margin-bottom: 0.25rem;">{{ l.cliente_nome }}</h3>
+    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">PEDIDO: {{ l.numero_pedido }}</p>
+    
+    <div class="progress-bar-container">
+      <div class="progress-bar-fill" style="width: {{ l.percentual }}%;"></div>
+    </div>
+    
+    <div class="order-meta">
+      <span>{{ l.bipadas }} / {{ l.total }} PEÇAS</span>
+      <span>RESTAM {{ l.total|add:l.bipadas_neg }}</span>
+    </div>
+  </a>
+  {% empty %}
+  <div class="empty-state" style="grid-column: 1 / -1;">
+    <strong>Nenhum lote em aberto</strong>
+    <p>Importe novos roteiros pelo PCP para começar.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const searchInput = document.getElementById('search-orders');
+  const orderCards = document.querySelectorAll('.order-card');
+
+  searchInput.addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    orderCards.forEach(card => {
+      const searchText = card.getAttribute('data-search').toLowerCase();
+      if (searchText.includes(term)) {
+        card.style.display = 'block';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  });
+</script>
+{% endblock %}

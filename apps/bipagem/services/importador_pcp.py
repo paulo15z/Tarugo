@@ -42,13 +42,14 @@ def _extrair_numero_pedido(df: pd.DataFrame) -> str:
     return '999999'
 
 
-def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "") -> Dict:
+def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str = "") -> Dict:
     """
     Importa DataFrame tratado pelo PCP para o sistema de bipagem.
     
     Args:
         df: DataFrame já processado pelo pcp_service (com ROTEIRO e PLANO)
         arquivo_nome: Nome original do arquivo (para logging)
+        numero_lote: O número do lote inserido manualmente pelo usuário no app PCP (Lote Base)
     
     Returns:
         Dict com resultado da importação
@@ -72,11 +73,11 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "") -> Dict:
             if '-' in cliente_nome:
                 cliente_nome = cliente_nome.split('-', 1)[1].strip()
             
-            pedido, pedido_criado = Pedido.objects.get_or_create(
+            # Usamos update_or_create para garantir que o nome do cliente seja atualizado se mudar
+            pedido, pedido_criado = Pedido.objects.update_or_create(
                 numero_pedido=numero_pedido,
                 defaults={
                     'cliente_nome': cliente_nome,
-                    'data_criacao': timezone.now()
                 }
             )
 
@@ -138,13 +139,21 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "") -> Dict:
 
                         roteiro = _limpar_valor(row.get('ROTEIRO', ''))
                         plano = _limpar_valor(row.get('PLANO', ''))
+                        
+                        # O LOTE que o operador precisa ver é a composição LoteBase-Plano (ex: 573-06)
+                        # O PCP Service já gera isso na coluna 'LOTE'
+                        lote_composto = _limpar_valor(row.get('LOTE', ''))
+                        
+                        # Fallback caso a coluna LOTE não esteja preenchida como esperado
+                        if not lote_composto or lote_composto == 'nan':
+                            lote_composto = f"{numero_lote}-{plano}" if plano else str(numero_lote)
 
-                        # Verifica se já existe
+                        # Verifica se já existe para evitar erro de integridade
                         if not Peca.objects.filter(modulo=modulo, id_peca=id_peca).exists():
                             peca = Peca(
                                 modulo=modulo,
                                 id_peca=id_peca,
-                                numero_lote_pcp=numero_pedido,
+                                numero_lote_pcp=lote_composto,
                                 descricao=descricao,
                                 local=local,
                                 material=_limpar_valor(row.get('MATERIAL DA PEÇA', '')),
@@ -162,12 +171,13 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "") -> Dict:
                         Peca.objects.bulk_create(pecas_para_criar, batch_size=500)
                         total_pecas_criadas += len(pecas_para_criar)
 
-            mensagem = f'Importação concluída: {total_pecas_criadas} peças importadas (Pedido {numero_pedido})'
+            mensagem = f'Importação concluída: {total_pecas_criadas} peças importadas (Pedido {numero_pedido}, Lote Base {numero_lote})'
 
             return {
                 'sucesso': True,
                 'mensagem': mensagem,
                 'numero_pedido': numero_pedido,
+                'numero_lote': numero_lote,
                 'total_pecas': total_pecas_criadas,
                 'erros': erros,
                 'pedido_criado': pedido_criado

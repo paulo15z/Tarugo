@@ -111,7 +111,7 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
 
             altura_util = ALTURA_CHAPA - MARGEM_REFILO
 
-            # ✔️ CORREÇÃO REAL: serra só entre peças
+            # serra só entre peças
             max_por_tira = int((altura_util + ESPESSURA_SERRA) // (altura_ripa + ESPESSURA_SERRA))
 
             if max_por_tira <= 0:
@@ -124,7 +124,7 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
             for i in range(qtd_tiras):
                 nova = group.iloc[0].copy()
 
-                # --- CORREÇÃO: Tornar o ID DA PEÇA único para cada tira ---
+                # tornar o ID DA PEÇA único para cada tira ---
                 if 'ID DA PEÇA' in nova:
                     id_base = str(nova['ID DA PEÇA'])
                     nova['ID DA PEÇA'] = f"{id_base}-T{i+1}"
@@ -184,7 +184,7 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
 
     df_novas = pd.DataFrame(novas_linhas)
 
-    # --- CORREÇÃO: Remover colunas auxiliares criadas para o cálculo ---
+    # --- colunas auxiliares criadas para o cálculo ---
     colunas_para_remover = ['ALTURA_NUM', 'LARGURA_NUM', 'QTD_NUM', 'EH_FONTE']
     df_novas.drop(columns=colunas_para_remover, errors='ignore', inplace=True)
     # -------------------------------------------------------------------

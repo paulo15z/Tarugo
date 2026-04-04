@@ -1,11 +1,16 @@
-# apps/bipagem/api/views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Q
 
 from apps.bipagem.models import Peca, Modulo, Pedido
-from apps.bipagem.services.bipagem_service import registrar_bipagem  # vamos criar esse service agora
+from apps.bipagem.services.bipagem_service import registrar_bipagem
+from apps.bipagem.selectors.progresso import (
+    get_resumo_pedido, 
+    get_modulos_pedido, 
+    get_pecas_modulo
+)
+from apps.bipagem.mappers.peca_mapper import map_peca_to_output
 from .serializers import (
     PecaDetailSerializer,
     PecaListSerializer,
@@ -13,7 +18,6 @@ from .serializers import (
     OrdemProducaoSerializer,
     ModuloSerializer
 )
-
 
 class BipagemView(APIView):
     """
@@ -25,7 +29,6 @@ class BipagemView(APIView):
         "localizacao": "Máquina 3 - Corte"
     }
     """
-    
     def post(self, request):
         codigo = request.data.get('codigo', '').strip()
         usuario = request.data.get('usuario', 'DESCONHECIDO')
@@ -37,42 +40,41 @@ class BipagemView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        resultado = registrar_bipagem(
-            codigo_peca=codigo,
-            usuario=usuario,
-            localizacao=localizacao
-        )
+        # Chama o service passando um dicionário compatível com BipagemInput
+        resultado = registrar_bipagem({
+            'codigo_peca': codigo,
+            'usuario': usuario,
+            'localizacao': localizacao
+        })
 
         if resultado['sucesso']:
-            peca = resultado['peca']
+            # O service retorna um dicionário com a peça mapeada para PecaOutput
             return Response({
                 'ok': True,
-                'mensagem': f'Peça {codigo} bipada com sucesso',
-                'peca': PecaDetailSerializer(peca).data,
+                'mensagem': resultado['mensagem'],
+                'repetido': resultado.get('repetido', False),
+                'peca': resultado['peca'],
             }, status=status.HTTP_200_OK)
         else:
             return Response({
-                'erro': resultado['erro']
-            }, status=status.HTTP_404_NOT_FOUND if 'não encontrada' in resultado['erro'] else status.HTTP_400_BAD_REQUEST)
-
+                'erro': resultado['mensagem'],
+                'detalhe': resultado.get('erro')
+            }, status=status.HTTP_404_NOT_FOUND if 'não encontrada' in resultado['mensagem'] else status.HTTP_400_BAD_REQUEST)
 
 class PecaDetailView(APIView):
     """GET /api/bipagem/peca/<str:id_peca>/"""
-    
     def get(self, request, id_peca):
         try:
-            peca = Peca.objects.get(id_peca=id_peca)
-            return Response(PecaDetailSerializer(peca).data)
+            peca = Peca.objects.select_related('modulo__ordem_producao__pedido').get(id_peca=id_peca)
+            return Response(map_peca_to_output(peca).model_dump())
         except Peca.DoesNotExist:
             return Response(
                 {'erro': f'Peça {id_peca} não encontrada'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-
 class BuscaPecaView(APIView):
     """GET /api/bipagem/buscar/?q=termo"""
-    
     def get(self, request):
         termo = request.query_params.get('q', '').strip()
         
@@ -83,47 +85,40 @@ class BuscaPecaView(APIView):
             Q(id_peca__icontains=termo) |
             Q(descricao__icontains=termo) |
             Q(local__icontains=termo)
-        )[:50]
+        ).select_related('modulo__ordem_producao__pedido')[:50]
         
         return Response({
             'total': pecas.count(),
-            'pecas': PecaListSerializer(pecas, many=True).data
+            'pecas': [map_peca_to_output(p).model_dump() for p in pecas]
         })
 
-
-# Views de resumo (úteis para dashboard)
 class PedidoDetailView(APIView):
     """GET /api/bipagem/pedido/<str:numero_pedido>/"""
-    
     def get(self, request, numero_pedido):
-        try:
-            pedido = Pedido.objects.get(numero_pedido=numero_pedido)
-            ordens = pedido.ordens_producao.all()
-            
-            return Response({
-                'pedido': PedidoSerializer(pedido).data,
-                'ordens_producao': OrdemProducaoSerializer(ordens, many=True).data,
-            })
-        except Pedido.DoesNotExist:
+        resumo = get_resumo_pedido(numero_pedido)
+        if not resumo:
             return Response({'erro': f'Pedido {numero_pedido} não encontrado'}, status=404)
-
+        
+        modulos = get_modulos_pedido(numero_pedido)
+        
+        return Response({
+            'resumo': resumo,
+            'modulos': modulos
+        })
 
 class ModuloDetailView(APIView):
     """GET /api/bipagem/modulo/<str:referencia>/"""
-    
     def get(self, request, referencia):
         try:
             modulo = Modulo.objects.get(referencia_modulo=referencia)
-            pecas = modulo.pecas.all()
+            pecas = get_pecas_modulo(referencia)
             
             return Response({
-                'modulo': ModuloSerializer(modulo).data,
-                'pecas': PecaListSerializer(pecas, many=True).data,
-                'resumo': {
-                    'total': modulo.total_pecas,
-                    'bipadas': modulo.pecas_bipadas,
-                    'percentual': modulo.percentual_concluido,
-                }
+                'modulo': {
+                    'referencia': modulo.referencia_modulo,
+                    'nome': modulo.nome_modulo,
+                },
+                'pecas': [map_peca_to_output(p).model_dump() for p in pecas]
             })
         except Modulo.DoesNotExist:
             return Response({'erro': f'Módulo {referencia} não encontrado'}, status=404)

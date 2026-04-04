@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 
 from apps.estoque.models.produto import Produto
+from apps.bipagem.models.pedido import Pedido
 
 User = get_user_model()
 
@@ -20,10 +21,19 @@ class Reserva(models.Model):
         related_name='reservas',
         verbose_name='Produto',
     )
-    projeto = models.CharField(
+    pedido = models.ForeignKey(
+        Pedido,
+        on_delete=models.CASCADE,
+        related_name='reservas',
+        verbose_name='Pedido/Projeto',
+        null=True,
+        blank=True
+    )
+    projeto_legado = models.CharField(
         max_length=255,
-        verbose_name='Projeto',
-        help_text='Nome ou código do projeto',
+        verbose_name='Projeto (Legado)',
+        null=True,
+        blank=True
     )
     quantidade = models.IntegerField(verbose_name='Quantidade')
     status = models.CharField(
@@ -48,6 +58,13 @@ class Reserva(models.Model):
         verbose_name = 'Reserva'
         verbose_name_plural = 'Reservas'
         ordering = ['-criado_em']
+
+    @property
+    def projeto(self):
+        """Retorna o nome do projeto, seja via Pedido ou Legado."""
+        if self.pedido:
+            return str(self.pedido)
+        return self.projeto_legado or "Sem Projeto"
 
     def __str__(self):
         return f"Reserva {self.projeto} — {self.produto.nome} ({self.quantidade})"

@@ -14,7 +14,7 @@ from apps.pcp.models.processamento import ProcessamentoPCP
 from apps.pcp.services.schemas import PCPProcessRequest   # ← corrigido
 
 # Utils
-from apps.pcp.utils.parsers import ler_arquivo_dinabox
+from apps.integracoes.dinabox.service import DinaboxService
 from apps.pcp.utils.ripas import consolidar_ripas
 from apps.pcp.utils.roteiros import calcular_roteiro, determinar_plano_de_corte
 from apps.pcp.utils.excel import gerar_xls_roteiro
@@ -38,9 +38,9 @@ class ProcessamentoPCPService:
         return df
 
     @staticmethod
-    def processar_arquivo(uploaded_file, lote: int):
+    def processar_arquivo(uploaded_file, lote: int, usuario=None):
         try:
-            input_data = PCPProcessRequest(          # ← corrigido
+            input_data = PCPProcessRequest(
                 lote=lote,
                 filename=uploaded_file.name,
                 file_bytes=uploaded_file.read()
@@ -48,8 +48,8 @@ class ProcessamentoPCPService:
         except ValidationError as e:
             raise ValueError(f"Erro de validação: {e}") from e
 
-        # 1. Ler arquivo
-        df = ler_arquivo_dinabox(input_data.file_bytes, input_data.filename)
+        # 1. Ler arquivo via Service de Integração
+        df = DinaboxService.parse_to_dataframe(input_data.file_bytes, input_data.filename)
 
         # 2. Processamento
         df = consolidar_ripas(df)
@@ -95,6 +95,7 @@ class ProcessamentoPCPService:
             nome_arquivo=uploaded_file.name,
             lote=lote,
             total_pecas=len(df),
+            usuario=usuario
         )
 
         arquivo_content = ContentFile(xls_bytes, name=nome_saida)
@@ -113,7 +114,8 @@ class ProcessamentoPCPService:
         resumo_df.columns = ['roteiro', 'qtd']
         resumo = resumo_df.to_dict(orient='records')
 
-        resultado_bipagem = importar_de_pcp(df, uploaded_file.name)
+        # REMOVIDO: A importação agora é manual via liberar_lote()
+        # resultado_bipagem = importar_de_pcp(df, uploaded_file.name, numero_lote=str(lote))
 
         return {
             'pid': pid,
@@ -123,3 +125,36 @@ class ProcessamentoPCPService:
             'resumo': resumo,
             'nome_saida': nome_saida,
         }
+
+    @staticmethod
+    def liberar_lote(pid: str, usuario=None):
+        """
+        Lê o arquivo XLS gerado, reconstrói o DataFrame e importa para a bipagem.
+        """
+        from django.utils import timezone
+        from apps.pcp.models.processamento import ProcessamentoPCP
+        from apps.bipagem.services.importador_pcp import importar_de_pcp
+
+        processamento = ProcessamentoPCP.objects.get(id=pid)
+        
+        if processamento.liberado_para_bipagem:
+            return {'sucesso': True, 'mensagem': 'Lote já liberado anteriormente.'}
+
+        # 1. Ler o arquivo de saída para reconstruir o DF
+        # Nota: Em um cenário ideal, salvaríamos o DF serializado ou o JSON.
+        # Para o MVP, ler o XLS gerado é seguro pois ele contém todas as colunas necessárias.
+        df = pd.read_excel(processamento.arquivo_saida.path, dtype=str).fillna('')
+
+        # 2. Importar para Bipagem
+        resultado = importar_de_pcp(
+            df, 
+            processamento.nome_arquivo, 
+            numero_lote=str(processamento.lote)
+        )
+
+        if resultado.get('sucesso'):
+            processamento.liberado_para_bipagem = True
+            processamento.data_liberacao = timezone.now()
+            processamento.save()
+
+        return resultado

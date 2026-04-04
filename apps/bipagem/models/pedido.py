@@ -8,7 +8,22 @@ class Pedido(models.Model):
     numero_pedido = models.CharField(max_length=50, unique=True, db_index=True)  # 573
     cliente_nome = models.CharField(max_length=255, db_index=True)
     data_criacao = models.DateTimeField(default=timezone.now)
-    data_importacao = models.DateTimeField(auto_now_add=True) #vou mudar dps, o pedido nasce bem antes
+    data_importacao = models.DateTimeField(auto_now_add=True)
+    
+    # Acompanhamento por Projeto (Gêmeo Digital)
+    STATUS_PROJETO = [
+        ('ORCAMENTO', 'Orçamento'),
+        ('APROVADO', 'Aprovado'),
+        ('PCP', 'Em PCP'),
+        ('PRODUCAO', 'Em Produção'),
+        ('EXPEDICAO', 'Em Expedição'),
+        ('ENTREGUE', 'Entregue'),
+        ('CANCELADO', 'Cancelado'),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_PROJETO, default='APROVADO', db_index=True)
+    data_entrega_prevista = models.DateField(null=True, blank=True)
+    data_conclusao = models.DateTimeField(null=True, blank=True)
+    observacoes = models.TextField(blank=True, null=True)
 
     class Meta:
         verbose_name = "Pedido"
