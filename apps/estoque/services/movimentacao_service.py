@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from apps.estoque.models import Produto, Movimentacao, SaldoMDF
 from apps.estoque.selectors.produto_selector import ProdutoSelector
 from apps.estoque.domain.tipos import FamiliaProduto
+from apps.estoque.services.schemas import MovimentacaoSchema
 
 
 class MovimentacaoService:
@@ -13,15 +14,18 @@ class MovimentacaoService:
     @staticmethod
     @transaction.atomic
     def processar_movimentacao(data: dict, usuario=None) -> Movimentacao:
+        # Valida os dados de entrada com o schema Pydantic
+        schema = MovimentacaoSchema(**data)
+        produto_id = schema.produto_id
+        tipo = schema.tipo
+        quantidade = schema.quantidade
+        espessura = schema.espessura
+        observacao = schema.observacao
         """
         Processa uma única movimentação.
         Recebe dict validado pelo DRF serializer.
         """
-        produto_id = data['produto_id']
-        tipo = data['tipo']
-        quantidade = data['quantidade']
-        espessura = data.get('espessura')
-        observacao = data.get('observacao')
+
 
         # Lock de concorrência (evita race condition)
         produto = ProdutoSelector.get_produto_para_movimentacao(produto_id)
@@ -51,6 +55,9 @@ class MovimentacaoService:
                 saldo_mdf.quantidade -= quantidade
             elif tipo == 'ajuste':
                 saldo_mdf.quantidade = quantidade
+            elif tipo == 'transferencia':
+                # TODO: Implementar lógica de transferência entre localizações ou produtos
+                raise ValidationError("Tipo de movimentação 'transferencia' ainda não implementado.")
             
             saldo_mdf.save()
             
@@ -74,6 +81,9 @@ class MovimentacaoService:
                 produto.quantidade -= quantidade
             elif tipo == 'ajuste':
                 produto.quantidade = quantidade
+            elif tipo == 'transferencia':
+                # TODO: Implementar lógica de transferência entre localizações ou produtos
+                raise ValidationError("Tipo de movimentação 'transferencia' ainda não implementado.")
             
             produto.save()
 

@@ -1,6 +1,7 @@
 # apps/estoque/services/reserva_service.py
 from django.db import models, transaction
-from django.core.exceptions import ValidationError
+from pydantic import ValidationError
+from apps.estoque.services.schemas import ReservaCreateSchema
 from apps.estoque.models import Produto, Reserva, SaldoMDF
 from apps.estoque.selectors.produto_selector import ProdutoSelector
 from apps.estoque.domain.tipos import FamiliaProduto
@@ -15,18 +16,16 @@ class ReservaService:
     @staticmethod
     @transaction.atomic
     def criar_reserva(data: dict, usuario=None) -> Reserva:
+        schema = ReservaCreateSchema(**data)
+        produto_id = schema.produto_id
+        pedido_id = schema.pedido_id
+        quantidade = schema.quantidade
+        espessura = schema.espessura
+        observacao = schema.observacao
         """
         Cria uma reserva de material para um pedido específico.
-        Suporta reservas preventivas (mesmo sem estoque físico).
+        Valida contra o estoque físico disponível.
         """
-        produto_id = data.get('produto_id')
-        pedido_id = data.get('pedido_id')
-        quantidade = data.get('quantidade')
-        espessura = data.get('espessura')
-        observacao = data.get('observacao')
-
-        if not quantidade or quantidade <= 0:
-            raise ValidationError("A quantidade da reserva deve ser maior que zero.")
 
         produto = ProdutoSelector.get_produto_para_movimentacao(produto_id)
         pedido = Pedido.objects.get(id=pedido_id)
@@ -36,14 +35,20 @@ class ReservaService:
             if not espessura:
                 raise ValidationError("Espessura é obrigatória para reservar produtos da família MDF.")
             
-            # Garante que o registro de saldo existe para a espessura, mesmo que zerado
-            SaldoMDF.objects.get_or_create(
+            saldo_mdf, _ = SaldoMDF.objects.get_or_create(
                 produto=produto,
                 espessura=espessura,
-                defaults={'quantidade': 0}
+                defaults={\'quantidade\': 0}
             )
-
-        # Criamos a reserva independentemente do saldo físico (Reserva Preventiva do PCP)
+            if saldo_mdf.quantidade < quantidade:
+                raise ValidationError(
+                    f"Estoque insuficiente para {espessura}mm. Disponível: {saldo_mdf.quantidade}, solicitado: {quantidade}."
+                )
+        else:
+            if produto.quantidade < quantidade:
+                raise ValidationError(
+                    f"Estoque insuficiente. Disponível: {produto.quantidade}, solicitado: {quantidade}."
+                )
         reserva = Reserva.objects.create(
             produto=produto,
             pedido=pedido,
@@ -51,7 +56,7 @@ class ReservaService:
             quantidade=quantidade,
             usuario=usuario,
             observacao=observacao,
-            status='ativa'
+            status=\'ativa\'
         )
 
         return reserva

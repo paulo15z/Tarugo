@@ -16,7 +16,7 @@
     color: var(--text-muted);
   }
 
-  .produto-info.visible { display: flex; gap: 1.5rem; }
+  .produto-info.visible { display: flex; gap: 1.5rem; flex-wrap: wrap; }
 
   .info-item span:first-child {
     display: block;
@@ -30,6 +30,27 @@
     color: var(--text);
     font-size: 1rem;
   }
+
+  .info-item strong.insuficiente { color: var(--accent); font-weight: 700; }
+
+  .saldo-espessuras {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .saldo-item {
+    padding: 0.5rem;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 3px;
+    font-size: 0.75rem;
+    text-align: center;
+  }
+
+  .saldo-item .esp { display: block; font-weight: 700; color: var(--accent); margin-bottom: 0.2rem; }
+  .saldo-item .qtd { display: block; font-family: var(--mono); font-weight: 600; }
 </style>
 {% endblock %}
 
@@ -37,7 +58,7 @@
 <div class="page-header">
   <div>
     <h1 class="page-title">PCP — Nova Reserva</h1>
-    <p class="page-subtitle">Reserve material para um projeto específico</p>
+    <p class="page-subtitle">Reserve material para um projeto específico (com validação contra estoque)</p>
   </div>
   <a href="{% url 'estoque:lista_reservas' %}" class="btn btn-outline">← Voltar</a>
 </div>
@@ -45,6 +66,19 @@
 <div class="form-card">
   <form method="POST" id="reserva-form">
     {% csrf_token %}
+
+    {# ── PROJETO / PEDIDO ── #}
+    <div class="form-group">
+      <label for="pedido_id">Projeto / Pedido</label>
+      <select name="pedido_id" id="pedido_id" required>
+        <option value="">Selecione o projeto...</option>
+        {% for pedido in pedidos %}
+        <option value="{{ pedido.id }}">
+          Pedido #{{ pedido.numero_pedido }} — {{ pedido.cliente_nome }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
 
     {# ── PRODUTO ── #}
     <div class="form-group">
@@ -58,8 +92,7 @@
                 data-familia="{{ produto.categoria.familia }}"
                 {% if produto.categoria.familia == FAMILIA_MDF %}
                 data-saldos='{ {% for saldo in produto.saldos_mdf.all %}"{{ saldo.espessura }}": {{ saldo.quantidade }}{% if not forloop.last %}, {% endif %}{% endfor %} }'
-                {% endif %}
-                {% if request.GET.produto_id == produto.id|stringformat:"s" %}selected{% endif %}>
+                {% endif %}>
           {{ produto.nome }} — {{ produto.sku }} ({{ produto.categoria.nome }})
         </option>
         {% endfor %}
@@ -77,19 +110,6 @@
       </div>
     </div>
 
-    {# ── PEDIDO / PROJETO ── #}
-    <div class="form-group">
-      <label for="pedido_id">Projeto / Pedido</label>
-      <select name="pedido_id" id="pedido_id" required>
-        <option value="">Selecione o projeto...</option>
-        {% for pedido in pedidos %}
-        <option value="{{ pedido.id }}">
-          Pedido #{{ pedido.numero_pedido }} — {{ pedido.cliente_nome }}
-        </option>
-        {% endfor %}
-      </select>
-    </div>
-
     {# ── ESPESSURA (Apenas para MDF) ── #}
     <div class="form-group" id="espessura-group" style="display: none;">
       <label for="espessura">Espessura (mm) <span class="text-orange-500">*</span></label>
@@ -100,7 +120,8 @@
         <option value="18">18 mm</option>
         <option value="25">25 mm</option>
       </select>
-      <p class="form-hint">Obrigatório para produtos da família MDF.</p>
+      <div id="saldos-info" class="saldo-espessuras" style="display: none; margin-top: 0.75rem;"></div>
+      <p class="form-hint">Obrigatório para produtos da família MDF. Reserva será validada contra o estoque disponível.</p>
     </div>
 
     {# ── QUANTIDADE ── #}
@@ -134,6 +155,7 @@
   const qtdHint       = document.getElementById('qtd-hint');
   const espessuraGroup = document.getElementById('espessura-group');
   const espessuraSelect = document.getElementById('espessura');
+  const saldosInfo    = document.getElementById('saldos-info');
 
   const FAMILIA_MDF = "{{ FAMILIA_MDF }}";
 
@@ -157,6 +179,7 @@
       espessuraSelect.required = true;
       espessuraSelect.name = 'espessura';
       atualizarSaldoPorEspessura();
+      mostrarSaldosDisponiveis();
     } else {
       espessuraGroup.style.display = 'none';
       espessuraSelect.required = false;
@@ -165,12 +188,35 @@
       const qtd = parseFloat(opt.dataset.qtd);
       infoQtd.textContent = qtd;
       if (qtd <= 0) {
-        qtdHint.innerHTML = `<span class="text-orange-500 font-bold">Atenção:</span> Estoque físico zerado. Esta será uma reserva preventiva.`;
+        infoQtd.className = 'insuficiente';
+        qtdHint.innerHTML = `<span class="text-orange-500 font-bold">Atenção:</span> Estoque insuficiente. Reserva será bloqueada.`;
       } else {
+        infoQtd.className = '';
         qtdHint.textContent = `Estoque disponível: ${qtd}`;
       }
     }
     qtdInput.removeAttribute('max');
+  }
+
+  function mostrarSaldosDisponiveis() {
+    const opt = selectProduto.options[selectProduto.selectedIndex];
+    if (!opt.value || opt.dataset.familia !== FAMILIA_MDF) return;
+
+    let saldos = {};
+    try {
+      saldos = JSON.parse(opt.dataset.saldos || '{}');
+    } catch(e) { console.error("Erro ao ler saldos:", e); }
+
+    saldosInfo.innerHTML = '';
+    const espessuras = ['6', '15', '18', '25'];
+    espessuras.forEach(esp => {
+      const qtd = saldos[esp] || 0;
+      const item = document.createElement('div');
+      item.className = 'saldo-item';
+      item.innerHTML = `<span class="esp">${esp}mm</span><span class="qtd">${qtd}</span>`;
+      saldosInfo.appendChild(item);
+    });
+    saldosInfo.style.display = 'grid';
   }
 
   function atualizarSaldoPorEspessura() {
@@ -185,7 +231,8 @@
     } catch(e) { console.error("Erro ao ler saldos:", e); }
 
     if (!esp) {
-      infoQtd.textContent = "Selecione espessura";
+      infoQtd.textContent = "—";
+      infoQtd.className = '';
       qtdHint.textContent = "Selecione a espessura para ver o saldo disponível.";
       return;
     }
@@ -194,8 +241,10 @@
     infoQtd.textContent = qtdEsp;
     
     if (qtdEsp <= 0) {
-      qtdHint.innerHTML = `<span class="text-orange-500 font-bold">Atenção:</span> Estoque físico para ${esp}mm está zerado. Reserva preventiva.`;
+      infoQtd.className = 'insuficiente';
+      qtdHint.innerHTML = `<span class="text-orange-500 font-bold">Atenção:</span> Estoque zerado para ${esp}mm. Reserva será bloqueada.`;
     } else {
+      infoQtd.className = '';
       qtdHint.textContent = `Estoque disponível para ${esp}mm: ${qtdEsp}`;
     }
   }

@@ -41,7 +41,7 @@ def movimentacao_create(request):
             data = {
                 'produto_id': int(request.POST['produto_id']),
                 'tipo': request.POST['tipo'],
-                'quantidade': int(request.POST['quantidade']),
+                'quantidade': Decimal(request.POST['quantidade']),
                 'espessura': request.POST.get('espessura') or None,
                 'observacao': request.POST.get('observacao') or None,
             }
@@ -49,7 +49,7 @@ def movimentacao_create(request):
             if data['espessura']:
                 data['espessura'] = int(data['espessura'])
 
-            MovimentacaoService.processar_movimentacao(data, request.user)
+            MovimentacaoService.processar_movimentacao(data, usuario=request.user)
             messages.success(request, 'Movimentação registrada com sucesso!')
             return redirect('estoque:lista_produtos')
         except Exception as e:
@@ -128,7 +128,7 @@ def reserva_create(request):
                 "espessura": int(request.POST.get("espessura")) if request.POST.get("espessura") else None,
                 "observacao": request.POST.get("observacao"),
             }
-            ReservaService.criar_reserva(data)
+            ReservaService.criar_reserva(data, usuario=request.user)
             messages.success(request, "Reserva criada com sucesso!")
             return redirect("estoque:lista_reservas")
         except Exception as e:

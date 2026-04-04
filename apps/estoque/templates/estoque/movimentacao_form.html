@@ -98,6 +98,9 @@
                 data-min="{{ produto.estoque_minimo }}"
                 data-sku="{{ produto.sku }}"
                 data-familia="{{ produto.categoria.familia }}"
+                {% if produto.categoria.familia == FAMILIA_MDF %}
+                data-saldos='{ {% for saldo in produto.saldos_mdf.all %}"{{ saldo.espessura }}": {{ saldo.quantidade }}{% if not forloop.last %}, {% endif %}{% endfor %} }'
+                {% endif %}
                 {% if request.GET.produto_id == produto.id|stringformat:"s" %}selected{% endif %}>
           {{ produto.nome }} — {{ produto.sku }} ({{ produto.categoria.nome }})
         </option>
@@ -246,9 +249,25 @@
     if (tipo.value === 'saida') {
       const opt = selectProduto.options[selectProduto.selectedIndex];
       if (opt.value) {
-        const disponivel = parseInt(opt.dataset.qtd);
-        qtdHint.textContent = `Máximo disponível: ${disponivel}`;
-        qtdInput.max = disponivel;
+        const familia = opt.dataset.familia.toLowerCase();
+        const esp = espessuraSelect.value;
+        
+        if (familia === 'mdf' && esp) {
+          // Para MDF, valida contra o saldo da espessura selecionada
+          let saldos = {};
+          try {
+            saldos = JSON.parse(opt.dataset.saldos || '{}');
+          } catch(e) { console.error("Erro ao ler saldos:", e); }
+          
+          const disponivel = parseInt(saldos[esp] || 0);
+          qtdHint.textContent = `Máximo disponível para ${esp}mm: ${disponivel}`;
+          qtdInput.max = disponivel;
+        } else if (familia !== 'mdf') {
+          // Para outros produtos, usa o saldo geral
+          const disponivel = parseInt(opt.dataset.qtd);
+          qtdHint.textContent = `Máximo disponível: ${disponivel}`;
+          qtdInput.max = disponivel;
+        }
       }
     } else {
       qtdInput.removeAttribute('max');
@@ -256,8 +275,43 @@
     }
   }
 
+  function atualizarSaldoPorEspessura() {
+    const opt = selectProduto.options[selectProduto.selectedIndex];
+    const esp = espessuraSelect.value;
+    const tipo = document.querySelector('input[name="tipo"]:checked');
+    
+    if (!opt.value || opt.dataset.familia.toLowerCase() !== 'mdf') return;
+
+    let saldos = {};
+    try {
+      saldos = JSON.parse(opt.dataset.saldos || '{}');
+    } catch(e) { console.error("Erro ao ler saldos:", e); }
+
+    if (!esp) {
+      qtdHint.textContent = "Selecione a espessura para ver o saldo disponível.";
+      qtdInput.removeAttribute('max');
+      return;
+    }
+
+    const qtdEsp = parseInt(saldos[esp] || 0);
+    
+    if (tipo && tipo.value === 'saida') {
+      qtdHint.textContent = `Máximo disponível para ${esp}mm: ${qtdEsp}`;
+      qtdInput.max = qtdEsp;
+    } else {
+      qtdHint.textContent = `Saldo atual para ${esp}mm: ${qtdEsp}`;
+      qtdInput.removeAttribute('max');
+    }
+  }
+
   selectProduto.addEventListener('change', () => {
     atualizarProdutoInfo();
+    atualizarTipo();
+    atualizarSaldoPorEspessura();
+  });
+
+  espessuraSelect.addEventListener('change', () => {
+    atualizarSaldoPorEspessura();
     atualizarTipo();
   });
 

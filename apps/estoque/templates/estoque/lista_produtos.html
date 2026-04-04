@@ -141,12 +141,24 @@
                 </td>
                 <td class="mono" style="color: var(--text-muted);">{{ produto.estoque_minimo }}</td>
                 <td>
-                    {% if produto.quantidade == 0 %}
-                        <span class="badge badge-critical">Esgotado</span>
-                    {% elif produto.quantidade <= produto.estoque_minimo %}
-                        <span class="badge badge-warning">Crítico</span>
+                    {% if produto.categoria.familia == FAMILIA_MDF %}
+                        {% with saldos_criticos=produto.saldos_mdf.all|dictsort:"quantidade" %}
+                            {% if saldos_criticos.0.quantidade == 0 %}
+                                <span class="badge badge-critical">Crítico</span>
+                            {% elif saldos_criticos.0.quantidade <= produto.estoque_minimo %}
+                                <span class="badge badge-warning">Atenção</span>
+                            {% else %}
+                                <span class="badge badge-ok">OK</span>
+                            {% endif %}
+                        {% endwith %}
                     {% else %}
-                        <span class="badge badge-ok">Disponível</span>
+                        {% if produto.quantidade == 0 %}
+                            <span class="badge badge-critical">Esgotado</span>
+                        {% elif produto.quantidade <= produto.estoque_minimo %}
+                            <span class="badge badge-warning">Crítico</span>
+                        {% else %}
+                            <span class="badge badge-ok">Disponível</span>
+                        {% endif %}
                     {% endif %}
                 </td>
                 <td style="text-align: right;">
