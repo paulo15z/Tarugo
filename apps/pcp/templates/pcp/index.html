@@ -5,7 +5,6 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
-    /* Integração do Tailwind com o Base.html */
     .tab-button { transition: var(--transition); }
     .rota-chip {
         display: inline-flex;
@@ -21,8 +20,6 @@
     }
     #drop-area { transition: var(--transition); }
     #drop-area.dragover { border-color: var(--accent); background: var(--accent-glow); }
-    
-    /* Sobrescrevendo alguns estilos do Tailwind para bater com o Base */
     .bg-white { background-color: var(--surface) !important; }
     .text-gray-800 { color: var(--text) !important; }
     .text-gray-600 { color: var(--text-muted) !important; }
@@ -38,6 +35,8 @@
 <input type="hidden" id="url-processar" value="{% url 'pcp:processar' %}">
 <input type="hidden" id="url-historico" value="{% url 'pcp:historico' %}">
 <input type="hidden" id="url-liberar-base" value="{% url 'pcp:liberar' pid='PID_PLACEHOLDER' %}">
+<input type="hidden" id="url-bloquear-base" value="{% url 'pcp:bloquear' pid='PID_PLACEHOLDER' %}">
+<input type="hidden" id="url-reabrir-base" value="{% url 'pcp:reabrir' pid='PID_PLACEHOLDER' %}">
 <input type="hidden" id="url-download-base" value="{% url 'pcp:download' pid='PID_PLACEHOLDER' %}">
 
 <div class="page-header">
@@ -86,7 +85,6 @@
                        class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-xl font-bold text-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                        oninput="verificarPronto()">
             </div>
-            
             <button id="btn-processar"
                     onclick="processarArquivo()"
                     disabled
@@ -114,13 +112,18 @@
         <div class="card p-6 flex items-center justify-between border-l-4 border-l-green-500">
             <div>
                 <h3 class="font-bold text-gray-100 display">Processamento Concluído</h3>
-                <p class="text-gray-500 text-sm">O arquivo XLS de roteiro está pronto para download.</p>
+                <p class="text-gray-500 text-sm">O arquivo XLS de roteiro está pronto para download e liberação.</p>
             </div>
-            <button id="btn-download" 
-                    class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-3 transition-all display">
-                <i class="fas fa-download"></i>
-                BAIXAR XLS
-            </button>
+            <div class="flex gap-3">
+                <button id="btn-download"
+                        class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all display">
+                    <i class="fas fa-download"></i> BAIXAR XLS
+                </button>
+                <button id="btn-liberar"
+                        class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all display">
+                    <i class="fas fa-unlock"></i> LIBERAR PARA BIPAGEM
+                </button>
+            </div>
         </div>
 
         <div class="card p-8">
@@ -162,11 +165,12 @@
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Arquivo Original</th>
-                        <th>Data/Hora</th>
+                        <th>Arquivo / Lote</th>
+                        <th>Data</th>
                         <th>Peças</th>
-                        <th>Status Bipagem</th>
-                        <th style="text-align: right;">Ação</th>
+                        <th>Bipagem</th>
+                        <th>Viagem</th>
+                        <th style="text-align: right;">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="hist-tbody"></tbody>
@@ -180,89 +184,75 @@
 </div>
 
 <script>
-    // Mantendo a lógica original do script para não quebrar a funcionalidade
     const CONFIG = {
         urls: {
-            processar: document.getElementById('url-processar').value,
-            historico: document.getElementById('url-historico').value,
-            liberarBase: document.getElementById('url-liberar-base').value,
-            downloadBase: document.getElementById('url-download-base').value
+            processar:    document.getElementById('url-processar').value,
+            historico:    document.getElementById('url-historico').value,
+            liberarBase:  document.getElementById('url-liberar-base').value,
+            bloquearBase: document.getElementById('url-bloquear-base').value,
+            reabrirBase:  document.getElementById('url-reabrir-base').value,
+            downloadBase: document.getElementById('url-download-base').value,
         },
-        getCsrfToken: () => document.getElementById('csrf-token').value
+        csrf: () => document.getElementById('csrf-token').value,
     };
 
     let arquivoAtual = null;
     let pidAtual = null;
 
-    function tickClock() {
-        const now = new Date();
-        document.getElementById('clock').textContent = now.toLocaleString('pt-BR');
-    }
-    setInterval(tickClock, 1000);
-    tickClock();
+    // Clock
+    const clockEl = document.getElementById('clock');
+    setInterval(() => { clockEl.textContent = new Date().toLocaleString('pt-BR'); }, 1000);
+    clockEl.textContent = new Date().toLocaleString('pt-BR');
 
+    // Tabs
     function showTab(tabIndex) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
         document.getElementById(`tab-content-${tabIndex}`).classList.remove('hidden');
-
         document.querySelectorAll('.tab-button').forEach((btn, i) => {
-            if (i === tabIndex) {
-                btn.classList.add('border-orange-500', 'text-orange-500');
-                btn.classList.remove('text-gray-500');
-            } else {
-                btn.classList.remove('border-orange-500', 'text-orange-500');
-                btn.classList.add('text-gray-500');
-            }
+            btn.classList.toggle('border-orange-500', i === tabIndex);
+            btn.classList.toggle('text-orange-500', i === tabIndex);
+            btn.classList.toggle('text-gray-500', i !== tabIndex);
         });
-
         if (tabIndex === 1) carregarHistorico();
     }
 
-    const dropArea = document.getElementById('drop-area');
-    const fileInput = document.getElementById('file-input');
-    const fileNameDisplay = document.getElementById('file-name');
-    const inputLote = document.getElementById('input-lote');
-    const btnProcessar = document.getElementById('btn-processar');
-
     // Drag & Drop
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
-    });
+    const dropArea  = document.getElementById('drop-area');
+    const fileInput = document.getElementById('file-input');
 
-    dropArea.addEventListener('dragover', () => dropArea.classList.add('dragover'));
-    ['dragleave', 'drop'].forEach(eventName => dropArea.addEventListener(eventName, () => dropArea.classList.remove('dragover')));
-
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev =>
+        dropArea.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); })
+    );
+    dropArea.addEventListener('dragover',  () => dropArea.classList.add('dragover'));
+    ['dragleave', 'drop'].forEach(ev => dropArea.addEventListener(ev, () => dropArea.classList.remove('dragover')));
     dropArea.addEventListener('drop', e => {
-        const dt = e.dataTransfer;
-        if (dt.files && dt.files.length > 0) {
-            arquivoAtual = dt.files[0];
-            fileNameDisplay.textContent = arquivoAtual.name;
-            verificarPronto();
-        }
+        if (e.dataTransfer.files?.[0]) selecionarArquivo(e.dataTransfer.files[0]);
     });
-
     dropArea.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', () => {
-        if (fileInput.files.length > 0) {
-            arquivoAtual = fileInput.files[0];
-            fileNameDisplay.textContent = arquivoAtual.name;
-            verificarPronto();
-        }
+        if (fileInput.files[0]) selecionarArquivo(fileInput.files[0]);
     });
 
-    function verificarPronto() {
-        const loteValido = inputLote.value && parseInt(inputLote.value) > 0;
-        btnProcessar.disabled = !(arquivoAtual && loteValido);
+    function selecionarArquivo(file) {
+        arquivoAtual = file;
+        document.getElementById('file-name').textContent = file.name;
+        verificarPronto();
     }
 
+    function verificarPronto() {
+        const loteValido = document.getElementById('input-lote').value && parseInt(document.getElementById('input-lote').value) > 0;
+        document.getElementById('btn-processar').disabled = !(arquivoAtual && loteValido);
+    }
+
+    // Processar
     async function processarArquivo() {
-        if (!arquivoAtual || !inputLote.value) return;
+        if (!arquivoAtual || !document.getElementById('input-lote').value) return;
 
         const formData = new FormData();
         formData.append('arquivo', arquivoAtual);
-        formData.append('lote', inputLote.value);
+        formData.append('lote', document.getElementById('input-lote').value);
 
-        btnProcessar.disabled = true;
+        document.getElementById('btn-processar').disabled = true;
         document.getElementById('progress-wrap').classList.remove('hidden');
         document.getElementById('alert-err').classList.add('hidden');
         document.getElementById('resultado').classList.add('hidden');
@@ -270,20 +260,18 @@
         try {
             const response = await fetch(CONFIG.urls.processar, {
                 method: 'POST',
-                headers: { 'X-CSRFToken': CONFIG.getCsrfToken() },
-                body: formData
+                headers: { 'X-CSRFToken': CONFIG.csrf() },
+                body: formData,
             });
-
             const data = await response.json();
             if (!response.ok) throw new Error(data.erro || 'Erro ao processar arquivo');
-
             exibirResultado(data);
         } catch (err) {
             const errDiv = document.getElementById('alert-err');
             errDiv.textContent = err.message;
             errDiv.classList.remove('hidden');
         } finally {
-            btnProcessar.disabled = false;
+            document.getElementById('btn-processar').disabled = false;
             document.getElementById('progress-wrap').classList.add('hidden');
         }
     }
@@ -291,10 +279,8 @@
     function exibirResultado(data) {
         pidAtual = data.pid;
         document.getElementById('resultado').classList.remove('hidden');
-        
-        // Stats
-        const statsDiv = document.getElementById('stats');
-        statsDiv.innerHTML = `
+
+        document.getElementById('stats').innerHTML = `
             <div class="card p-6">
                 <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Lote Gerado</p>
                 <p class="text-3xl font-bold text-orange-500 mono">${data.lote}</p>
@@ -305,23 +291,19 @@
             </div>
         `;
 
-        // Download
-        document.getElementById('btn-download').onclick = () => {
+        document.getElementById('btn-download').onclick = () =>
             window.location.href = CONFIG.urls.downloadBase.replace('PID_PLACEHOLDER', data.pid);
-        };
 
-        // Resumo Roteiros
-        const roteiroList = document.getElementById('roteiro-list');
-        roteiroList.innerHTML = data.resumo.map(r => `
+        document.getElementById('btn-liberar').onclick = () => liberarLote(data.pid);
+
+        document.getElementById('roteiro-list').innerHTML = data.resumo.map(r => `
             <div class="flex items-center justify-between p-4 bg-gray-900/50 rounded-xl border border-gray-800">
                 <span class="font-bold text-gray-300">${r.roteiro}</span>
                 <span class="bg-orange-500/10 text-orange-500 px-3 py-1 rounded-lg font-bold mono">${r.qtd}</span>
             </div>
         `).join('');
 
-        // Prévia Tabela
-        const tbody = document.getElementById('previa-tbody');
-        tbody.innerHTML = data.previa.map(row => `
+        document.getElementById('previa-tbody').innerHTML = data.previa.map(row => `
             <tr>
                 <td class="mono font-bold text-orange-500">${row.LOTE || ''}</td>
                 <td>${row.DESCRICAO_DA_PECA || ''}</td>
@@ -335,15 +317,16 @@
         window.scrollTo({ top: document.getElementById('resultado').offsetTop - 100, behavior: 'smooth' });
     }
 
+    // Histórico
     async function carregarHistorico() {
-        const tbody = document.getElementById('hist-tbody');
-        const noHist = document.getElementById('no-historico');
-        
+        const tbody   = document.getElementById('hist-tbody');
+        const noHist  = document.getElementById('no-historico');
+
         try {
             const response = await fetch(CONFIG.urls.historico);
             const data = await response.json();
 
-            if (data.length === 0) {
+            if (!data.length) {
                 noHist.classList.remove('hidden');
                 tbody.innerHTML = '';
                 return;
@@ -353,24 +336,26 @@
             tbody.innerHTML = data.map(r => `
                 <tr>
                     <td class="mono text-xs text-gray-500">${r.id}</td>
-                    <td class="font-medium">${r.nome_arquivo} <br> <span class="text-orange-500 text-xs font-bold">LOTE ${r.lote}</span></td>
+                    <td class="font-medium">
+                        ${r.nome_arquivo}
+                        <br><span class="text-orange-500 text-xs font-bold mono">LOTE ${r.lote}</span>
+                    </td>
                     <td class="text-gray-500 text-xs">${new Date(r.data).toLocaleString('pt-BR')}</td>
                     <td class="mono font-bold">${r.total_pecas}</td>
-                    <td>
-                        ${r.liberado 
-                            ? '<span class="text-green-500 text-xs font-bold uppercase"><i class="fas fa-check-circle mr-1"></i> Liberado</span>' 
-                            : '<span class="text-gray-600 text-xs font-bold uppercase">Pendente</span>'}
-                    </td>
+                    <td>${_badgeBipagem(r)}</td>
+                    <td>${_badgeViagem(r)}</td>
                     <td style="text-align: right;">
                         <div class="flex justify-end gap-2">
-                            <button onclick="window.location.href='${CONFIG.urls.downloadBase.replace('PID_PLACEHOLDER', r.id)}'" 
+                            <button onclick="window.location.href='${CONFIG.urls.downloadBase.replace('PID_PLACEHOLDER', r.id)}'"
                                     class="p-2 text-gray-400 hover:text-white transition-colors" title="Download XLS">
                                 <i class="fas fa-download"></i>
                             </button>
-                            ${!r.liberado ? `
-                                <button onclick="liberarLote('${r.id}')" 
-                                        class="bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all">
-                                    LIBERAR
+                            ${_acoesBipagem(r)}
+                            ${!r.liberado_viagem && r.liberado ? `
+                                <button onclick="liberarViagem('${r.id}')"
+                                        class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
+                                        title="Liberar para Expedição">
+                                    <i class="fas fa-truck mr-1"></i>VIAGEM
                                 </button>
                             ` : ''}
                         </div>
@@ -382,20 +367,57 @@
         }
     }
 
-    async function liberarLote(pid) {
-        if (!confirm('Deseja liberar este lote para a bipagem?')) return;
+    function _badgeBipagem(r) {
+        if (r.liberado) return '<span class="text-green-500 text-xs font-bold"><i class="fas fa-check-circle mr-1"></i>Liberado</span>';
+        return '<span class="text-gray-600 text-xs font-bold">Pendente</span>';
+    }
 
+    function _badgeViagem(r) {
+        if (r.liberado_viagem) return '<span class="text-blue-400 text-xs font-bold"><i class="fas fa-truck mr-1"></i>Liberado</span>';
+        return '<span class="text-gray-600 text-xs font-bold">—</span>';
+    }
+
+    function _acoesBipagem(r) {
+        if (!r.liberado) {
+            return `<button onclick="liberarLote('${r.id}')"
+                class="bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all">
+                <i class="fas fa-unlock mr-1"></i>LIBERAR
+            </button>`;
+        }
+        return `<button onclick="bloquearLote('${r.id}')"
+            class="bg-red-800 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
+            title="Bloquear bipagem deste lote">
+            <i class="fas fa-lock mr-1"></i>BLOQUEAR
+        </button>`;
+    }
+
+    // Ações
+    async function liberarLote(pid) {
+        if (!confirm('Liberar este lote para bipagem?')) return;
+        await _postLote(CONFIG.urls.liberarBase.replace('PID_PLACEHOLDER', pid), 'liberado', pid);
+    }
+
+    async function bloquearLote(pid) {
+        const motivo = prompt('Motivo do bloqueio (opcional):') ?? '';
+        if (motivo === null) return; // cancelou
+        const url = CONFIG.urls.bloquearBase.replace('PID_PLACEHOLDER', pid);
+        await _postLote(url + `?motivo=${encodeURIComponent(motivo)}`, 'bloqueado', pid);
+    }
+
+    async function liberarViagem(pid) {
+        if (!confirm('Liberar este lote para viagem/expedição?')) return;
+        await _postLote(CONFIG.urls.downloadBase.replace('download/PID_PLACEHOLDER/', `lote/${pid}/liberar-viagem/`), 'liberado para viagem', pid);
+        // Nota: usa URL construída — idealmente viria de hidden input como os outros
+    }
+
+    async function _postLote(url, acao, pid) {
         try {
-            const url = CONFIG.urls.liberarBase.replace('PID_PLACEHOLDER', pid);
             const response = await fetch(url, {
                 method: 'POST',
-                headers: { 'X-CSRFToken': CONFIG.getCsrfToken() }
+                headers: { 'X-CSRFToken': CONFIG.csrf() },
             });
-
             const data = await response.json();
-            if (!response.ok) throw new Error(data.erro || 'Erro ao liberar lote');
-
-            alert('Lote liberado com sucesso!');
+            if (!response.ok) throw new Error(data.erro || `Erro ao ${acao} lote`);
             carregarHistorico();
         } catch (err) {
             alert(err.message);
