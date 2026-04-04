@@ -14,6 +14,7 @@ from apps.estoque.services.reserva_service import ReservaService
 from apps.estoque.domain.tipos import FamiliaProduto
 from apps.bipagem.models.pedido import Pedido
 from decimal import Decimal
+from django.core.exceptions import ValidationError
 
 
 @login_required
@@ -131,8 +132,10 @@ def reserva_create(request):
             ReservaService.criar_reserva(data, usuario=request.user)
             messages.success(request, "Reserva criada com sucesso!")
             return redirect("estoque:lista_reservas")
+        except ValidationError as e:
+            messages.error(request, f"Erro de validação: {e.message if hasattr(e, 'message') else str(e)}")
         except Exception as e:
-            messages.error(request, f"Erro ao criar reserva: {str(e)}")
+            messages.error(request, f"Erro inesperado ao criar reserva: {str(e)}")
 
     produtos = Produto.objects.select_related('categoria').prefetch_related('saldos_mdf').all()
     pedidos = Pedido.objects.all()

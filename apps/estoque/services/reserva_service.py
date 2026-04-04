@@ -1,6 +1,7 @@
 # apps/estoque/services/reserva_service.py
 from django.db import models, transaction
-from pydantic import ValidationError
+from django.core.exceptions import ValidationError
+from pydantic import ValidationError as PydanticValidationError
 from apps.estoque.services.schemas import ReservaCreateSchema
 from apps.estoque.models import Produto, Reserva, SaldoMDF
 from apps.estoque.selectors.produto_selector import ProdutoSelector
@@ -16,7 +17,10 @@ class ReservaService:
     @staticmethod
     @transaction.atomic
     def criar_reserva(data: dict, usuario=None) -> Reserva:
-        schema = ReservaCreateSchema(**data)
+        try:
+            schema = ReservaCreateSchema(**data)
+        except PydanticValidationError as e:
+            raise ValidationError(f"Erro de validação: {e.errors()}")
         produto_id = schema.produto_id
         pedido_id = schema.pedido_id
         quantidade = schema.quantidade

@@ -169,7 +169,7 @@
     }
 
     const familia = opt.dataset.familia;
-    const isMDF = (familia === FAMILIA_MDF);
+    const isMDF = (familia.toLowerCase() === 'mdf' || familia === FAMILIA_MDF);
     
     infoSku.textContent = opt.dataset.sku;
     infoBox.classList.add('visible');
@@ -200,7 +200,7 @@
 
   function mostrarSaldosDisponiveis() {
     const opt = selectProduto.options[selectProduto.selectedIndex];
-    if (!opt.value || opt.dataset.familia !== FAMILIA_MDF) return;
+    if (!opt.value || (opt.dataset.familia.toLowerCase() !== 'mdf' && opt.dataset.familia !== FAMILIA_MDF)) return;
 
     let saldos = {};
     try {
@@ -223,7 +223,7 @@
     const opt = selectProduto.options[selectProduto.selectedIndex];
     const esp = espessuraSelect.value;
     
-    if (!opt.value || opt.dataset.familia !== FAMILIA_MDF) return;
+    if (!opt.value || (opt.dataset.familia.toLowerCase() !== 'mdf' && opt.dataset.familia !== FAMILIA_MDF)) return;
 
     let saldos = {};
     try {
