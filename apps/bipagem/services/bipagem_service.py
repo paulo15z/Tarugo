@@ -54,8 +54,6 @@ def registrar_bipagem(data: Dict[str, Any]) -> Dict[str, Any]:
 
     # 3. Idempotência: se já estiver bipada, apenas retorna sucesso
     if peca.status == StatusPeca.BIPADA:
-        # Ainda assim registramos o evento para histórico de tentativas/re-bipagem se necessário,
-        # mas aqui vamos apenas retornar que já foi feito.
         return BipagemOutput(
             sucesso=True,
             mensagem="Peça já foi bipada anteriormente",
@@ -71,12 +69,20 @@ def registrar_bipagem(data: Dict[str, Any]) -> Dict[str, Any]:
         momento=agora
     )
 
-    # 5. Atualizar status da peça
+    # 5. Determinar destino com base no plano de corte (Lógica MVP)
+    if peca.plano_corte and "Corte" in peca.plano_corte:
+        peca.destino = "Corte"
+    elif peca.plano_corte and "Bordo" in peca.plano_corte:
+        peca.destino = "Bordo"
+    else:
+        peca.destino = "Desconhecido"
+
+    # 6. Atualizar status da peça
     peca.status = StatusPeca.BIPADA
     peca.data_bipagem = agora
-    peca.save(update_fields=["status", "data_bipagem"])
+    peca.save(update_fields=["status", "data_bipagem", "destino"])
 
-    # 6. Gêmeo Digital: Sincronizar consumo com o estoque físico
+    # 7. Gêmeo Digital: Sincronizar consumo com o estoque físico
     try:
         GemeoDigitalService.processar_consumo_peca(peca.id, usuario=payload.usuario)
     except Exception as e:
