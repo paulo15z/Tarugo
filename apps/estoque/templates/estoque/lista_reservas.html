@@ -107,7 +107,7 @@
         </div>
         
         <div class="actions-group">
-            <form method="POST" action="{% url 'estoque:toggle_bloqueio_pedido' r.pedido.id %}" style="display: inline;">
+            <form method="POST" action="{% url 'estoque:pedido_toggle_bloqueio' r.pedido.id %}" style="display: inline;">
                 {% csrf_token %}
                 <button type="submit" class="btn-icon {% if r.pedido.bloqueado %}text-error{% endif %}" title="{% if r.pedido.bloqueado %}Desbloquear Bipagem{% else %}Bloquear Bipagem{% endif %}">
                     <i class="fas {% if r.pedido.bloqueado %}fa-lock{% else %}fa-lock-open{% endif %}"></i>
