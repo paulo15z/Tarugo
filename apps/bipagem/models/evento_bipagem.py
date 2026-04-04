@@ -11,6 +11,9 @@ class EventoBipagem(models.Model):
     momento = models.DateTimeField(auto_now_add=True, db_index=True)
     usuario = models.CharField(max_length=100, default='SISTEMA')
     localizacao = models.CharField(max_length=100, blank=True)
+    
+    # Log de sincronização (Gêmeo Digital)
+    erro_sincronia = models.TextField(null=True, blank=True, help_text="Erro ao tentar abater estoque automaticamente")
 
     class Meta:
         verbose_name = "Evento de Bipagem"

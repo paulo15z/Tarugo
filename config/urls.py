@@ -19,6 +19,9 @@ urlpatterns = [
     # Bipagem
     path('bipagem/', include('apps.bipagem.urls')),
     path('api/bipagem/', include('apps.bipagem.api.urls')),
+
+    # Integrações (Gêmeo Digital)
+    path('integracoes/', include('apps.integracoes.urls')),
 ]
 
 if settings.DEBUG:

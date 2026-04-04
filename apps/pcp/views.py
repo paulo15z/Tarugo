@@ -43,6 +43,43 @@ def pcp_processar(request):
     })
 
 
+@require_POST
+def pcp_liberar(request, pid):
+    """
+    Libera um lote processado para a bipagem.
+    """
+    try:
+        resultado = ProcessamentoPCPService.liberar_lote(pid, usuario=request.user)
+        if not resultado.get('sucesso'):
+            return JsonResponse({'erro': resultado.get('mensagem')}, status=400)
+        return JsonResponse(resultado)
+    except Exception as e:
+        return JsonResponse({'erro': str(e)}, status=500)
+
+
+@require_POST
+def pcp_liberar_viagem(request, pid):
+    """
+    Libera um lote processado para a expedição/viagem.
+    """
+    try:
+        from django.utils import timezone
+        lote = ProcessamentoPCP.objects.get(id=pid)
+        lote.liberado_para_viagem = True
+        lote.data_liberacao_viagem = timezone.now()
+        lote.save(update_fields=['liberado_para_viagem', 'data_liberacao_viagem'])
+        
+        return JsonResponse({
+            'sucesso': True, 
+            'mensagem': 'Lote liberado para viagem!',
+            'data_liberacao_viagem': lote.data_liberacao_viagem.isoformat()
+        })
+    except ProcessamentoPCP.DoesNotExist:
+        return JsonResponse({'erro': 'Lote não encontrado.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'erro': str(e)}, status=500)
+
+
 @require_GET
 def pcp_historico(request):
     """Retorna os últimos 50 processamentos como JSON."""
@@ -55,6 +92,10 @@ def pcp_historico(request):
             'lote': r.lote,
             'total_pecas': r.total_pecas,
             'data': r.criado_em.isoformat(),
+            'liberado': r.liberado_para_bipagem,
+            'data_liberacao': r.data_liberacao.isoformat() if r.data_liberacao else None,
+            'liberado_viagem': r.liberado_para_viagem,
+            'data_liberacao_viagem': r.data_liberacao_viagem.isoformat() if r.data_liberacao_viagem else None,
         }
         for r in registros
     ]

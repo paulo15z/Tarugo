@@ -1,0 +1,257 @@
+{% extends "bipagem/base.html" %}
+
+{% block title %}Gêmeo Digital - Discrepâncias{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --danger: #e11d48;
+        --warning: #f59e0b;
+        --success: #10b981;
+        --industrial-gray: #1f2937;
+        --blueprint-blue: #1e3a8a;
+    }
+
+    .dashboard-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+    }
+
+    .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--industrial-gray);
+        padding: 1.5rem;
+        border-radius: 4px;
+        transition: transform 0.2s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .stat-card.alert { border-left-color: var(--danger); }
+    .stat-card.warn { border-left-color: var(--warning); }
+
+    .stat-value {
+        font-family: var(--mono);
+        font-size: 2.5rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+
+    .discrepancy-section {
+        margin-bottom: 4rem;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid var(--industrial-gray);
+    }
+
+    .section-title {
+        font-family: var(--mono);
+        font-size: 1.25rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .error-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .error-table th {
+        background: #f9fafb;
+        padding: 1rem;
+        text-align: left;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .error-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.85rem;
+    }
+
+    .error-table tr:last-child td { border-bottom: none; }
+
+    .error-msg {
+        color: var(--danger);
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        background: #fff1f2;
+        padding: 0.25rem 0.5rem;
+        border-radius: 2px;
+        display: inline-block;
+    }
+
+    .material-tag {
+        background: #eff6ff;
+        color: #1e40af;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .empty-state-industrial {
+        padding: 4rem;
+        text-align: center;
+        background: #f8fafc;
+        border: 2px dashed var(--border);
+        border-radius: 8px;
+        color: var(--text-muted);
+    }
+
+    .badge-lote {
+        background: var(--industrial-gray);
+        color: white;
+        padding: 0.1rem 0.4rem;
+        border-radius: 3px;
+        font-family: var(--mono);
+        font-size: 0.7rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Gêmeo Digital</h1>
+        <p class="page-subtitle">Monitoramento de Sincronia: Sistema vs Fábrica</p>
+    </div>
+    <div style="text-align: right;">
+        <span class="badge {% if total_discrepancias > 0 %}badge-cancelada{% else %}badge-bipada{% endif %}">
+            {% if total_discrepancias > 0 %}
+                {{ total_discrepancias }} DISCREPÂNCIAS DETECTADAS
+            {% else %}
+                SISTEMA SINCRONIZADO
+            {% endif %}
+        </span>
+    </div>
+</div>
+
+<div class="dashboard-container">
+    <div class="stat-card {% if estatisticas.total_erros_sincronia > 0 %}alert{% endif %}">
+        <div class="stat-value">{{ estatisticas.total_erros_sincronia }}</div>
+        <div class="stat-label">Erros de Sincronia (Estoque)</div>
+    </div>
+    <div class="stat-card {% if estatisticas.total_sem_mapeamento > 0 %}warn{% endif %}">
+        <div class="stat-value">{{ estatisticas.total_sem_mapeamento }}</div>
+        <div class="stat-label">Peças sem Mapeamento</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ estatisticas.total_mapeamentos_ativos }}</div>
+        <div class="stat-label">Materiais Mapeados</div>
+    </div>
+</div>
+
+<!-- SEÇÃO 1: ERROS DE SINCRONIA -->
+<div class="discrepancy-section">
+    <div class="section-header">
+        <div class="section-title">Falhas de Abatimento de Estoque</div>
+    </div>
+    
+    {% if eventos_erro %}
+    <table class="error-table">
+        <thead>
+            <tr>
+                <th>Momento</th>
+                <th>Peça / Lote</th>
+                <th>Pedido / Cliente</th>
+                <th>Erro Detectado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for evento in eventos_erro %}
+            <tr>
+                <td class="mono" style="white-space: nowrap;">{{ evento.momento|date:"d/m H:i" }}</td>
+                <td>
+                    <div style="font-weight: 700;">{{ evento.peca.id_peca }}</div>
+                    <span class="badge-lote">LOTE {{ evento.peca.numero_lote_pcp }}</span>
+                </td>
+                <td>
+                    <div style="font-size: 0.8rem;">{{ evento.peca.modulo.ordem_producao.pedido.cliente_nome }}</div>
+                    <div class="mono" style="font-size: 0.7rem; color: var(--text-muted);">PED: {{ evento.peca.modulo.ordem_producao.pedido.numero_pedido }}</div>
+                </td>
+                <td>
+                    <div class="error-msg">{{ evento.erro_sincronia }}</div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state-industrial">
+        <p>Nenhum erro de abatimento de estoque registrado.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- SEÇÃO 2: SEM MAPEAMENTO -->
+<div class="discrepancy-section">
+    <div class="section-header">
+        <div class="section-title">Peças Bipadas sem Vínculo de Material</div>
+    </div>
+    
+    {% if pecas_sem_map %}
+    <table class="error-table">
+        <thead>
+            <tr>
+                <th>Bipagem</th>
+                <th>Peça</th>
+                <th>Material Dinabox (Não Mapeado)</th>
+                <th>Pedido</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for peca in pecas_sem_map %}
+            <tr>
+                <td class="mono">{{ peca.data_bipagem|date:"d/m H:i" }}</td>
+                <td>
+                    <div style="font-weight: 700;">{{ peca.id_peca }}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">{{ peca.descricao }}</div>
+                </td>
+                <td>
+                    <span class="material-tag">{{ peca.material }}</span>
+                </td>
+                <td>
+                    <div style="font-size: 0.8rem;">{{ peca.modulo.ordem_producao.pedido.cliente_nome }}</div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state-industrial">
+        <p>Todas as peças bipadas possuem materiais mapeados no estoque.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

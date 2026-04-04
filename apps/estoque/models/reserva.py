@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 
 from apps.estoque.models.produto import Produto
+from apps.bipagem.models.pedido import Pedido
 
 User = get_user_model()
 
@@ -20,10 +21,19 @@ class Reserva(models.Model):
         related_name='reservas',
         verbose_name='Produto',
     )
-    projeto = models.CharField(
+    pedido = models.ForeignKey(
+        Pedido,
+        on_delete=models.CASCADE,
+        related_name='reservas',
+        verbose_name='Pedido/Projeto',
+        null=True,
+        blank=True
+    )
+    projeto_legado = models.CharField(
         max_length=255,
-        verbose_name='Projeto',
-        help_text='Nome ou código do projeto',
+        verbose_name='Projeto (Legado)',
+        null=True,
+        blank=True
     )
     quantidade = models.IntegerField(verbose_name='Quantidade')
     status = models.CharField(

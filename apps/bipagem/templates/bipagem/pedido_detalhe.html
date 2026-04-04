@@ -252,11 +252,28 @@
 
   document.addEventListener('click', () => input.focus());
 
+  // Refinamento do Scanner: 
+  // 1. Suporta Enter automático do scanner
+  // 2. Debounce para evitar processamento parcial
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const code = e.target.value.trim();
+      if (code) {
+        if (scanTimeout) clearTimeout(scanTimeout);
+        processScan(code);
+      }
+    }
+  });
+
   input.addEventListener('input', (e) => {
     const code = e.target.value.trim();
     if (scanTimeout) clearTimeout(scanTimeout);
-    if (code.length >= 6) {
-      scanTimeout = setTimeout(() => processScan(code), 300);
+    
+    // Se o código for longo o suficiente (ex: ID de peça Dinabox), 
+    // processa após um pequeno delay caso o scanner não envie Enter
+    if (code.length >= 8) {
+      scanTimeout = setTimeout(() => processScan(code), 500);
     }
   });
 

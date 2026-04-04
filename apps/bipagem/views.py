@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 
 from apps.bipagem.models import Pedido, Modulo, Peca
+from apps.pcp.models.processamento import ProcessamentoPCP
 from apps.bipagem.selectors.progresso import (
     get_resumo_pedido, 
     get_modulos_pedido, 
@@ -19,8 +20,22 @@ def _extrair_lote_base(lote_composto: str) -> str:
 @login_required
 def index(request):
     """Página principal do scanner de bipagem (Dashboard Operacional por LOTE BASE)."""
-    # Buscamos todas as peças e seus dados de pedido
-    pecas_qs = Peca.objects.select_related('modulo__ordem_producao__pedido').values(
+    # 1. Buscar apenas os lotes que foram explicitamente liberados no PCP
+    lotes_liberados = ProcessamentoPCP.objects.filter(
+        liberado_para_bipagem=True
+    ).values_list('lote', flat=True)
+    
+    # 2. Filtrar as peças que pertencem a esses lotes
+    # O numero_lote_pcp pode ser "500" ou "500-01"
+    # Precisamos de uma query que pegue ambos
+    q_filter = Q()
+    for lote in lotes_liberados:
+        q_filter |= Q(numero_lote_pcp=str(lote)) | Q(numero_lote_pcp__startswith=f"{lote}-")
+    
+    if not lotes_liberados:
+        return render(request, 'bipagem/index.html', {'lotes': []})
+
+    pecas_qs = Peca.objects.filter(q_filter).select_related('modulo__ordem_producao__pedido').values(
         'numero_lote_pcp',
         'modulo__ordem_producao__pedido__numero_pedido',
         'modulo__ordem_producao__pedido__cliente_nome',

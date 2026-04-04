@@ -31,6 +31,7 @@
 <input type="hidden" id="csrf-token" value="{{ csrf_token }}">
 <input type="hidden" id="url-processar" value="{% url 'pcp-processar' %}">
 <input type="hidden" id="url-historico" value="{% url 'pcp-historico' %}">
+<input type="hidden" id="url-liberar-base" value="{% url 'pcp-liberar' pid='PID_PLACEHOLDER' %}">
 <input type="hidden" id="url-download-base" value="{% url 'pcp-download' pid='PID_PLACEHOLDER' %}">
 
 <header class="bg-indigo-800 text-white shadow-lg">
@@ -157,6 +158,7 @@
                             <th class="px-8 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Arquivo Original</th>
                             <th class="px-8 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data/Hora</th>
                             <th class="px-8 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Peças</th>
+                            <th class="px-8 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status Bipagem</th>
                             <th class="px-8 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ação</th>
                         </tr>
                     </thead>
@@ -177,6 +179,7 @@
         urls: {
             processar: document.getElementById('url-processar').value,
             historico: document.getElementById('url-historico').value,
+            liberarBase: document.getElementById('url-liberar-base').value,
             downloadBase: document.getElementById('url-download-base').value
         },
         // Pegar o token CSRF atualizado do input
@@ -213,6 +216,10 @@
 
     function getDownloadUrl(pid) {
         return CONFIG.urls.downloadBase.replace('PID_PLACEHOLDER', pid);
+    }
+
+    function getLiberarUrl(pid) {
+        return CONFIG.urls.liberarBase.replace('PID_PLACEHOLDER', pid);
     }
 
     function renderRota(rota) {
@@ -373,22 +380,72 @@
             }
 
             noData.classList.add('hidden');
-            tbody.innerHTML = rows.map(r => `
+            tbody.innerHTML = rows.map(r => {
+                const statusHtml = r.liberado 
+                    ? `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                         <i class="fas fa-check-circle"></i> LIBERADO
+                       </span>`
+                    : `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
+                         <i class="fas fa-clock"></i> AGUARDANDO
+                       </span>`;
+
+                const btnLiberar = r.liberado
+                    ? `<button disabled class="opacity-50 cursor-not-allowed inline-flex items-center gap-2 bg-gray-200 text-gray-500 px-5 py-2 rounded-xl text-sm font-medium">
+                         <i class="fas fa-check"></i> Liberado
+                       </button>`
+                    : `<button onclick="liberarLote('${r.id}')" id="btn-liberar-${r.id}"
+                               class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-medium transition-all">
+                         <i class="fas fa-rocket"></i> Liberar Bipagem
+                       </button>`;
+
+                return `
                 <tr class="hover:bg-gray-50">
                     <td class="px-8 py-5 font-mono font-medium">${r.id}</td>
                     <td class="px-8 py-5">${r.nome_arquivo}</td>
                     <td class="px-8 py-5 text-gray-500">${new Date(r.data).toLocaleString('pt-BR')}</td>
                     <td class="px-8 py-5 font-medium">${r.total_pecas}</td>
-                    <td class="px-8 py-5">
+                    <td class="px-8 py-5">${statusHtml}</td>
+                    <td class="px-8 py-5 flex items-center gap-3">
+                        ${btnLiberar}
                         <a href="${getDownloadUrl(r.id)}" 
                            class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-sm font-medium">
                             <i class="fas fa-download"></i> Baixar XLS
                         </a>
                     </td>
                 </tr>
-            `).join('');
+                `;
+            }).join('');
         } catch (e) {
             tbody.innerHTML = `<tr><td colspan="5" class="px-8 py-12 text-center text-red-500">Erro ao carregar histórico</td></tr>`;
+        }
+    }
+
+    async function liberarLote(pid) {
+        const btn = document.getElementById(`btn-liberar-${pid}`);
+        if (!btn || btn.disabled) return;
+
+        if (!confirm('Deseja liberar este lote para a bipagem agora?')) return;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Liberando...';
+
+        try {
+            const res = await fetch(getLiberarUrl(pid), {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': CONFIG.getCsrfToken()
+                }
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.erro || 'Erro ao liberar lote');
+
+            alert('✅ Lote liberado com sucesso para a bipagem!');
+            carregarHistorico(); // Recarrega a lista
+        } catch (e) {
+            alert(`❌ Erro: ${e.message}`);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-rocket"></i> Liberar Bipagem';
         }
     }
 

@@ -9,6 +9,7 @@ from apps.bipagem.schemas.bipagem_schema import (
 )
 from apps.bipagem.mappers.peca_mapper import map_peca_to_output
 from apps.bipagem.domain.tipos import StatusPeca
+from apps.integracoes.services.gemeo_digital_service import GemeoDigitalService
 
 @transaction.atomic
 def registrar_bipagem(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -63,7 +64,7 @@ def registrar_bipagem(data: Dict[str, Any]) -> Dict[str, Any]:
         ).model_dump()
 
     # 4. Registrar evento de bipagem
-    EventoBipagem.objects.create(
+    evento = EventoBipagem.objects.create(
         peca=peca,
         usuario=payload.usuario,
         localizacao=payload.localizacao,
@@ -74,6 +75,14 @@ def registrar_bipagem(data: Dict[str, Any]) -> Dict[str, Any]:
     peca.status = StatusPeca.BIPADA
     peca.data_bipagem = agora
     peca.save(update_fields=["status", "data_bipagem"])
+
+    # 6. Gêmeo Digital: Sincronizar consumo com o estoque físico
+    try:
+        GemeoDigitalService.processar_consumo_peca(peca.id, usuario=payload.usuario)
+    except Exception as e:
+        # Registra o erro no evento para o Dashboard de Discrepâncias
+        evento.erro_sincronia = str(e)
+        evento.save(update_fields=["erro_sincronia"])
 
     return BipagemOutput(
         sucesso=True,
