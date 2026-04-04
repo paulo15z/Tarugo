@@ -35,10 +35,10 @@
 
 {% block content %}
 <input type="hidden" id="csrf-token" value="{{ csrf_token }}">
-<input type="hidden" id="url-processar" value="{% url 'pcp-processar' %}">
-<input type="hidden" id="url-historico" value="{% url 'pcp-historico' %}">
-<input type="hidden" id="url-liberar-base" value="{% url 'pcp-liberar' pid='PID_PLACEHOLDER' %}">
-<input type="hidden" id="url-download-base" value="{% url 'pcp-download' pid='PID_PLACEHOLDER' %}">
+<input type="hidden" id="url-processar" value="{% url 'pcp:processar' %}">
+<input type="hidden" id="url-historico" value="{% url 'pcp:historico' %}">
+<input type="hidden" id="url-liberar-base" value="{% url 'pcp:liberar' pid='PID_PLACEHOLDER' %}">
+<input type="hidden" id="url-download-base" value="{% url 'pcp:download' pid='PID_PLACEHOLDER' %}">
 
 <div class="page-header">
     <div>
