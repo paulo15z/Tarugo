@@ -1,6 +1,20 @@
 # apps/bipagem/api/serializers.py
 from rest_framework import serializers
-from apps.bipagem.models import Pedido, OrdemProducao, Modulo, Peca, EventoBipagem
+from apps.bipagem.models import Pedido, OrdemProducao, Modulo, Peca, EventoBipagem, LoteProducao
+
+
+class LoteProducaoSerializer(serializers.ModelSerializer):
+    total_pecas = serializers.IntegerField(read_only=True)
+    pecas_bipadas = serializers.IntegerField(read_only=True)
+    percentual = serializers.FloatField(read_only=True)
+
+    class Meta:
+        model = LoteProducao
+        fields = [
+            'id', 'numero_lote', 'processamento_pcp', 'data_criacao',
+            'liberado_para_bipagem', 'bloqueado_motivo', 'observacoes',
+            'total_pecas', 'pecas_bipadas', 'percentual'
+        ]
 
 
 class EventoBipagemSerializer(serializers.ModelSerializer):

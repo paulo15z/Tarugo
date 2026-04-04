@@ -3,6 +3,7 @@ from django.db import models
 from django.utils import timezone
 
 from .modulo import Modulo
+from .lote_producao import LoteProducao
 
 
 class Peca(models.Model):
@@ -14,6 +15,14 @@ class Peca(models.Model):
     ]
 
     modulo = models.ForeignKey(Modulo, on_delete=models.CASCADE, related_name='pecas')
+    lote_producao = models.ForeignKey(
+        LoteProducao, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='pecas',
+        verbose_name="Lote de Produção"
+    )
     
     id_peca = models.CharField(max_length=50, db_index=True)
     numero_lote_pcp = models.CharField(max_length=50, blank=True, db_index=True)

@@ -6,6 +6,7 @@ class BipagemInput(BaseModel):
     codigo_peca: str = Field(..., min_length=1)
     usuario: str = Field(default="DESCONHECIDO")
     localizacao: str = Field(default="")
+    lote_producao_id: Optional[int] = None
 
 class PecaOutput(BaseModel):
     id_peca: str

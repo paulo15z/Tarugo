@@ -5,6 +5,9 @@ from .views import (
     BuscaPecaView,
     PedidoDetailView,
     ModuloDetailView,
+    LoteProducaoListView,
+    PedidoLotesView,
+    LotePecasView,
 )
 from .views_lots import (
     LotesListView, LoteDetailView, PecasPorLoteView
@@ -29,6 +32,11 @@ urlpatterns = [
 
     # Busca rápida
     path('buscar/', BuscaPecaView.as_view(), name='buscar'),
+
+    # Novos endpoints de LoteProducao (Sprint 1)
+    path('lotes-producao/', LoteProducaoListView.as_view(), name='lotes-producao-list'),
+    path('pedidos/<str:numero>/lotes-producao/', PedidoLotesView.as_view(), name='pedido-lotes-producao'),
+    path('lotes-producao/<int:id>/pecas/', LotePecasView.as_view(), name='lote-producao-pecas'),
 
     path("importar-csv/", ImportarCSVView.as_view()),
 ]

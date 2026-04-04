@@ -2,19 +2,19 @@ from django.db import transaction
 from django.utils import timezone
 from typing import Dict, Any
 
-from apps.bipagem.models import Peca, EventoBipagem
+from apps.bipagem.models import Peca, EventoBipagem, LoteProducao
 from apps.bipagem.schemas.bipagem_schema import (
     BipagemInput,
     BipagemOutput
 )
 from apps.bipagem.mappers.peca_mapper import map_peca_to_output
 from apps.bipagem.domain.tipos import StatusPeca
-from apps.integracoes.services.gemeo_digital_service import GemeoDigitalService
 
 @transaction.atomic
 def registrar_bipagem(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Registra a bipagem de uma peça, validando o estado e persistindo o evento.
+    Agora suporta validação por LoteProducao.
     """
     try:
         payload = BipagemInput(**data)
@@ -26,29 +26,40 @@ def registrar_bipagem(data: Dict[str, Any]) -> Dict[str, Any]:
         ).model_dump()
 
     # 1. Buscar peça com lock para evitar concorrência
-    peca = (
-        Peca.objects
-        .select_for_update()
-        .select_related("modulo__ordem_producao__pedido")
-        .filter(id_peca=payload.codigo_peca)
-        .order_by("-id") # Pega a mais recente se houver duplicidade de ID em lotes diferentes
-        .first()
-    )
+    # Se lote_producao_id for fornecido, filtramos por ele para garantir que a peça pertence ao lote
+    query = Peca.objects.select_for_update().select_related("modulo__ordem_producao__pedido", "lote_producao")
+    
+    if payload.lote_producao_id:
+        query = query.filter(id_peca=payload.codigo_peca, lote_producao_id=payload.lote_producao_id)
+    else:
+        query = query.filter(id_peca=payload.codigo_peca)
+    
+    peca = query.order_by("-id").first()
 
     if not peca:
+        msg = "Peça não encontrada"
+        if payload.lote_producao_id:
+            msg += f" no lote informado ({payload.lote_producao_id})"
         return BipagemOutput(
             sucesso=False,
-            mensagem="Peça não encontrada",
-            erro=f"Código {payload.codigo_peca} não existe no sistema"
+            mensagem=msg,
+            erro=f"Código {payload.codigo_peca} não existe no sistema ou não pertence ao lote."
         ).model_dump()
 
-    # 2. Validar estados impeditivos
+    # 2. Validar estados impeditivos (Pedido e Lote)
     pedido = peca.modulo.ordem_producao.pedido
     if pedido.bloqueado:
         return BipagemOutput(
             sucesso=False,
             mensagem="Bipagem bloqueada pelo PCP",
             erro=f"O pedido {pedido.numero_pedido} está bloqueado para novas bipagens."
+        ).model_dump()
+
+    if peca.lote_producao and not peca.lote_producao.liberado_para_bipagem:
+        return BipagemOutput(
+            sucesso=False,
+            mensagem="Lote não liberado",
+            erro=f"O lote {peca.lote_producao.numero_lote} ainda não foi liberado para produção."
         ).model_dump()
 
     if peca.status in [StatusPeca.CONCLUIDA, StatusPeca.CANCELADA]:
@@ -90,13 +101,13 @@ def registrar_bipagem(data: Dict[str, Any]) -> Dict[str, Any]:
     peca.data_bipagem = agora
     peca.save(update_fields=["status", "data_bipagem", "destino"])
 
-    # 7. Gêmeo Digital: Sincronizar consumo com o estoque físico
-    try:
-        GemeoDigitalService.processar_consumo_peca(peca.id, usuario=payload.usuario)
-    except Exception as e:
-        # Registra o erro no evento para o Dashboard de Discrepâncias
-        evento.erro_sincronia = str(e)
-        evento.save(update_fields=["erro_sincronia"])
+    # 7. Gêmeo Digital: REMOVIDO TEMPORARIAMENTE PARA SPRINT 1
+    # No Sprint 2, isso será substituído pela orquestração com Reservas.
+    # try:
+    #     GemeoDigitalService.processar_consumo_peca(peca.id, usuario=payload.usuario)
+    # except Exception as e:
+    #     evento.erro_sincronia = str(e)
+    #     evento.save(update_fields=["erro_sincronia"])
 
     return BipagemOutput(
         sucesso=True,

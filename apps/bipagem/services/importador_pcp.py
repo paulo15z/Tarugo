@@ -2,15 +2,16 @@
 Serviço responsável por importar dados já processados pelo roteiro para a estrutura de Bipagem.
 
 Fluxo:
-PCP Service → DataFrame tratado → ImportadorPCP → Pedido → OrdemProducao → Modulo → Peca
+PCP Service → DataFrame tratado → ImportadorPCP → LoteProducao → Pedido → OrdemProducao → Modulo → Peca
 """
 
 import pandas as pd
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from django.db import transaction
 from django.utils import timezone
 
-from apps.bipagem.models import Pedido, OrdemProducao, Modulo, Peca
+from apps.bipagem.models import Pedido, OrdemProducao, Modulo, Peca, LoteProducao
+from apps.pcp.models.processamento import ProcessamentoPCP
 
 
 def _limpar_valor(val: Any) -> str:
@@ -42,7 +43,12 @@ def _extrair_numero_pedido(df: pd.DataFrame) -> str:
     return '999999'
 
 
-def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str = "") -> Dict:
+def importar_de_pcp(
+    df: pd.DataFrame, 
+    arquivo_nome: str = "", 
+    numero_lote: str = "", 
+    processamento_id: Optional[str] = None
+) -> Dict:
     """
     Importa DataFrame tratado pelo PCP para o sistema de bipagem.
     
@@ -50,6 +56,7 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str =
         df: DataFrame já processado pelo pcp_service (com ROTEIRO e PLANO)
         arquivo_nome: Nome original do arquivo (para logging)
         numero_lote: O número do lote inserido manualmente pelo usuário no app PCP (Lote Base)
+        processamento_id: ID do ProcessamentoPCP que gerou este DataFrame
     
     Returns:
         Dict com resultado da importação
@@ -68,12 +75,35 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str =
         with transaction.atomic():
             numero_pedido = _extrair_numero_pedido(df)
             
-            # 1. Criar ou obter Pedido
+            # 1. Obter ProcessamentoPCP e Criar LoteProducao
+            processamento = None
+            if processamento_id:
+                processamento = ProcessamentoPCP.objects.filter(id=processamento_id).first()
+            
+            if not processamento:
+                # Fallback caso não venha ID (ex: testes ou importação manual)
+                # Tenta achar pelo número do lote se existir
+                processamento = ProcessamentoPCP.objects.filter(lote=numero_lote).first()
+            
+            if not processamento:
+                raise ValueError(f"Processamento PCP não encontrado para o lote {numero_lote}")
+
+            # Criar o LoteProducao (1 por ProcessamentoPCP)
+            # Usamos o numero_lote (lote base) como identificador
+            lote_producao, _ = LoteProducao.objects.get_or_create(
+                numero_lote=str(numero_lote),
+                processamento_pcp=processamento,
+                defaults={
+                    'liberado_para_bipagem': processamento.liberado_para_bipagem,
+                    'observacoes': f"Importado do arquivo: {arquivo_nome}"
+                }
+            )
+
+            # 2. Criar ou obter Pedido
             cliente_nome = _limpar_valor(df.iloc[0].get('NOME DO CLIENTE', 'Cliente Desconhecido'))
             if '-' in cliente_nome:
                 cliente_nome = cliente_nome.split('-', 1)[1].strip()
             
-            # Usamos update_or_create para garantir que o nome do cliente seja atualizado se mudar
             pedido, pedido_criado = Pedido.objects.update_or_create(
                 numero_pedido=numero_pedido,
                 defaults={
@@ -81,7 +111,7 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str =
                 }
             )
 
-            # 2. Agrupar por Ordem de Produção (nome_ambiente = NOME DO PROJETO)
+            # 3. Agrupar por Ordem de Produção (nome_ambiente = NOME DO PROJETO)
             grupos_ordem = df.groupby('NOME DO PROJETO')
 
             for nome_ambiente, df_ordem in grupos_ordem:
@@ -95,8 +125,7 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str =
                     defaults={'referencia_principal': ''}
                 )
 
-                # 3. Agrupar por Módulo dentro da Ordem de Produção
-                # usando a 'REFERÊNCIA DA PEÇA' para identificar o módulo
+                # 4. Agrupar por Módulo dentro da Ordem de Produção
                 df_ordem['referencia_modulo'] = df_ordem['REFERÊNCIA DA PEÇA'].apply(
                     lambda x: _limpar_valor(x).split('-')[0].strip() if '-' in str(x) else _limpar_valor(x)
                 )
@@ -108,7 +137,6 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str =
                     if not ref_modulo:
                         ref_modulo = "ITENS_ESPECIAIS"
 
-                    # Nome do módulo = primeira descrição encontrada
                     nome_modulo = _limpar_valor(df_modulo.iloc[0].get('DESCRIÇÃO MÓDULO', ref_modulo))
 
                     modulo, _ = Modulo.objects.get_or_create(
@@ -117,7 +145,7 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str =
                         defaults={'nome_modulo': nome_modulo}
                     )
 
-                    # 4. Criar as peças
+                    # 5. Criar as peças
                     pecas_para_criar = []
 
                     for _, row in df_modulo.iterrows():
@@ -140,11 +168,7 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str =
                         roteiro = _limpar_valor(row.get('ROTEIRO', ''))
                         plano = _limpar_valor(row.get('PLANO', ''))
                         
-                        # O LOTE que o operador precisa ver é a composição LoteBase-Plano (ex: 573-06)
-                        # O PCP Service já gera isso na coluna 'LOTE'
                         lote_composto = _limpar_valor(row.get('LOTE', ''))
-                        
-                        # Fallback caso a coluna LOTE não esteja preenchida como esperado
                         if not lote_composto or lote_composto == 'nan':
                             lote_composto = f"{numero_lote}-{plano}" if plano else str(numero_lote)
 
@@ -152,6 +176,7 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str =
                         if not Peca.objects.filter(modulo=modulo, id_peca=id_peca).exists():
                             peca = Peca(
                                 modulo=modulo,
+                                lote_producao=lote_producao, # Associação com o novo LoteProducao
                                 id_peca=id_peca,
                                 numero_lote_pcp=lote_composto,
                                 descricao=descricao,
@@ -171,13 +196,14 @@ def importar_de_pcp(df: pd.DataFrame, arquivo_nome: str = "", numero_lote: str =
                         Peca.objects.bulk_create(pecas_para_criar, batch_size=500)
                         total_pecas_criadas += len(pecas_para_criar)
 
-            mensagem = f'Importação concluída: {total_pecas_criadas} peças importadas (Pedido {numero_pedido}, Lote Base {numero_lote})'
+            mensagem = f'Importação concluída: {total_pecas_criadas} peças importadas (Pedido {numero_pedido}, Lote Produção {numero_lote})'
 
             return {
                 'sucesso': True,
                 'mensagem': mensagem,
                 'numero_pedido': numero_pedido,
                 'numero_lote': numero_lote,
+                'lote_producao_id': lote_producao.id,
                 'total_pecas': total_pecas_criadas,
                 'erros': erros,
                 'pedido_criado': pedido_criado

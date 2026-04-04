@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Q
 
-from apps.bipagem.models import Peca, Modulo, Pedido
+from apps.bipagem.models import Peca, Modulo, Pedido, LoteProducao
 from apps.bipagem.services.bipagem_service import registrar_bipagem
 from apps.bipagem.selectors.progresso import (
     get_resumo_pedido, 
@@ -16,7 +16,13 @@ from .serializers import (
     PecaListSerializer,
     PedidoSerializer,
     OrdemProducaoSerializer,
-    ModuloSerializer
+    ModuloSerializer,
+    LoteProducaoSerializer
+)
+from apps.bipagem.selectors.lote_selectors import (
+    get_todos_lotes_ativos,
+    get_lotes_por_pedido,
+    get_pecas_por_lote_producao
 )
 
 class BipagemView(APIView):
@@ -122,3 +128,37 @@ class ModuloDetailView(APIView):
             })
         except Modulo.DoesNotExist:
             return Response({'erro': f'Módulo {referencia} não encontrado'}, status=404)
+
+class LoteProducaoListView(APIView):
+    """GET /api/bipagem/lotes-producao/"""
+    def get(self, request):
+        lotes = get_todos_lotes_ativos()
+        return Response(lotes)
+
+class PedidoLotesView(APIView):
+    """GET /api/bipagem/pedidos/<str:numero>/lotes-producao/"""
+    def get(self, request, numero):
+        lotes = get_lotes_por_pedido(numero)
+        # Como o selector retorna QuerySet de models, usamos o serializer
+        # Mas precisamos anotar os campos de progresso se quisermos no serializer
+        from django.db.models import Count, Q
+        from apps.bipagem.domain.tipos import StatusPeca
+        lotes_anotados = lotes.annotate(
+            total_pecas=Count('pecas'),
+            pecas_bipadas=Count('pecas', filter=Q(pecas__status=StatusPeca.BIPADA))
+        )
+        # Adiciona percentual manualmente ou via serializer method
+        serializer = LoteProducaoSerializer(lotes_anotados, many=True)
+        data = serializer.data
+        for item in data:
+            total = item['total_pecas']
+            bipadas = item['pecas_bipadas']
+            item['percentual'] = round((bipadas / total * 100), 1) if total > 0 else 0
+            
+        return Response(data)
+
+class LotePecasView(APIView):
+    """GET /api/bipagem/lotes-producao/<int:id>/pecas/"""
+    def get(self, request, id):
+        pecas = get_pecas_por_lote_producao(id)
+        return Response([map_peca_to_output(p).model_dump() for p in pecas])
