@@ -1,64 +1,65 @@
-# apps/pcp/api/views.py
-from rest_framework.views import APIView
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser
-from rest_framework import status
-from django.shortcuts import get_object_or_404
-from django.http import FileResponse
-
-from apps.pcp.services.roteiro_service import (
-    processar_arquivo_roteiro_pcp,
-    ProcessarRoteiroInput
+from apps.pcp.models.lote import LotePCP
+from apps.pcp.services.lote_service import LotePCPService
+from apps.pcp.selectors.lote_selector import (
+    list_lotes_pendentes,
+    get_lote_by_pid,
+    get_peca_by_id,
 )
-from apps.pcp.models.processamento import ProcessamentoPCP
-from apps.pcp.api.serializers import (
-    PCPProcessResponseSerializer,
-    ProcessamentoPCPSerializer
+from .serializers import (
+    LotePCPListSerializer,
+    LotePCPDetailSerializer,
+    BipagemRequestSerializer,
+    PecaPCPSerializer,
 )
-from apps.pcp.selectors.pcp_selectors import get_historico_pcp
 
-class PCPProcessView(APIView):
-    parser_classes = [MultiPartParser]
 
-    def post(self, request):
-        if 'arquivo' not in request.FILES:
-            return Response({'erro': 'Arquivo não enviado'}, status=400)
+class LotePCPViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    API PCP - Lotes e Bipagem
+    GET /api/pcp/lotes/          → lista de lotes pendentes
+    GET /api/pcp/lotes/{pid}/    → detalhe completo (hierarquia)
+    POST /api/pcp/lotes/{pid}/bipar/ → bipagem simples
+    """
+    queryset = LotePCP.objects.all()
+    lookup_field = 'pid'
 
-        uploaded_file = request.FILES['arquivo']
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return LotePCPListSerializer
+        return LotePCPDetailSerializer
 
-        try:
-            result = processar_arquivo_roteiro_pcp(uploaded_file)
+    def get_queryset(self):
+        if self.action == 'list':
+            return list_lotes_pendentes()
+        return super().get_queryset()
 
-            return Response(result)
+    @action(detail=True, methods=['post'], url_path='bipar')
+    def bipar(self, request, pid=None):
+        """Bipagem real da empresa - simples e rápida"""
+        serializer = BipagemRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        except Exception as e:
-            return Response({'erro': str(e)}, status=500)
-        
-        
-
-class PCPDownloadView(APIView):
-    """Download do arquivo XLS gerado"""
-    def get(self, request, pid):
-        proc = get_object_or_404(ProcessamentoPCP, id=pid)
-
-        if not proc.arquivo_saida:
+        peca = get_peca_by_id(serializer.validated_data['peca_id'])
+        if not peca or peca.modulo.ambiente.lote.pid != pid:
             return Response(
-                {'erro': 'Arquivo não encontrado'}, 
-                status=status.HTTP_404_NOT_FOUND
+                {"detail": "Peça não encontrada ou não pertence a este lote"},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-        
-        response = FileResponse(
-            proc.arquivo_saida.open('rb'),
-            as_attachment=True,
-            filename=f"ROTEIRO_{proc.nome_arquivo}.xls"
+        # Toda regra de negócio está no Service
+        peca_atualizada = LotePCPService.bipar_peca(
+            peca_id=peca.id,
+            quantidade=serializer.validated_data['quantidade'],
+            # usuario=request.user.username se quiser logar quem bipou
         )
-        return response
 
-
-class PCPHistoricoView(APIView):
-    """Lista histórico de processamentos"""
-    def get(self, request):
-        historico = get_historico_pcp()
-        serializer = ProcessamentoPCPSerializer(historico, many=True)
-        return Response(serializer.data)
+        return Response(
+            {
+                "message": f"Bipado {serializer.validated_data['quantidade']} unidade(s) com sucesso!",
+                "peca": PecaPCPSerializer(peca_atualizada).data
+            },
+            status=status.HTTP_200_OK
+        )
