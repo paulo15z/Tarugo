@@ -28,6 +28,7 @@ urlpatterns = [
     path('lote/<str:pid>/liberar/', views.pcp_liberar, name='liberar'),
     path('lote/<str:pid>/bloquear/', views.pcp_bloquear, name='bloquear'),
     path('lote/<str:pid>/reabrir/', views.pcp_reabrir, name='reabrir'),
+    path('lote/<str:pid>/remover/', views.pcp_remover, name='remover'),
 
     # Ciclo de vida para expedição/viagem
     path('lote/<str:pid>/liberar-viagem/', views.pcp_liberar_viagem, name='liberar-viagem'),

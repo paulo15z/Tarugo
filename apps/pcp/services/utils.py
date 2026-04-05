@@ -96,26 +96,36 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def determinar_plano_de_corte(row, roteiro: str) -> str:
-    """Mantém exatamente a lógica original"""
-    desc = str(row.get('DESCRIÇÃO DA PEÇA', '')).strip().lower()
-    obs = (str(row.get('OBSERVAÇÃO', '')) + ' ' + str(row.get('OBS', ''))).strip().lower()
+    """Mantem a logica de plano priorizando tags estruturadas do Dinabox."""
+    desc = str(row.get('DESCRI??O DA PE?A', '')).strip().lower()
+    obs = (str(row.get('OBSERVA??O', '')) + ' ' + str(row.get('OBS', ''))).strip().lower()
     local = str(row.get('LOCAL', '')).strip().lower()
-    material = str(row.get('MATERIAL DA PEÇA', '')).strip().lower()
-    eh_ripa = 'ripa' in desc or 'ripa' in local or '_ripa_' in obs
+    material = str(row.get('MATERIAL DA PE?A', '')).strip().lower()
 
-    if 'PIN' in roteiro:
+    tag_ripa = '_ripa_' in obs
+    tag_painel = '_painel_' in obs
+    tag_passagem = '_passagem_' in obs
+    tag_lamina = '_lamina_' in obs
+    tag_pintura = '_pin_' in obs or 'PIN' in roteiro
+    tag_pre_montagem = '_pre_' in obs or '_pr?_' in obs or 'PR?' in roteiro
+
+    if tag_pintura:
         return '01'
-    if 'lamina' in material or 'lâmina' in material or 'folha' in material or '_lamina_' in obs:
+    if tag_lamina or 'lamina' in material or 'l?mina' in material or 'folha' in material:
         return '02'
-    if eh_ripa:
+    if tag_ripa:
         return '03'
+    if tag_painel or tag_passagem:
+        return '07'
     if 'DUP' in roteiro:
         return '05'
-    if 'PRÉ' in roteiro or 'pré' in desc or 'pre montagem' in obs or 'prem' in obs or '_pré_' in obs:
+    if tag_pre_montagem or 'pre montagem' in obs or 'prem' in obs:
         return '10'
     if 'MCX' in roteiro:
         return '04'
-    if 'MPE' in roteiro or 'porta' in desc or 'porta' in local or 'frontal' in desc or 'frontal' in local or 'frente' in desc or 'frente' in local:
+    if 'MPE' in roteiro:
+        return '06'
+    if 'porta' in desc or 'porta' in local or 'frontal' in desc or 'frontal' in local or 'frente' in desc or 'frente' in local:
         return '06'
     return '11'
 

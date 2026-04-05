@@ -4,7 +4,7 @@ from .lote import (
     ModuloPCP,
     PecaPCP,
 )
-from .processamento import ProcessamentoPCP
+from .processamento import ProcessamentoPCP, AuditoriaProcessamentoPCP
 
 __all__ = [
     'LotePCP',
@@ -12,4 +12,5 @@ __all__ = [
     'ModuloPCP',
     'PecaPCP',
     'ProcessamentoPCP',
+    'AuditoriaProcessamentoPCP',
 ]

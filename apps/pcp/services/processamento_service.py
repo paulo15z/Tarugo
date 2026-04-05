@@ -18,7 +18,6 @@ from apps.integracoes.dinabox.service import DinaboxService
 from apps.pcp.utils.ripas import consolidar_ripas
 from apps.pcp.utils.roteiros import calcular_roteiro, determinar_plano_de_corte
 from apps.pcp.utils.excel import gerar_xls_roteiro
-from apps.bipagem.services.importador_pcp import importar_de_pcp
 
 def _normalizar_chave(chave: str) -> str:
     """Converte 'DESCRIÇÃO DA PEÇA' → 'DESCRICAO_DA_PECA' (válido no template Django)."""
@@ -129,32 +128,26 @@ class ProcessamentoPCPService:
     @staticmethod
     def liberar_lote(pid: str, usuario=None):
         """
-        Lê o arquivo XLS gerado, reconstrói o DataFrame e importa para a bipagem.
+        Marca o lote como liberado para a bipagem operacional.
+
+        A Bipagem agora consome diretamente as pecas do PCP, sem espelhar dados
+        em modelos proprios.
         """
         from django.utils import timezone
         from apps.pcp.models.processamento import ProcessamentoPCP
-        from apps.bipagem.services.importador_pcp import importar_de_pcp
 
         processamento = ProcessamentoPCP.objects.get(id=pid)
-        
+
         if processamento.liberado_para_bipagem:
-            return {'sucesso': True, 'mensagem': 'Lote já liberado anteriormente.'}
+            return {'sucesso': True, 'mensagem': 'Lote ja liberado anteriormente.'}
 
-        # 1. Ler o arquivo de saída para reconstruir o DF
-        # Nota: Em um cenário ideal, salvaríamos o DF serializado ou o JSON.
-        # Para o MVP, ler o XLS gerado é seguro pois ele contém todas as colunas necessárias.
-        df = pd.read_excel(processamento.arquivo_saida.path, dtype=str).fillna('')
+        processamento.liberado_para_bipagem = True
+        processamento.data_liberacao = timezone.now()
+        processamento.save(update_fields=['liberado_para_bipagem', 'data_liberacao'])
 
-        # 2. Importar para Bipagem
-        resultado = importar_de_pcp(
-            df, 
-            processamento.nome_arquivo, 
-            numero_lote=str(processamento.lote)
-        )
-
-        if resultado.get('sucesso'):
-            processamento.liberado_para_bipagem = True
-            processamento.data_liberacao = timezone.now()
-            processamento.save()
-
-        return resultado
+        return {
+            'sucesso': True,
+            'mensagem': f'Lote {processamento.lote} liberado para bipagem.',
+            'pid': processamento.id,
+            'lote': processamento.lote,
+        }

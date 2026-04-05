@@ -4,43 +4,38 @@ BORDA_COLS = ['BORDA_FACE_FRENTE', 'BORDA_FACE_TRASEIRA', 'BORDA_FACE_LE', 'BORD
 
 
 def determinar_plano_de_corte(row: pd.Series, roteiro: str) -> str:
-    """Determina o plano de corte baseado no roteiro e características da peça"""
-    desc = str(row.get('DESCRIÇÃO DA PEÇA', '')).strip().lower()
-    obs = (str(row.get('OBSERVAÇÃO', '')) + ' ' + str(row.get('OBS', ''))).strip().lower()
+    """Determina o plano de corte priorizando tags estruturadas do Dinabox."""
+    desc = str(row.get('DESCRI??O DA PE?A', '')).strip().lower()
+    obs = (str(row.get('OBSERVA??O', '')) + ' ' + str(row.get('OBS', ''))).strip().lower()
     local = str(row.get('LOCAL', '')).strip().lower()
-    material = str(row.get('MATERIAL DA PEÇA', '')).strip().lower()
+    material = str(row.get('MATERIAL DA PE?A', '')).strip().lower()
 
-    # Prioridade 1: Pintura
-    if 'PIN' in roteiro:
-        return '01'   # PEÇAS COM PINTURA
+    tag_ripa = '_ripa_' in obs
+    tag_painel = '_painel_' in obs
+    tag_passagem = '_passagem_' in obs
+    tag_lamina = '_lamina_' in obs
+    tag_pintura = '_pin_' in obs or 'PIN' in roteiro
+    tag_pre_montagem = '_pre_' in obs or '_pr?_' in obs or 'PR?' in roteiro
 
-    # Prioridade 2: Lâminas
-    if 'lamina' in material or 'lâmina' in material or 'folha' in material or '_lamina_' in obs:
-        return '02'   # LÂMINAS OU FOLHAS
-
-    # Prioridade 3: Ripas (Direcionado para RIPAS 03)
-    # Refinado para evitar falsos positivos: deve conter 'ripa' mas não 'porta' ou 'frente' no mesmo campo se for ambíguo
-    eh_ripa = 'ripa' in desc or 'ripa' in local or '_ripa_' in obs
-    if eh_ripa:
-        return '03'   # RIPAS
-
-    # Prioridade 4: Duplagem
+    if tag_pintura:
+        return '01'
+    if tag_lamina or 'lamina' in material or 'l?mina' in material or 'folha' in material:
+        return '02'
+    if tag_ripa:
+        return '03'
+    if tag_painel or tag_passagem:
+        return '07'
     if 'DUP' in roteiro:
-        return '05'   # ENGROSSADAS/DUPLADAS
-
-    # Prioridade 5: Pré-Montagem
-    if 'PRÉ' in roteiro or 'pré' in desc or 'pre montagem' in obs or 'prem' in obs or '_pre_' in obs:
-        return '10'   # PRÉ MONTAGEM
-
-    # Prioridade 6: Montagem de Caixa
+        return '05'
+    if tag_pre_montagem or 'pre montagem' in obs or 'prem' in obs:
+        return '10'
     if 'MCX' in roteiro:
-        return '04'   # MONTAGEM DE CAIXAS E GAVETAS
-
-    # Prioridade 7: Portas e Frentes
-    if 'MPE' in roteiro or 'porta' in desc or 'porta' in local or 'frontal' in desc or 'frontal' in local or 'frente' in desc or 'frente' in local:
-        return '06'   # PORTAS E FRENTES
-
-    return '11'       # OUTROS / GERAL
+        return '04'
+    if 'MPE' in roteiro:
+        return '06'
+    if 'porta' in desc or 'porta' in local or 'frontal' in desc or 'frontal' in local or 'frente' in desc or 'frente' in local:
+        return '06'
+    return '11'
 
 
 def calcular_roteiro(row: pd.Series) -> str:

@@ -2,33 +2,42 @@
 Views do app PCP.
 
 O PCP gerencia o ciclo de vida completo dos lotes:
-liberar → bloquear → reabrir → liberar viagem
-
-Não há acoplamento com views do bipagem aqui.
+liberar -> bloquear -> reabrir -> liberar viagem -> remover historico
 """
-import unicodedata
 import re
-import pandas as pd
-from django.http import JsonResponse, FileResponse, Http404
+import unicodedata
+
+from django.core.files.base import ContentFile
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
-from django.core.files.base import ContentFile
 
 from apps.pcp.models.processamento import ProcessamentoPCP
-from apps.pcp.models.lote import LotePCP
-from apps.pcp.services.pcp_service import processar_arquivo_dinabox
+from apps.pcp.services.historico_service import HistoricoPCPService
 from apps.pcp.services.pcp_interface import (
-    liberar_lote_para_bipagem,
     bloquear_lote_bipagem,
+    liberar_lote_para_bipagem,
     reabrir_lote_bipagem,
 )
+from apps.pcp.services.pcp_service import processar_arquivo_dinabox
 
 
 def _normalizar_chave(chave: str) -> str:
-    """Converte 'DESCRIÇÃO DA PEÇA' → 'DESCRICAO_DA_PECA' (válido no template Django)."""
     chave = unicodedata.normalize('NFD', chave)
     chave = ''.join(c for c in chave if unicodedata.category(c) != 'Mn')
     return re.sub(r'\W+', '_', chave).strip('_').upper()
+
+
+def _user_pode_gerenciar_pcp(user) -> bool:
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser or user.is_staff:
+        return True
+    return user.groups.filter(name__in=['PCP', 'TI']).exists()
+
+
+def _json_forbidden():
+    return JsonResponse({'erro': 'Somente PCP, TI ou admin podem executar esta acao.'}, status=403)
 
 
 # ---------------------------------------------------------------------------
@@ -36,8 +45,9 @@ def _normalizar_chave(chave: str) -> str:
 # ---------------------------------------------------------------------------
 
 def pcp_index(request):
-    """Serve o frontend principal do PCP."""
-    return render(request, 'pcp/index.html')
+    return render(request, 'pcp/index.html', {
+        'pode_gerenciar_pcp': _user_pode_gerenciar_pcp(request.user),
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -46,7 +56,6 @@ def pcp_index(request):
 
 @require_POST
 def pcp_processar(request):
-    """Recebe arquivo via AJAX, processa e retorna JSON com prévia."""
     arquivo = request.FILES.get('arquivo')
 
     if not arquivo:
@@ -54,36 +63,45 @@ def pcp_processar(request):
 
     lote_str = request.POST.get('lote', '').strip()
     if not lote_str or not lote_str.isdigit() or int(lote_str) <= 0:
-        return JsonResponse({'erro': 'Informe um número de lote válido.'}, status=400)
+        return JsonResponse({'erro': 'Informe um numero de lote valido.'}, status=400)
 
     try:
-        # 1. Processa o arquivo usando o novo serviço
         df, xls_bytes, nome_saida, pid, resumo_processamento = processar_arquivo_dinabox(
             arquivo,
             int(lote_str),
         )
-        
-        # 2. Cria o registro legado ProcessamentoPCP para compatibilidade com o histórico atual
-        # e para armazenar o arquivo_saida (XLS)
+
         processamento = ProcessamentoPCP.objects.create(
             id=pid,
             nome_arquivo=arquivo.name,
             lote=int(lote_str),
             total_pecas=len(df),
-            usuario=request.user if request.user.is_authenticated else None
+            usuario=request.user if request.user.is_authenticated else None,
         )
-        
+
         arquivo_content = ContentFile(xls_bytes, name=nome_saida)
         processamento.arquivo_saida.save(nome_saida, arquivo_content, save=True)
 
-        # 3. Prepara a resposta JSON esperada pelo index.html
-        cols_previa = ['DESCRIÇÃO DA PEÇA', 'LOCAL', 'PLANO', 'ROTEIRO']
+        cols_previa = ['DESCRICAO DA PECA', 'LOCAL', 'PLANO', 'ROTEIRO']
         if 'LOTE' in df.columns:
             cols_previa.insert(0, 'LOTE')
-        if 'OBSERVAÇÃO' in df.columns:
-            cols_previa.insert(3, 'OBSERVAÇÃO')
+        if 'OBSERVACAO' in df.columns or 'OBSERVA??O' in df.columns:
+            cols_previa.insert(3, 'OBSERVACAO')
 
-        previa_raw = df[cols_previa].head(50).fillna('').to_dict(orient='records')
+        cols_existentes = []
+        variantes = {
+            'DESCRICAO DA PECA': 'DESCRI??O DA PE?A',
+            'OBSERVACAO': 'OBSERVA??O',
+        }
+        for col in cols_previa:
+            if col in df.columns:
+                cols_existentes.append(col)
+                continue
+            coluna_real = variantes.get(col)
+            if coluna_real and coluna_real in df.columns:
+                cols_existentes.append(coluna_real)
+
+        previa_raw = df[cols_existentes].head(50).fillna('').to_dict(orient='records')
         previa = [{_normalizar_chave(k): v for k, v in row.items()} for row in previa_raw]
 
         resumo_df = df['ROTEIRO'].fillna('SEM ROTEIRO').astype(str).value_counts().reset_index()
@@ -109,7 +127,8 @@ def pcp_processar(request):
 
 @require_POST
 def pcp_liberar(request, pid):
-    """Libera um lote processado para bipagem."""
+    if not _user_pode_gerenciar_pcp(request.user):
+        return _json_forbidden()
     try:
         resultado = liberar_lote_para_bipagem(pid, usuario=request.user)
         if not resultado.get('sucesso'):
@@ -121,7 +140,8 @@ def pcp_liberar(request, pid):
 
 @require_POST
 def pcp_bloquear(request, pid):
-    """Bloqueia um lote liberado para bipagem."""
+    if not _user_pode_gerenciar_pcp(request.user):
+        return _json_forbidden()
     motivo = request.POST.get('motivo', '') or request.GET.get('motivo', '')
     resultado = bloquear_lote_bipagem(pid, motivo=motivo)
     status_code = 200 if resultado['sucesso'] else 404
@@ -130,19 +150,21 @@ def pcp_bloquear(request, pid):
 
 @require_POST
 def pcp_reabrir(request, pid):
-    """Reabre um lote previamente bloqueado."""
+    if not _user_pode_gerenciar_pcp(request.user):
+        return _json_forbidden()
     resultado = reabrir_lote_bipagem(pid)
     status_code = 200 if resultado['sucesso'] else 404
     return JsonResponse(resultado, status=status_code)
 
 
 # ---------------------------------------------------------------------------
-# Ciclo de vida do lote (viagem/expedição)
+# Ciclo de vida do lote (viagem/expedicao)
 # ---------------------------------------------------------------------------
 
 @require_POST
 def pcp_liberar_viagem(request, pid):
-    """Libera um lote para expedição/viagem."""
+    if not _user_pode_gerenciar_pcp(request.user):
+        return _json_forbidden()
     try:
         from django.utils import timezone
 
@@ -157,18 +179,28 @@ def pcp_liberar_viagem(request, pid):
             'data_liberacao_viagem': lote.data_liberacao_viagem.isoformat(),
         })
     except ProcessamentoPCP.DoesNotExist:
-        return JsonResponse({'erro': 'Lote não encontrado.'}, status=404)
+        return JsonResponse({'erro': 'Lote nao encontrado.'}, status=404)
     except Exception as e:
         return JsonResponse({'erro': str(e)}, status=500)
 
 
+@require_POST
+def pcp_remover(request, pid):
+    if not _user_pode_gerenciar_pcp(request.user):
+        return _json_forbidden()
+
+    motivo = request.POST.get('motivo', '').strip() or request.GET.get('motivo', '').strip()
+    resultado = HistoricoPCPService.remover_processamento(pid=pid, motivo=motivo, usuario=request.user)
+    status_code = 200 if resultado.get('sucesso') else 400
+    return JsonResponse(resultado, status=status_code)
+
+
 # ---------------------------------------------------------------------------
-# Histórico e download
+# Historico e download
 # ---------------------------------------------------------------------------
 
 @require_GET
 def pcp_historico(request):
-    """Retorna os últimos 50 processamentos como JSON."""
     registros = ProcessamentoPCP.objects.order_by('-criado_em')[:50]
 
     data = [
@@ -184,6 +216,7 @@ def pcp_historico(request):
             'data_liberacao_viagem': (
                 r.data_liberacao_viagem.isoformat() if r.data_liberacao_viagem else None
             ),
+            'pode_remover': _user_pode_gerenciar_pcp(request.user),
         }
         for r in registros
     ]
@@ -193,19 +226,18 @@ def pcp_historico(request):
 
 @require_GET
 def pcp_download(request, pid):
-    """Serve o arquivo XLS gerado para download."""
     try:
         processamento = ProcessamentoPCP.objects.get(id=pid)
     except ProcessamentoPCP.DoesNotExist:
-        raise Http404('Processamento não encontrado.')
+        raise Http404('Processamento nao encontrado.')
 
     if not processamento.arquivo_saida:
-        raise Http404('Arquivo não disponível.')
+        raise Http404('Arquivo nao disponivel.')
 
     try:
         arquivo = processamento.arquivo_saida.open('rb')
     except FileNotFoundError:
-        raise Http404('Arquivo não encontrado no servidor.')
+        raise Http404('Arquivo nao encontrado no servidor.')
 
     nome = processamento.arquivo_saida.name.split('/')[-1]
     return FileResponse(arquivo, as_attachment=True, filename=nome)

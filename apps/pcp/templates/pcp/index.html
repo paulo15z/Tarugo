@@ -72,6 +72,9 @@
 <input type="hidden" id="url-bloquear-base" value="{% url 'pcp:bloquear' pid='PID_PLACEHOLDER' %}">
 <input type="hidden" id="url-reabrir-base" value="{% url 'pcp:reabrir' pid='PID_PLACEHOLDER' %}">
 <input type="hidden" id="url-download-base" value="{% url 'pcp:download' pid='PID_PLACEHOLDER' %}">
+<input type="hidden" id="url-liberar-viagem-base" value="{% url 'pcp:liberar-viagem' pid='PID_PLACEHOLDER' %}">
+<input type="hidden" id="url-remover-base" value="{% url 'pcp:remover' pid='PID_PLACEHOLDER' %}">
+<input type="hidden" id="can-manage-pcp" value="{{ pode_gerenciar_pcp|yesno:'true,false' }}">
 
 <div class="page-header">
     <div>
@@ -228,12 +231,15 @@
             bloquearBase: document.getElementById('url-bloquear-base').value,
             reabrirBase:  document.getElementById('url-reabrir-base').value,
             downloadBase: document.getElementById('url-download-base').value,
+            liberarViagemBase: document.getElementById('url-liberar-viagem-base').value,
+            removerBase: document.getElementById('url-remover-base').value,
         },
         csrf: () => document.getElementById('csrf-token').value,
     };
 
     let arquivoAtual = null;
     let pidAtual = null;
+    const CAN_MANAGE_PCP = document.getElementById('can-manage-pcp').value === 'true';
 
     // Clock
     const clockEl = document.getElementById('clock');
@@ -407,11 +413,18 @@
                                 <i class="fas fa-download"></i>
                             </button>
                             ${_acoesBipagem(r)}
-                            ${!r.liberado_viagem && r.liberado ? `
+                            ${CAN_MANAGE_PCP && !r.liberado_viagem && r.liberado ? `
                                 <button onclick="liberarViagem('${r.id}')"
                                         class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
-                                        title="Liberar para Expedição">
+                                        title="Liberar para viagem">
                                     <i class="fas fa-truck mr-1"></i>VIAGEM
+                                </button>
+                            ` : ''}
+                            ${r.pode_remover ? `
+                                <button onclick="removerLote('${r.id}')"
+                                        class="bg-gray-800 hover:bg-red-900 text-red-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
+                                        title="Remover lote com auditoria">
+                                    <i class="fas fa-trash mr-1"></i>REMOVER
                                 </button>
                             ` : ''}
                         </div>
@@ -419,7 +432,7 @@
                 </tr>
             `).join('');
         } catch (err) {
-            console.error('Erro ao carregar histórico:', err);
+            console.error('Erro ao carregar historico:', err);
         }
     }
 
@@ -434,6 +447,7 @@
     }
 
     function _acoesBipagem(r) {
+        if (!CAN_MANAGE_PCP) return '';
         if (!r.liberado) {
             return `<button onclick="liberarLote('${r.id}')"
                 class="bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all">
@@ -461,9 +475,21 @@
     }
 
     async function liberarViagem(pid) {
-        if (!confirm('Liberar este lote para viagem/expedição?')) return;
-        await _postLote(CONFIG.urls.downloadBase.replace('download/PID_PLACEHOLDER/', `lote/${pid}/liberar-viagem/`), 'liberado para viagem', pid);
-        // Nota: usa URL construída — idealmente viria de hidden input como os outros
+        if (!confirm('Liberar este lote para viagem?')) return;
+        await _postLote(CONFIG.urls.liberarViagemBase.replace('PID_PLACEHOLDER', pid), 'liberado para viagem', pid);
+    }
+
+    async function removerLote(pid) {
+        const motivo = prompt('Motivo da remocao (obrigatorio para auditoria):');
+        if (motivo === null) return;
+        if (!motivo.trim() || motivo.trim().length < 3) {
+            alert('Informe um motivo com pelo menos 3 caracteres.');
+            return;
+        }
+        const confirmado = confirm(`Remover o lote ${pid} do historico? Esta acao apaga o roteiro salvo e os dados operacionais vinculados.`);
+        if (!confirmado) return;
+        const url = CONFIG.urls.removerBase.replace('PID_PLACEHOLDER', pid);
+        await _postLote(url + `?motivo=${encodeURIComponent(motivo.trim())}`, 'remover', pid);
     }
 
     async function _postLote(url, acao, pid) {

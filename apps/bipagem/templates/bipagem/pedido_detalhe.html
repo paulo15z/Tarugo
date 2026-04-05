@@ -1,364 +1,321 @@
 {% extends "bipagem/base.html" %}
 
-{% block title %}Conferência Lote {{ lote_manual }}{% endblock %}
+{% block title %}Bipagem Lote {{ preview.lote.lote }}{% endblock %}
 
 {% block extra_css %}
 <style>
-  .scanner-header {
-    position: sticky;
-    top: 52px;
-    background: var(--bg);
-    padding: 1rem 0;
-    z-index: 90;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 1.5rem;
+  .scanner-shell { display:grid; gap:16px; }
+  .scanner-row { display:grid; grid-template-columns: 1.2fr 0.8fr; gap:16px; align-items:start; }
+  .scan-input {
+    width:100%; padding:20px 22px; border-radius:14px; border:2px solid #33475b;
+    background:#0c1218; color:#fff; font-size:34px; font-family:var(--mono); font-weight:700;
+    letter-spacing:0.04em;
   }
-  .scanner-input-wrap {
-    max-width: 1000px;
-    margin: 0 auto;
-    display: flex;
-    gap: 1.5rem;
-    align-items: center;
-    position: relative;
+  .scan-input:focus { outline:none; border-color:#ff9a4a; box-shadow:0 0 0 4px rgba(255,122,26,0.14); }
+  .destino-overlay, .alert-overlay {
+    display:none; position:fixed; inset:0; z-index:1000; align-items:center; justify-content:center;
+    text-align:center; padding:24px;
   }
-  .scanner-input-wrap input {
-    flex: 1;
-    padding: 1.2rem 1.5rem;
-    font-size: 2rem;
-    font-family: var(--mono);
-    border: 4px solid var(--border-strong);
-    border-radius: 12px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-  }
-  .scanner-input-wrap input:focus {
-    outline: none;
-    border-color: var(--text);
-    box-shadow: 0 6px 30px rgba(0,0,0,0.15);
-  }
-  
-  #sector-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.85);
-    z-index: 2000;
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    text-align: center;
-    padding: 2rem;
-  }
-  .overlay-sector-name {
-    font-size: 8vw;
-    font-weight: 900;
-    line-height: 1;
-    text-transform: uppercase;
-    margin-bottom: 1rem;
-    text-shadow: 0 10px 30px rgba(0,0,0,0.5);
-  }
-  .overlay-peca-id {
-    font-size: 3vw;
-    font-family: var(--mono);
-    opacity: 0.9;
-  }
-
-  /* Overlay de Alerta (Já Bipada) */
-  #alert-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(255, 152, 0, 0.95); /* Laranja vibrante */
-    z-index: 2100;
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    text-align: center;
-    padding: 2rem;
-  }
-  .alert-title { font-size: 6vw; font-weight: 900; margin-bottom: 1rem; }
-  .alert-msg { font-size: 3vw; font-weight: 600; }
-
-  #pecas-table th, #pecas-table td { padding: 1rem 0.75rem; }
-  .col-status { width: 40px; }
-  .col-id { width: 12%; font-family: var(--mono); font-weight: 700; }
-  .col-desc { width: 28%; }
-  .col-dim { width: 12%; font-family: var(--mono); text-align: center; }
-  .col-lote { width: 10%; font-family: var(--mono); color: var(--text-muted); }
-  .col-destino { width: 13%; }
-  .col-modulo { width: 15%; }
-  .col-status-text { width: 10%; font-family: var(--mono); font-size: 0.75rem; }
-
-  .peca-row { transition: background 0.3s ease; }
-  .peca-row.bipada { background-color: #e8f5e9 !important; }
-  .peca-row.bipada td { color: #2e7d32; }
-  .peca-row.just-bipada { animation: highlight-green 2s ease-out; }
-  @keyframes highlight-green {
-    0% { background-color: #4caf50; color: white; }
-    100% { background-color: #e8f5e9; }
-  }
-  .status-indicator {
-    width: 14px; height: 14px; border-radius: 50%;
-    display: inline-block; background: var(--border-strong);
-  }
-  .status-indicator.bipada { background: #4caf50; box-shadow: 0 0 10px #4caf50; }
-  
-  .progress-stats { display: flex; gap: 2.5rem; font-family: var(--mono); font-size: 1rem; font-weight: 700; }
-  .progress-stats span { color: var(--text-muted); font-weight: 400; margin-right: 0.5rem; }
-  
-  .sector-badge {
-    padding: 0.3rem 0.6rem;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 800;
-    color: white;
-    text-transform: uppercase;
-    display: inline-block;
-    white-space: nowrap;
-  }
-  .lote-header-badge {
-    background: var(--text);
-    color: white;
-    padding: 0.3rem 0.8rem;
-    border-radius: 6px;
-    font-family: var(--mono);
-    font-size: 1.2rem;
-    margin-bottom: 0.5rem;
-    display: inline-block;
-  }
-  .dim-badge {
-    background: #f1f5f9;
-    color: #475569;
-    padding: 0.2rem 0.4rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    font-weight: 600;
-  }
+  .destino-overlay { background:#1d4ed8; }
+  .alert-overlay { background:#c2410c; }
+  .destino-box { max-width:1100px; width:100%; }
+  .destino-label { color:#d6e3ef; font-size:22px; text-transform:uppercase; letter-spacing:0.12em; }
+  .destino-main, .alert-main { font-size:min(13vw, 140px); font-weight:900; line-height:0.95; margin:18px 0; }
+  .destino-meta, .alert-meta { font-size:min(3vw, 34px); color:#dce6f1; font-family:var(--mono); }
+  .destino-roteiro { font-size:min(2vw, 26px); color:#eff6ff; margin-top:16px; font-weight:700; }
+  .table-scroll { max-height:60vh; overflow:auto; }
+  .row-finalizado { background: rgba(52,211,153,0.08); }
+  .row-em_producao { background: rgba(251,191,36,0.06); }
+  @media (max-width: 1100px) { .scanner-row { grid-template-columns: 1fr; } }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Overlay de Destino (Escandaloso) -->
-<div id="sector-overlay" onclick="this.style.display='none'">
-  <div style="font-size: 2vw; font-family: var(--mono); margin-bottom: 1rem; opacity: 0.8;">DESTINO DA PEÇA:</div>
-  <div id="overlay-name" class="overlay-sector-name">---</div>
-  <div id="overlay-id" class="overlay-peca-id">---</div>
-  <div style="margin-top: 3rem; font-size: 1.5vw; opacity: 0.6;">Clique ou bipe a próxima para fechar</div>
-</div>
+<div class="scanner-shell">
+  <div class="panel">
+    <div style="display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+      <div>
+        <div class="muted mono">PID {{ pid }}</div>
+        <h1 style="margin:6px 0 8px;">Lote {{ preview.lote.lote|default:'---' }} ? {{ preview.lote.cliente_nome }}</h1>
+        <div class="muted">Confira o preview, ajuste os filtros se precisar e entao inicie a bipagem.</div>
+      </div>
+      <a class="btn" href="{% url 'bipagem:index' %}">Voltar para lotes</a>
+    </div>
+  </div>
 
-<!-- Overlay de Alerta (Já Bipada) -->
-<div id="alert-overlay" onclick="this.style.display='none'">
-  <div class="alert-title">ATENÇÃO!</div>
-  <div id="alert-msg" class="alert-msg">PEÇA JÁ FOI BIPADA</div>
-  <div id="alert-peca-id" style="font-size: 2vw; font-family: var(--mono); margin-top: 1rem;">---</div>
-  <div style="margin-top: 3rem; font-size: 1.5vw; opacity: 0.8;">Clique ou bipe a próxima para fechar</div>
-</div>
+  <div class="cards">
+    <div class="card"><div class="label">Pecas</div><div class="value">{{ preview.total_pecas }}</div></div>
+    <div class="card"><div class="label">Ja bipadas</div><div class="value">{{ preview.total_pecas_bipadas }}</div></div>
+    <div class="card"><div class="label">Ripas</div><div class="value">{{ preview.total_ripas }}</div></div>
+    <div class="card"><div class="label">Modulos</div><div class="value">{{ preview.total_modulos }}</div></div>
+    <div class="card"><div class="label">Ambientes</div><div class="value">{{ preview.ambientes|length }}</div></div>
+  </div>
 
-<div class="page-header" style="border-bottom: none; margin-bottom: 0;">
-  <div>
-    <div class="lote-header-badge">LOTE {{ lote_manual }}</div>
-    <h1 class="page-title" style="font-size: 1.2rem;">
-      Pedido {{ pedido.numero_pedido }}
-      {% if pedido_obj.bloqueado %}
-        <span class="badge badge-critical ml-2">BLOQUEADO PELO PCP</span>
+  <div class="scanner-row">
+    <div class="panel">
+      <div class="label" style="margin-bottom:10px;">Bipagem operacional</div>
+      <input id="scanner-input" class="scan-input" type="text" placeholder="Bipe ou digite o codigo da peca" autocomplete="off" autofocus>
+      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; align-items:center;">
+        <button id="scan-submit" class="btn btn-primary" type="button">Registrar bipagem</button>
+        <div id="scan-feedback" class="muted" style="padding-top:10px; font-weight:700;"></div>
+      </div>
+      <div style="margin-top:12px;" class="muted">Aceita scanner com debounce e digitacao manual.</div>
+    </div>
+
+    <div class="panel">
+      <div class="label" style="margin-bottom:10px;">Preview do lote</div>
+      <div class="muted">Clientes</div>
+      <div style="margin:4px 0 12px; font-weight:700;">{{ preview.clientes|join:', ' }}</div>
+      <div class="muted">Ambientes</div>
+      <div style="margin:4px 0 12px;">{{ preview.ambientes|join:', ' }}</div>
+      <div class="muted">Planos presentes</div>
+      <div style="margin:4px 0 12px;">{{ preview.planos|join:', ' }}</div>
+      <div class="muted">Arquivo</div>
+      <div style="margin-top:4px;" class="mono">{{ preview.lote.nome_arquivo }}</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <form method="get" style="display:grid; gap:10px; grid-template-columns:2fr 1fr 1fr 1fr auto auto; align-items:end;">
+      <div>
+        <div class="label" style="margin-bottom:6px;">Filtro rapido</div>
+        <input class="field" type="text" name="q" placeholder="Codigo, descricao, local, modulo..." value="{{ filtros.q }}">
+      </div>
+      <div>
+        <div class="label" style="margin-bottom:6px;">Ambiente</div>
+        <select class="select" name="ambiente">
+          <option value="">Todos</option>
+          {% for item in ambientes %}<option value="{{ item }}" {% if filtros.ambiente == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <div class="label" style="margin-bottom:6px;">Plano</div>
+        <select class="select" name="plano">
+          <option value="">Todos</option>
+          {% for item in planos %}<option value="{{ item }}" {% if filtros.plano == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <div class="label" style="margin-bottom:6px;">Status</div>
+        <select class="select" name="status">
+          <option value="">Todos</option>
+          <option value="pendente" {% if filtros.status == 'pendente' %}selected{% endif %}>Pendente</option>
+          <option value="em_producao" {% if filtros.status == 'em_producao' %}selected{% endif %}>Em producao</option>
+          <option value="finalizado" {% if filtros.status == 'finalizado' %}selected{% endif %}>Finalizado</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" type="submit">Filtrar</button>
+      <a class="btn" href="{% url 'bipagem:pedido_detalhe' pid %}">Limpar</a>
+    </form>
+  </div>
+
+  <div class="panel">
+    <div style="display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:12px;">
+      <div>
+        <div class="label">Pecas visiveis</div>
+        <div style="font-size:22px; font-weight:800;">{{ pecas|length }}</div>
+      </div>
+      {% if pode_estornar %}
+      <form method="post" action="{% url 'bipagem:estornar_peca' pid %}" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
+        {% csrf_token %}
+        <input class="field mono" type="text" name="codigo_peca" placeholder="Codigo para estornar" required>
+        <input class="field" type="number" min="1" name="quantidade" value="1" style="max-width:120px;">
+        <input class="field" type="text" name="motivo" placeholder="Motivo do estorno" required style="min-width:260px;">
+        <button class="btn btn-danger" type="submit">Estornar peca</button>
+      </form>
       {% endif %}
-    </h1>
-    <p class="page-subtitle">{{ pedido.cliente }}</p>
-  </div>
-  <div class="progress-stats">
-    <div><span>TOTAL:</span> <span id="stat-total" style="color:var(--text)">{{ pedido.total_pecas }}</span></div>
-    <div><span>BIPADAS:</span> <span id="stat-bipadas" style="color:var(--green)">{{ pedido.pecas_bipadas }}</span></div>
-    <div><span>RESTAM:</span> <span id="stat-restam" style="color:var(--accent)">{{ pedido.total_pecas|add:pedido.pecas_bipadas_neg|default:pedido.total_pecas }}</span></div>
-  </div>
-</div>
+    </div>
 
-<div class="scanner-header">
-  <div class="scanner-input-wrap">
-    <input type="text" id="scanner-input" placeholder="BIPE A PEÇA AQUI..." autofocus autocomplete="off">
-    <div id="scanner-feedback" style="font-weight: 800; font-size: 1.2rem; min-width: 200px;"></div>
-  </div>
-</div>
-
-<div class="card" style="padding: 0;">
-  <div class="table-wrap">
-    <table id="pecas-table">
-      <thead>
-        <tr>
-          <th class="col-status"></th>
-          <th class="col-id">ID PEÇA</th>
-          <th class="col-desc">DESCRIÇÃO</th>
-          <th class="col-dim">DIMENSÕES (Largura x Altura) mm</th>
-          <th class="col-lote">LOTE</th>
-          <th class="col-destino">DESTINO</th>
-          <th class="col-modulo">MÓDULO</th>
-          <th class="col-status-text">STATUS</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for p in pecas %}
-        <tr id="row-{{ p.id_peca }}" class="peca-row {% if p.status == status_bipada %}bipada{% endif %}">
-          <td class="col-status"><div class="status-indicator {% if p.status == status_bipada %}bipada{% endif %}"></div></td>
-          <td class="col-id">{{ p.id_peca }}</td>
-          <td class="col-desc">{{ p.descricao }}</td>
-          <td class="col-dim">
-            <span class="dim-badge">
-              {{ p.largura_mm|floatformat:0 }} x {{ p.altura_mm|floatformat:0 }}
-            </span>
-          </td>
-          <td class="col-lote">{{ p.numero_lote_pcp|default:"---" }}</td>
-          <td class="col-destino">
-            <span class="sector-badge" data-code="{{ p.plano_corte }}">
-              {{ p.plano_corte }}
-            </span>
-          </td>
-          <td class="col-modulo"><span class="badge badge-pendente" style="font-size: 0.65rem;">{{ p.modulo.nome_modulo }}</span></td>
-          <td class="col-status-text status-text">{{ p.status }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Codigo</th>
+            <th>Descricao</th>
+            <th>Ambiente</th>
+            <th>Modulo</th>
+            <th>Plano</th>
+            <th>Destino</th>
+            <th>Qtd</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pecas %}
+          <tr id="row-{{ p.codigo_peca }}" class="row-{{ p.status }}">
+            <td class="mono">{{ p.codigo_peca }}</td>
+            <td>{{ p.descricao }}</td>
+            <td>{{ p.ambiente }}</td>
+            <td>{{ p.modulo }}</td>
+            <td><span class="badge badge-blue">{{ p.plano|default:'--' }}</span></td>
+            <td>{{ p.destino }}</td>
+            <td class="mono">{{ p.quantidade_produzida }}/{{ p.quantidade_planejada }}</td>
+            <td>
+              {% if p.status == 'finalizado' %}
+                <span class="badge badge-green">Finalizado</span>
+              {% elif p.status == 'em_producao' %}
+                <span class="badge badge-yellow">Em producao</span>
+              {% else %}
+                <span class="badge badge-red">Pendente</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="muted">Nenhuma peca encontrada para este filtro.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
-<audio id="audio-success" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
-<audio id="audio-error" src="https://assets.mixkit.co/active_storage/sfx/2873/2873-preview.mp3"></audio>
-<audio id="audio-alert" src="https://assets.mixkit.co/active_storage/sfx/2872/2872-preview.mp3"></audio>
+<div id="destino-overlay" class="destino-overlay">
+  <div class="destino-box">
+    <div class="destino-label">Proximo destino</div>
+    <div id="destino-main" class="destino-main">---</div>
+    <div id="destino-meta" class="destino-meta">---</div>
+    <div id="destino-roteiro" class="destino-roteiro">---</div>
+  </div>
+</div>
 
+<div id="alert-overlay" class="alert-overlay">
+  <div class="destino-box">
+    <div class="destino-label">Atencao</div>
+    <div id="alert-main" class="alert-main">PECA JA BIPADA</div>
+    <div id="alert-meta" class="alert-meta">---</div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  const MAPA_CORES = {
-    '01': '#9c27b0', '02': '#795548', '03': '#2e7d32', '04': '#2196f3',
-    '05': '#ff9800', '06': '#e91e63', '10': '#00bcd4', '11': '#607d8b'
-  };
-  const MAPA_NOMES = {
-    '01': 'PINTURA', '02': 'LÂMINAS/FOLHAS', '03': 'RIPAS', '04': 'MONTAGEM DE CAIXA',
-    '05': 'DUPLAGEM', '06': 'PORTAS/FRENTES', '10': 'PRÉ-MONTAGEM', '11': 'GERAL / OUTROS'
-  };
-
+  const pid = '{{ pid }}';
   const input = document.getElementById('scanner-input');
-  const feedback = document.getElementById('scanner-feedback');
-  const sectorOverlay = document.getElementById('sector-overlay');
+  const submitButton = document.getElementById('scan-submit');
+  const feedback = document.getElementById('scan-feedback');
+  const overlay = document.getElementById('destino-overlay');
+  const overlayMain = document.getElementById('destino-main');
+  const overlayMeta = document.getElementById('destino-meta');
+  const overlayRoteiro = document.getElementById('destino-roteiro');
   const alertOverlay = document.getElementById('alert-overlay');
-  const audioSuccess = document.getElementById('audio-success');
-  const audioError = document.getElementById('audio-error');
-  const audioAlert = document.getElementById('audio-alert');
-  
-  document.querySelectorAll('.sector-badge').forEach(badge => {
-    const code = badge.getAttribute('data-code');
-    badge.style.backgroundColor = MAPA_CORES[code] || '#ccc';
-    badge.textContent = MAPA_NOMES[code] || code;
-  });
+  const alertMeta = document.getElementById('alert-meta');
+  const MAPA_CORES = {
+    '01': '#c026d3',
+    '02': '#b45309',
+    '03': '#16a34a',
+    '04': '#2563eb',
+    '05': '#f97316',
+    '06': '#ec4899',
+    '07': '#7c3aed',
+    '08': '#64748b',
+    '09': '#475569',
+    '10': '#06b6d4',
+    '11': '#0f766e',
+    '12': '#94a3b8',
+  };
+  let debounceTimer = null;
+  let processing = false;
 
-  let isProcessing = false;
-  let scanTimeout = null;
+  function focusScanner() {
+    setTimeout(() => input.focus(), 60);
+  }
 
-  document.addEventListener('click', () => input.focus());
+  function showDestino(plano, destino, codigo, descricao, roteiro) {
+    overlayMain.textContent = plano ? `${plano} - ${destino}` : (destino || 'SEM DESTINO');
+    overlayMeta.textContent = `${codigo} - ${descricao}`;
+    overlayRoteiro.textContent = roteiro || '';
+    overlay.style.background = MAPA_CORES[plano] || '#334155';
+    overlay.style.display = 'flex';
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      focusScanner();
+    }, 2200);
+  }
 
-  // Refinamento do Scanner: 
-  // 1. Suporta Enter automático do scanner
-  // 2. Debounce para evitar processamento parcial
-  // Lógica robusta para scanner: 
-  // 1. Prioriza o evento 'Enter' enviado pela maioria dos scanners.
-  // 2. Usa um buffer para acumular caracteres e processar apenas quando a entrada cessar.
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const code = input.value.trim();
-      if (code) {
-        if (scanTimeout) clearTimeout(scanTimeout);
-        processScan(code);
-      }
-    }
-  });
+  function showAlert(codigo, descricao) {
+    alertMeta.textContent = `${codigo} - ${descricao}`;
+    alertOverlay.style.display = 'flex';
+    setTimeout(() => {
+      alertOverlay.style.display = 'none';
+      focusScanner();
+    }, 1800);
+  }
 
-  input.addEventListener('input', (e) => {
-    if (scanTimeout) clearTimeout(scanTimeout);
-    
-    const code = input.value.trim();
-    if (code.length >= 6) {
-      // Debounce de 300ms: se o usuário parar de digitar ou o scanner terminar a rajada, processa.
-      scanTimeout = setTimeout(() => {
-        const finalCode = input.value.trim();
-        if (finalCode.length >= 6) {
-          processScan(finalCode);
-        }
-      }, 300);
-    }
-  });
+  function updateRow(peca) {
+    const row = document.getElementById(`row-${peca.codigo_peca}`);
+    if (!row) return;
+    row.className = `row-${peca.status}`;
+    row.cells[5].textContent = peca.destino;
+    row.cells[6].textContent = `${peca.quantidade_produzida}/${peca.quantidade_planejada}`;
+    row.cells[7].innerHTML = peca.status === 'finalizado'
+      ? '<span class="badge badge-green">Finalizado</span>'
+      : peca.status === 'em_producao'
+        ? '<span class="badge badge-yellow">Em producao</span>'
+        : '<span class="badge badge-red">Pendente</span>';
+  }
 
   async function processScan(code) {
-    if (isProcessing || !code) return;
-    isProcessing = true;
-    feedback.textContent = "PROCESSANDO...";
-    sectorOverlay.style.display = 'none';
-    alertOverlay.style.display = 'none';
-    
+    if (processing || !code) return;
+    processing = true;
+    feedback.textContent = 'Processando...';
     try {
       const response = await fetch('/api/bipagem/bipagem/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-        body: JSON.stringify({ codigo: code, usuario: '{{ user.username|default:"OPERADOR" }}', localizacao: 'EXPEDIÇÃO' })
+        body: JSON.stringify({
+          pid: pid,
+          codigo: code,
+          usuario: '{{ user.username|default:"OPERADOR" }}',
+          localizacao: 'BIPAGEM',
+          quantidade: 1,
+        }),
       });
       const data = await response.json();
-      if (response.ok) {
-        if (data.sucesso === false) handleError(data.mensagem || data.erro || "BLOQUEADO");
-        else handleSuccess(data);
+      if (!response.ok || data.sucesso === false) {
+        feedback.textContent = data.mensagem || data.erro || 'Falha na bipagem';
+        feedback.style.color = '#fca5a5';
+        focusScanner();
+        return;
       }
-      else handleError(data.erro || "ERRO");
-    } catch (err) { handleError("ERRO CONEXÃO"); }
-    finally { isProcessing = false; input.value = ""; input.focus(); }
-  }
-
-  function handleSuccess(data) {
-    const row = document.getElementById(`row-${data.peca.id_peca}`);
-    if (row) {
       if (data.repetido) {
-        // Alerta de Peça Já Bipada
-        document.getElementById('alert-peca-id').textContent = `PEÇA: ${data.peca.id_peca}`;
-        alertOverlay.style.display = 'flex';
-        audioAlert.play().catch(e => {});
-        feedback.textContent = `AVISO: ${data.peca.id_peca} JÁ BIPADA`;
-        feedback.style.color = "var(--accent)";
+        feedback.textContent = 'Peca ja foi bipada';
+        feedback.style.color = '#fdba74';
+        showAlert(data.peca.codigo_peca, data.peca.descricao);
       } else {
-        // Sucesso: Primeira Bipagem
-        row.classList.add('bipada', 'just-bipada');
-        row.querySelector('.status-indicator').classList.add('bipada');
-        row.querySelector('.status-text').textContent = "BIPADA";
-        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        const setorNome = MAPA_NOMES[data.peca.plano_corte] || data.peca.setor_destino || "NÃO DEFINIDO";
-        const setorCor = MAPA_CORES[data.peca.plano_corte] || "#333";
-        
-        document.getElementById('overlay-name').textContent = setorNome;
-        document.getElementById('overlay-id').textContent = `PEÇA: ${data.peca.id_peca}`;
-        sectorOverlay.style.backgroundColor = setorCor + 'F2';
-        sectorOverlay.style.display = 'flex';
-
-        updateStats();
-        audioSuccess.play().catch(e => {});
-        feedback.textContent = `OK: ${data.peca.id_peca}`;
-        feedback.style.color = "var(--green)";
+        feedback.textContent = 'Bipagem registrada';
+        feedback.style.color = '#9bf3d1';
+        updateRow(data.peca);
+        showDestino(data.peca.plano, data.peca.destino, data.peca.codigo_peca, data.peca.descricao, data.peca.roteiro);
       }
-    } else { handleError("PEÇA NÃO PERTENCE AO PEDIDO"); }
+    } catch (err) {
+      feedback.textContent = 'Erro de comunicacao com o servidor';
+      feedback.style.color = '#fca5a5';
+      focusScanner();
+    } finally {
+      processing = false;
+      input.value = '';
+      focusScanner();
+    }
   }
 
-  function handleError(msg) {
-    audioError.play().catch(e => {});
-    feedback.textContent = msg.toUpperCase();
-    feedback.style.color = "var(--accent)";
-    sectorOverlay.style.display = 'none';
-    alertOverlay.style.display = 'none';
-  }
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (debounceTimer) clearTimeout(debounceTimer);
+      processScan(input.value.trim());
+    }
+  });
 
-  function updateStats() {
-    const bipadasEl = document.getElementById('stat-bipadas');
-    const restamEl = document.getElementById('stat-restam');
-    let bipadas = parseInt(bipadasEl.textContent) + 1;
-    bipadasEl.textContent = bipadas;
-    restamEl.textContent = parseInt(document.getElementById('stat-total').textContent) - bipadas;
-  }
+  input.addEventListener('input', () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    const code = input.value.trim();
+    if (code.length < 4) return;
+    debounceTimer = setTimeout(() => processScan(code), 250);
+  });
+
+  submitButton.addEventListener('click', () => processScan(input.value.trim()));
+  overlay.addEventListener('click', () => { overlay.style.display = 'none'; focusScanner(); });
+  alertOverlay.addEventListener('click', () => { alertOverlay.style.display = 'none'; focusScanner(); });
+  focusScanner();
 </script>
 {% endblock %}
