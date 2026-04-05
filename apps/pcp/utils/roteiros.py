@@ -75,10 +75,13 @@ def calcular_roteiro(row: pd.Series) -> str:
 
     rota = ['COR']
 
-    if tem_duplagem:
+    if tem_duplagem and not eh_ripa:
         rota.append('DUP')
     if tem_borda:
         rota.append('BOR')
+        if eh_ripa:
+            rota.append('MAR')
+            rota.append('XBOR')
     if tem_furo:
         rota.append('USI')
         rota.append('FUR')
@@ -103,4 +106,10 @@ def calcular_roteiro(row: pd.Series) -> str:
         rota.append('XMAR')
 
     rota.extend(['CQL', 'EXP'])
-    return ' > '.join(rota)
+
+    rota_final = []
+    for etapa in rota:
+        if etapa not in rota_final:
+            rota_final.append(etapa)
+
+    return ' > '.join(rota_final)

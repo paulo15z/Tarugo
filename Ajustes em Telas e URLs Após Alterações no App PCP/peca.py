@@ -44,7 +44,7 @@ class Peca(BaseModel):
     referencia: str = Field(..., min_length=1, description="Valor bruto da coluna REFERENCIA")
 
     codigo_modulo: Optional[str] = Field(None, description="ID do módulo quando presente (ex: M2052026)")
-    codigo_peca: Optional[str] = Field(None, min_length=1, description="ID da peça (sempre presente)")
+    codigo_peca: str = Field(..., min_length=1, description="ID da peça (sempre presente)")
 
     descricao: str = Field(..., min_length=1)
     local: Optional[str] = None
@@ -67,25 +67,22 @@ class Peca(BaseModel):
     # permite todos os campos extras do Dinabox
     model_config = ConfigDict(extra="allow")
 
-    @model_validator(mode="before")
-    @classmethod
-    def parse_referencia(cls, data: Any) -> Any:
-        """Parseia automaticamente a coluna REFERENCIA antes das validações obrigatórias."""
-        if not isinstance(data, dict):
-            return data
-
-        ref = str(data.get("referencia", "")).strip()
-        if not ref:
-            return data
+    @model_validator(mode="after")
+    def parse_referencia(self) -> "Peca":
+        """Parseia automaticamente a coluna REFERENCIA"""
+        ref = str(self.referencia).strip()
 
         if " - " in ref:
+            # formato "M2052026 - P2178037"
             partes = ref.split(" - ", 1)
-            data["codigo_modulo"] = data.get("codigo_modulo") or partes[0].strip()
-            data["codigo_peca"] = data.get("codigo_peca") or partes[1].strip()
+            self.codigo_modulo = partes[0].strip()
+            self.codigo_peca = partes[1].strip()
         else:
-            data["codigo_peca"] = data.get("codigo_peca") or ref
+            # formato standalone "T17788753"
+            self.codigo_modulo = None
+            self.codigo_peca = ref
 
-        return data
+        return self
 
 
 class Modulo(BaseModel):

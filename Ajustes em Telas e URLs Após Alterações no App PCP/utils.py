@@ -8,30 +8,13 @@ import xlwt
 BORDA_COLS = ['BORDA_FACE_FRENTE', 'BORDA_FACE_TRASEIRA', 'BORDA_FACE_LE', 'BORDA_FACE_LD']
 
 
-def _formatar_ripa_para_erro(row, altura_ripa: float, altura_chapa: float) -> str:
-    """Monta uma mensagem clara para identificar a ripa que falhou."""
-    id_peca = str(row.get('ID DA PEÇA', '')).strip() or 'sem ID'
-    descricao = str(row.get('DESCRIÇÃO DA PEÇA', '')).strip() or 'sem descrição'
-    local = str(row.get('LOCAL', '')).strip() or 'sem local'
-    return (
-        f"Ripa inválida para consolidação: ID {id_peca} | {descricao} | {local} | "
-        f"altura {altura_ripa:.1f}mm > chapa {altura_chapa:.1f}mm. "
-        "Esta validação usa apenas a altura bruta da chapa; "
-        "refilo e serra ficam para o cut planning."
-    )
-
-
 def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
     """Mantém exatamente o comportamento original (apenas extraído)"""
-    mask_porta = (
-        df['LOCAL'].astype(str).str.upper().str.contains('PORTA', na=False)
-    )
     mask_ripa = (
         df['DESCRIÇÃO DA PEÇA'].str.upper().str.contains('RIPA', na=False) |
         df.get('OBSERVAÇÃO', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False) |
         df.get('OBS', pd.Series(dtype=str)).str.lower().str.contains('_ripa_', na=False)
     )
-    mask_ripa = mask_ripa & ~mask_porta
 
     df_ripas = df[mask_ripa].copy()
     df_resto = df[~mask_ripa].copy()
@@ -40,6 +23,8 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
         return df
 
     ALTURA_CHAPA = 2750.0
+    ESPESSURA_SERRA = 4.0
+    MARGEM_REFILO = 20.0
 
     def to_float(val):
         try:
@@ -71,13 +56,12 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
         if altura_ripa <= 0:
             continue
 
-        # O cut planning já considera refilo e serra; aqui usamos só a altura bruta.
-        max_por_tira = int(ALTURA_CHAPA // altura_ripa)
+        altura_util = ALTURA_CHAPA - MARGEM_REFILO
+        altura_por_peca = altura_ripa + ESPESSURA_SERRA
+        max_por_tira = int(altura_util // altura_por_peca)
 
         if max_por_tira <= 0:
-            raise ValueError(
-                _formatar_ripa_para_erro(group.iloc[0], altura_ripa, ALTURA_CHAPA)
-            )
+            raise ValueError(f"Ripa com altura {altura_ripa} maior que a chapa")
 
         qtd_tiras = math.ceil(total_pecas / max_por_tira)
 
@@ -90,9 +74,7 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
             nova['OBSERVAÇÃO'] = f"TIRA {i+1}/{qtd_tiras} → {total_pecas} PCS {int(altura_ripa)}mm"
             novas_ripas.append(nova)
 
-    resultado = pd.concat([df_resto, pd.DataFrame(novas_ripas)], ignore_index=True)
-    resultado = resultado.drop(columns=['ALTURA_NUM', 'LARGURA_NUM', 'QTD_NUM'], errors='ignore')
-    return resultado
+    return pd.concat([df_resto, pd.DataFrame(novas_ripas)], ignore_index=True)
 
 
 def determinar_plano_de_corte(row, roteiro: str) -> str:
@@ -101,14 +83,11 @@ def determinar_plano_de_corte(row, roteiro: str) -> str:
     obs = (str(row.get('OBSERVAÇÃO', '')) + ' ' + str(row.get('OBS', ''))).strip().lower()
     local = str(row.get('LOCAL', '')).strip().lower()
     material = str(row.get('MATERIAL DA PEÇA', '')).strip().lower()
-    eh_ripa = 'ripa' in desc or 'ripa' in local or '_ripa_' in obs
 
     if 'PIN' in roteiro:
         return '01'
     if 'lamina' in material or 'lâmina' in material or 'folha' in material or '_lamina_' in obs:
         return '02'
-    if eh_ripa:
-        return '03'
     if 'DUP' in roteiro:
         return '05'
     if 'PRÉ' in roteiro or 'pré' in desc or 'pre montagem' in obs or 'prem' in obs or '_pré_' in obs:
@@ -121,8 +100,11 @@ def determinar_plano_de_corte(row, roteiro: str) -> str:
 
 
 def calcular_roteiro(row) -> str:
-    """calculo de roteiro baseado no csv q o dinabox exporta. Vale verificar se adicionar TODOS os campos disponiveis traria algum beneficio ou so complexidade"""
+    """Mantém exatamente a lógica original"""
     desc = str(row.get('DESCRIÇÃO DA PEÇA', '')).strip().lower()
+    if 'painel para ripas' in desc:
+        return 'COR > MAR > CQL > EXP'
+
     local = str(row.get('LOCAL', '')).strip().lower()
     duplagem = str(row.get('DUPLAGEM', '')).strip().lower()
     furo = str(row.get('FURO', '')).strip().lower()
@@ -132,7 +114,6 @@ def calcular_roteiro(row) -> str:
     tem_furo = furo not in ('', 'nan', 'none')
     tem_duplagem = duplagem not in ('', 'nan', 'none')
     tem_puxador = 'puxador' in desc or 'tampa' in desc
-    eh_ripa = 'ripa' in desc or 'ripa' in local or '_ripa_' in obs
     eh_porta = 'porta' in local or 'porta' in desc
     eh_gaveta = 'gaveta' in desc or 'gaveteiro' in desc or 'gaveta' in local
     eh_caixa = 'caixa' in local
@@ -146,13 +127,10 @@ def calcular_roteiro(row) -> str:
     tem_curvo = '_curvo_' in obs
 
     rota = ['COR']
-    if tem_duplagem and not eh_ripa:
+    if tem_duplagem:
         rota.append('DUP')
     if tem_borda:
         rota.append('BOR')
-        if eh_ripa:
-            rota.append('MAR')
-            rota.append('XBOR')
     if tem_furo:
         rota.append('USI')
         rota.append('FUR')
@@ -173,13 +151,7 @@ def calcular_roteiro(row) -> str:
         rota.append('XMAR')
 
     rota.extend(['CQL', 'EXP'])
-
-    rota_final = []
-    for etapa in rota:
-        if etapa not in rota_final:
-            rota_final.append(etapa)
-
-    return ' > '.join(rota_final)
+    return ' > '.join(rota)
 
 def gerar_xls_roteiro(df: pd.DataFrame) -> BytesIO:
     """ gera arquivo XLS formatado com estilos """

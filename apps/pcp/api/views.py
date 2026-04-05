@@ -1,3 +1,4 @@
+from django.http import Http404
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -35,6 +36,15 @@ class LotePCPViewSet(viewsets.ReadOnlyModelViewSet):
         if self.action == 'list':
             return list_lotes_pendentes()
         return super().get_queryset()
+
+    def get_object(self):
+        if self.action == 'retrieve':
+            pid = self.kwargs.get(self.lookup_field)
+            lote = get_lote_by_pid(pid)
+            if not lote:
+                raise Http404
+            return lote
+        return super().get_object()
 
     @action(detail=True, methods=['post'], url_path='bipar')
     def bipar(self, request, pid=None):

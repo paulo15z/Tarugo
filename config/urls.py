@@ -16,6 +16,7 @@ urlpatterns = [
     path('estoque/', include('apps.estoque.urls')),
     path('api/estoque/', include('apps.estoque.api.urls')),
     path('pcp/', include('apps.pcp.urls')),
+    path('api/pcp/', include('apps.pcp.api.urls')),
     
     # Bipagem
     path('bipagem/', include('apps.bipagem.urls')),

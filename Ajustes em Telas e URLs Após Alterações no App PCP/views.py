@@ -58,10 +58,7 @@ def pcp_processar(request):
 
     try:
         # 1. Processa o arquivo usando o novo serviço
-        df, xls_bytes, nome_saida, pid, resumo_processamento = processar_arquivo_dinabox(
-            arquivo,
-            int(lote_str),
-        )
+        df, xls_bytes, nome_saida, pid = processar_arquivo_dinabox(arquivo)
         
         # 2. Cria o registro legado ProcessamentoPCP para compatibilidade com o histórico atual
         # e para armazenar o arquivo_saida (XLS)
@@ -94,7 +91,6 @@ def pcp_processar(request):
             'pid': pid,
             'lote': int(lote_str),
             'total': len(df),
-            'resumo_processamento': resumo_processamento,
             'previa': previa,
             'resumo': resumo,
             'nome_saida': nome_saida,

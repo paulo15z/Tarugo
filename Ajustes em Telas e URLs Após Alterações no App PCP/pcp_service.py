@@ -14,40 +14,7 @@ from apps.pcp.services.utils import (
 )
 
 
-def _gerar_coluna_lote(df: pd.DataFrame, lote: int) -> pd.DataFrame:
-    """Preenche a coluna LOTE com o lote informado no front e o plano gerado."""
-    df = df.copy()
-    df['PLANO'] = df['PLANO'].astype(str).str.strip()
-    df['LOTE'] = df['PLANO'].apply(lambda plano: f"{lote}-{plano}")
-    return df
-
-
-def _montar_resumo_processamento(total_entrada: int, df_saida: pd.DataFrame) -> dict:
-    """Resume o impacto do processamento para exibir no frontend."""
-    total_saida = len(df_saida)
-    qtd_ripas = 0
-
-    if 'DESCRIÇÃO DA PEÇA' in df_saida.columns:
-        qtd_ripas = int(
-            df_saida['DESCRIÇÃO DA PEÇA']
-            .astype(str)
-            .str.upper()
-            .eq('RIPA CORTE')
-            .sum()
-        )
-
-    pecas_consolidadas = max(total_entrada - total_saida + qtd_ripas, 0)
-
-    return {
-        'total_entrada': total_entrada,
-        'total_saida': total_saida,
-        'ripas_geradas': qtd_ripas,
-        'pecas_consolidadas': pecas_consolidadas,
-        'variacao': total_saida - total_entrada,
-    }
-
-
-def processar_arquivo_dinabox(uploaded_file, lote: int):
+def processar_arquivo_dinabox(uploaded_file):
     """
     
     Agora, além de retornar o que sempre retornou, também cria o LotePCP automaticamente.
@@ -85,11 +52,9 @@ def processar_arquivo_dinabox(uploaded_file, lote: int):
         raise ValueError(f"Colunas obrigatórias não encontradas: {', '.join(faltando)}")
 
     # === Processamento antigo (mantido idêntico) ===
-    total_entrada = len(df)
     df = consolidar_ripas(df)
     df['ROTEIRO'] = df.apply(calcular_roteiro, axis=1)
     df['PLANO'] = df.apply(lambda row: determinar_plano_de_corte(row, row['ROTEIRO']), axis=1)
-    df = _gerar_coluna_lote(df, lote)
 
     for col in ['LARGURA_NUM', 'QTD_NUM']:
         if col in df.columns:
@@ -118,6 +83,4 @@ def processar_arquivo_dinabox(uploaded_file, lote: int):
         # ordem_producao pode vir do arquivo no futuro
     )
 
-    resumo_processamento = _montar_resumo_processamento(total_entrada, df)
-
-    return df, xls_bytes, nome_saida, pid, resumo_processamento
+    return df, xls_bytes, nome_saida, pid

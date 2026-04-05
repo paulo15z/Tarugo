@@ -1,30 +1,40 @@
-from typing import List, Optional
+﻿"""
+Consultas do PCP para expor lotes pendentes de bipagem.
+"""
+from __future__ import annotations
+
 from apps.pcp.models.lote import LotePCP, PecaPCP
 
 
-def get_lote_by_pid(pid: str) -> Optional[LotePCP]:
-    """Busca lote completo por PID (com prefetch para performance)"""
+def list_lotes_pendentes():
+    """QuerySet usado pela API para listar lotes que ainda não foram liberados."""
     return (
-        LotePCP.objects.prefetch_related('ambientes__modulos__pecas')
-        .filter(pid=pid)
-        .first()
+        LotePCP.objects
+        .filter(status='pendente')
+        .order_by('-data_processamento')
+        .prefetch_related('ambientes__modulos')
     )
 
 
-def list_lotes_pendentes() -> List[LotePCP]:
-    """Lotes ainda não finalizados"""
-    return LotePCP.objects.filter(status__in=['pendente', 'em_producao']).order_by(
-        '-data_processamento'
-    )
+def get_lote_by_pid(pid: str) -> LotePCP | None:
+    """Retorna o lote identificado pelo PID ou None."""
+    try:
+        return (
+            LotePCP.objects
+            .prefetch_related('ambientes__modulos__pecas')
+            .get(pid=pid)
+        )
+    except LotePCP.DoesNotExist:
+        return None
 
 
-def get_pecas_do_lote(lote_id: int) -> List[PecaPCP]:
-    """Todas as peças de um lote (para tela de bipagem)"""
-    return PecaPCP.objects.select_related('modulo__ambiente__lote').filter(
-        modulo__ambiente__lote_id=lote_id
-    )
-
-
-def get_peca_by_id(peca_id: int) -> Optional[PecaPCP]:
-    """Busca única peça com contexto completo"""
-    return PecaPCP.objects.select_related('modulo__ambiente__lote').filter(id=peca_id).first()
+def get_peca_by_id(peca_id: int) -> PecaPCP | None:
+    """Busca uma peça do PCP por ID, com o lote carregado para validações."""
+    try:
+        return (
+            PecaPCP.objects
+            .select_related('modulo__ambiente__lote')
+            .get(id=peca_id)
+        )
+    except PecaPCP.DoesNotExist:
+        return None

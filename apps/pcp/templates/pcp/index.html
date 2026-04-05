@@ -5,21 +5,50 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
+    .pcp-shell {
+        background:
+            radial-gradient(circle at top right, rgba(249, 115, 22, 0.14), transparent 28%),
+            linear-gradient(180deg, #111827 0%, #0b1220 100%);
+        border: 1px solid rgba(71, 85, 105, 0.45);
+        border-radius: 28px;
+        padding: 2rem;
+        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+    }
+    .card {
+        background: rgba(15, 23, 42, 0.92) !important;
+        border: 1px solid rgba(71, 85, 105, 0.45) !important;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+    }
     .tab-button { transition: var(--transition); }
+    .tab-button:hover { background: rgba(30, 41, 59, 0.78); }
+    .tab-button-active {
+        background: rgba(249, 115, 22, 0.12);
+        border-color: #f97316 !important;
+        color: #fb923c !important;
+    }
     .rota-chip {
         display: inline-flex;
         align-items: center;
-        background-color: rgba(255, 193, 7, 0.1);
-        color: #ffd54f;
+        background-color: rgba(251, 191, 36, 0.14);
+        color: #fde68a;
         padding: 2px 8px;
         border-radius: 4px;
         font-size: 0.7rem;
         font-weight: 600;
         margin-right: 4px;
-        border: 1px solid rgba(255, 193, 7, 0.2);
+        border: 1px solid rgba(251, 191, 36, 0.25);
     }
     #drop-area { transition: var(--transition); }
-    #drop-area.dragover { border-color: var(--accent); background: var(--accent-glow); }
+    #drop-area {
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(15, 23, 42, 0.94));
+    }
+    #drop-area.dragover { border-color: var(--accent); background: rgba(249, 115, 22, 0.12); }
+    #stats .card { min-height: 148px; }
+    .summary-strip {
+        background: linear-gradient(90deg, rgba(249, 115, 22, 0.12), rgba(30, 41, 59, 0.82));
+        border: 1px solid rgba(249, 115, 22, 0.28);
+        color: #e5e7eb;
+    }
     .bg-white { background-color: var(--surface) !important; }
     .text-gray-800 { color: var(--text) !important; }
     .text-gray-600 { color: var(--text-muted) !important; }
@@ -27,10 +56,15 @@
     .border-gray-100, .border-gray-200, .border-gray-300 { border-color: var(--border) !important; }
     .bg-gray-50 { background-color: var(--surface-raised) !important; }
     .divide-y > :not([hidden]) ~ :not([hidden]) { border-color: var(--border) !important; }
+    #resultado table thead { background: rgba(15, 23, 42, 0.96); }
+    #resultado table tbody tr:nth-child(odd) { background: rgba(15, 23, 42, 0.62); }
+    #resultado table tbody tr:nth-child(even) { background: rgba(30, 41, 59, 0.48); }
+    #resultado table tbody tr:hover { background: rgba(249, 115, 22, 0.12); }
 </style>
 {% endblock %}
 
 {% block content %}
+<div class="pcp-shell">
 <input type="hidden" id="csrf-token" value="{{ csrf_token }}">
 <input type="hidden" id="url-processar" value="{% url 'pcp:processar' %}">
 <input type="hidden" id="url-historico" value="{% url 'pcp:historico' %}">
@@ -106,8 +140,9 @@
     </div>
 
     <!-- Resultado -->
-    <div id="resultado" class="hidden mt-10 space-y-8">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="stats"></div>
+        <div id="resultado" class="hidden mt-10 space-y-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6" id="stats"></div>
+            <div id="process-summary" class="summary-strip hidden rounded-2xl px-6 py-4 text-sm font-medium"></div>
 
         <div class="card p-6 flex items-center justify-between border-l-4 border-l-green-500">
             <div>
@@ -183,6 +218,7 @@
     </div>
 </div>
 
+ </div>
 <script>
     const CONFIG = {
         urls: {
@@ -212,6 +248,7 @@
             btn.classList.toggle('border-orange-500', i === tabIndex);
             btn.classList.toggle('text-orange-500', i === tabIndex);
             btn.classList.toggle('text-gray-500', i !== tabIndex);
+            btn.classList.toggle('tab-button-active', i === tabIndex);
         });
         if (tabIndex === 1) carregarHistorico();
     }
@@ -279,6 +316,9 @@
     function exibirResultado(data) {
         pidAtual = data.pid;
         document.getElementById('resultado').classList.remove('hidden');
+        const resumoProcessamento = data.resumo_processamento || {};
+        const consolidado = resumoProcessamento.pecas_consolidadas ?? 0;
+        const variacao = Math.abs(resumoProcessamento.variacao ?? 0);
 
         document.getElementById('stats').innerHTML = `
             <div class="card p-6">
@@ -289,7 +329,23 @@
                 <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Total de Peças</p>
                 <p class="text-3xl font-bold text-gray-100 mono">${data.total}</p>
             </div>
+            <div class="card p-6">
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Entrada → Saída</p>
+                <p class="text-2xl font-bold text-gray-100 mono">${resumoProcessamento.total_entrada ?? data.total} → ${resumoProcessamento.total_saida ?? data.total}</p>
+            </div>
+            <div class="card p-6">
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Ripas Consolidadas</p>
+                <p class="text-3xl font-bold text-gray-100 mono">${resumoProcessamento.ripas_geradas ?? 0}</p>
+            </div>
+            <div class="card p-6">
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Peças Agrupadas</p>
+                <p class="text-3xl font-bold text-gray-100 mono">${consolidado}</p>
+            </div>
         `;
+
+        const processSummary = document.getElementById('process-summary');
+        processSummary.textContent = `Entraram ${resumoProcessamento.total_entrada ?? data.total} peças, saíram ${resumoProcessamento.total_saida ?? data.total}, ${consolidado} peças originais foram consolidadas em ${resumoProcessamento.ripas_geradas ?? 0} ripas e a redução líquida foi de ${variacao} linhas.`;
+        processSummary.classList.remove('hidden');
 
         document.getElementById('btn-download').onclick = () =>
             window.location.href = CONFIG.urls.downloadBase.replace('PID_PLACEHOLDER', data.pid);
@@ -346,7 +402,7 @@
                     <td>${_badgeViagem(r)}</td>
                     <td style="text-align: right;">
                         <div class="flex justify-end gap-2">
-                            <button onclick="window.location.href='${CONFIG.urls.downloadBase.replace('PID_PLACEHOLDER', r.id)}'"
+                            <button onclick="window.location.href='${CONFIG.urls.downloadBase.replace("PID_PLACEHOLDER", r.id)}'"
                                     class="p-2 text-gray-400 hover:text-white transition-colors" title="Download XLS">
                                 <i class="fas fa-download"></i>
                             </button>
