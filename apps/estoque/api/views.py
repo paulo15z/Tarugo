@@ -8,6 +8,7 @@ from apps.estoque.api.serializers import (
     AjusteLoteSerializer,
     MovimentacaoListSerializer,
     MovimentacaoSerializer,
+    ProdutoListSerializer,
     ProdutoSerializer,
     ReservaCreateSerializer,
     ReservaSerializer,
@@ -33,6 +34,17 @@ class ProdutoCreateView(APIView):
             produto = ProdutoService.criar_produto(serializer.validated_data)
             return Response(ProdutoSerializer(produto).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ProdutoListView(APIView):
+    def get(self, request):
+        produtos = ProdutoService.listar_produtos()
+        data = []
+        for produto in produtos:
+            item = ProdutoListSerializer(produto).data
+            item["disponibilidade"] = EstoquePublicService.consultar_disponibilidade(produto_id=produto.id)
+            data.append(item)
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class DisponibilidadeView(APIView):

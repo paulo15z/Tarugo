@@ -41,7 +41,8 @@ class EstoquePublicService:
             if produto.categoria.familia == FamiliaProduto.MDF:
                 for esp in produto.saldos_mdf.values_list("espessura", flat=True):
                     disponibilidade = get_disponibilidade_por_produto(produto, espessura=esp)
-                    if disponibilidade["saldo_disponivel"] <= produto.estoque_minimo:
+                    tem_demanda_ativa = disponibilidade["saldo_reservado"] > 0
+                    if tem_demanda_ativa and disponibilidade["saldo_disponivel"] <= produto.estoque_minimo:
                         alertas.append(disponibilidade)
             else:
                 disponibilidade = get_disponibilidade_por_produto(produto)

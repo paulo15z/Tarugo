@@ -2,6 +2,7 @@ from django.urls import path
 
 from apps.estoque.api.views import (
     ProdutoCreateView,
+    ProdutoListView,
     DisponibilidadeView,
     MovimentacaoView,
     MovimentacaoListView,
@@ -13,6 +14,7 @@ from apps.estoque.api.views import (
 )
 
 urlpatterns = [
+    path('produtos/listar/', ProdutoListView.as_view(), name='produto-list'),
     path('produtos/', ProdutoCreateView.as_view(), name='produto-create'),
     path('disponibilidade/', DisponibilidadeView.as_view(), name='disponibilidade'),
     path('movimentar/', MovimentacaoView.as_view(), name='movimentacao-create'),

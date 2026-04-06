@@ -19,6 +19,10 @@ class ProdutoService:
     """Service central para regras de negócio de produtos (padrão Tarugo)"""
 
     @staticmethod
+    def listar_produtos():
+        return Produto.objects.select_related("categoria").prefetch_related("saldos_mdf").order_by("nome")
+
+    @staticmethod
     @transaction.atomic
     def criar_produto(data: dict) -> Produto:
         """Cria um novo produto com validação Pydantic"""

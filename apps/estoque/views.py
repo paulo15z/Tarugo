@@ -10,7 +10,8 @@ from apps.estoque.domain.tipos import FamiliaProduto
 from apps.estoque.models import Produto, Reserva
 from apps.estoque.models.categoria import CategoriaProduto
 from apps.estoque.permissions import grupo_requerido
-from apps.estoque.selectors.produto_selector import ProdutoSelector, get_produtos_com_saldo_baixo
+from apps.estoque.selectors.disponibilidade_selector import get_disponibilidade_resumida
+from apps.estoque.selectors.produto_selector import ProdutoSelector
 from apps.estoque.services.movimentacao_service import MovimentacaoService
 from apps.estoque.services.produto_service import ProdutoService
 from apps.estoque.services.reserva_service import ReservaService
@@ -19,7 +20,24 @@ from apps.estoque.services.reserva_service import ReservaService
 @login_required
 def lista_produtos(request):
     produtos = ProdutoSelector.get_all_produtos().select_related("categoria").prefetch_related("saldos_mdf")
-    produtos_baixo_estoque = get_produtos_com_saldo_baixo()
+    produto_rows = []
+    for produto in produtos:
+        disponibilidade = get_disponibilidade_resumida(produto)
+        if produto.categoria.familia == FamiliaProduto.MDF:
+            critico = any(
+                item["saldo_reservado"] > 0 and item["saldo_disponivel"] <= produto.estoque_minimo
+                for item in disponibilidade["por_espessura"]
+            )
+        else:
+            critico = disponibilidade["saldo_disponivel"] <= produto.estoque_minimo
+        produto_rows.append(
+            {
+                "produto": produto,
+                "disponibilidade": disponibilidade,
+                "critico": critico,
+            }
+        )
+    produtos_criticos_count = sum(1 for row in produto_rows if row["critico"])
 
     grupos = set(request.user.groups.values_list("name", flat=True))
     pode_movimentar = request.user.is_superuser or bool(grupos & {"estoque.02", "estoque.03"})
@@ -30,7 +48,8 @@ def lista_produtos(request):
         "estoque/lista_produtos.html",
         {
             "produtos": produtos,
-            "produtos_baixo_estoque": produtos_baixo_estoque,
+            "produto_rows": produto_rows,
+            "produtos_criticos_count": produtos_criticos_count,
             "pode_movimentar": pode_movimentar,
             "pode_cadastrar": pode_cadastrar,
             "FAMILIA_MDF": FamiliaProduto.MDF,

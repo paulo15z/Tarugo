@@ -1,6 +1,6 @@
 {% extends "base/base.html" %}
 {% load static %}
-{% block title %}Estoque — Tarugo{% endblock %}
+{% block title %}Estoque - Tarugo{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -10,14 +10,13 @@
         gap: 1rem;
         margin-bottom: 2rem;
     }
-    
+
     .stat-card {
         padding: 1.25rem;
         border-left: 4px solid var(--border);
     }
-    
+
     .stat-card.alert { border-left-color: var(--error); background: #fff5f5; }
-    .stat-card.warning { border-left-color: var(--warning); background: #fff9db; }
     .stat-card.success { border-left-color: var(--success); background: #ebfbee; }
 
     .stat-label {
@@ -35,26 +34,34 @@
         line-height: 1;
     }
 
-    /* Tabela Industrial */
     .product-name { font-weight: 700; color: var(--text); font-size: 1rem; }
     .product-sku { font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim); }
-    
+
     .saldo-badge {
         display: inline-flex;
         flex-direction: column;
-        align-items: center;
-        padding: 0.5rem;
+        align-items: flex-start;
+        gap: 0.1rem;
+        padding: 0.45rem 0.55rem;
         background: var(--surface-raised);
         border: 1px solid var(--border);
         border-radius: 4px;
-        min-width: 60px;
+        min-width: 145px;
     }
-    
+
     .saldo-badge .esp { font-size: 0.65rem; font-weight: 800; color: var(--accent); margin-bottom: 2px; }
-    .saldo-badge .qtd { font-family: var(--mono); font-size: 0.9rem; font-weight: 700; }
+    .saldo-badge .qtd { font-family: var(--mono); font-size: 0.82rem; font-weight: 700; }
+
+    .saldo-geral {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        font-family: var(--mono);
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
 
     .actions-cell { text-align: right; }
-    
     .dropdown { position: relative; display: inline-block; }
     .dropdown-content {
         display: none;
@@ -84,7 +91,6 @@
     .dropdown-content a:hover, .dropdown-content button:hover { background: var(--surface-raised); }
     .dropdown:hover .dropdown-content { display: block; }
 
-    /* Modal Styles */
     .modal {
         display: none;
         position: fixed;
@@ -118,14 +124,14 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Estoque Industrial</h1>
-        <p class="page-subtitle">Gestão de chapas, ferragens e insumos</p>
+        <p class="page-subtitle">Gestao de chapas, ferragens e insumos</p>
     </div>
     <div style="display: flex; gap: 0.75rem;">
         <a href="{% url 'estoque:produto_create' %}" class="btn btn-outline">
             <i class="fas fa-plus"></i> Novo Acabamento
         </a>
         <a href="{% url 'estoque:movimentacao_create' %}" class="btn btn-primary">
-            <i class="fas fa-exchange-alt"></i> Registrar Entrada/Saída
+            <i class="fas fa-exchange-alt"></i> Registrar Entrada/Saida
         </a>
     </div>
 </div>
@@ -135,9 +141,9 @@
         <div class="stat-label">Itens em Estoque</div>
         <div class="stat-value">{{ produtos|length }}</div>
     </div>
-    <div class="card stat-card {% if produtos_baixo_estoque %}alert{% else %}success{% endif %}">
-        <div class="stat-label">Abaixo do Mínimo</div>
-        <div class="stat-value">{{ produtos_baixo_estoque|length }}</div>
+    <div class="card stat-card {% if produtos_criticos_count %}alert{% else %}success{% endif %}">
+        <div class="stat-label">Abaixo do Minimo</div>
+        <div class="stat-value">{{ produtos_criticos_count }}</div>
     </div>
 </div>
 
@@ -146,15 +152,16 @@
         <thead>
             <tr>
                 <th>Material / SKU</th>
-                <th>Família</th>
-                <th>Saldos por Espessura (MDF) / Geral</th>
-                <th>Mínimo</th>
+                <th>Familia</th>
+                <th>Saldo (Fisico / Reservado / Disponivel)</th>
+                <th>Minimo</th>
                 <th>Status</th>
-                <th class="actions-cell">Ações</th>
+                <th class="actions-cell">Acoes</th>
             </tr>
         </thead>
         <tbody>
-            {% for p in produtos %}
+            {% for row in produto_rows %}
+            {% with p=row.produto disp=row.disponibilidade critico=row.critico %}
             <tr>
                 <td>
                     <div class="product-name">{{ p.nome }}</div>
@@ -166,37 +173,31 @@
                 <td>
                     {% if p.categoria.familia == FAMILIA_MDF %}
                         <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
-                            {% for s in p.saldos_mdf.all %}
+                            {% for item in disp.por_espessura %}
                                 <div class="saldo-badge">
-                                    <span class="esp">{{ s.espessura }}mm</span>
-                                    <span class="qtd">{{ s.quantidade|floatformat:0 }}</span>
+                                    <span class="esp">{{ item.espessura }}mm</span>
+                                    <span class="qtd">F: {{ item.saldo_fisico|floatformat:0 }}</span>
+                                    <span class="qtd">R: {{ item.saldo_reservado|floatformat:0 }}</span>
+                                    <span class="qtd">D: {{ item.saldo_disponivel|floatformat:0 }}</span>
                                 </div>
                             {% empty %}
                                 <span class="text-dim" style="font-size: 0.8rem;">Sem saldos inicializados</span>
                             {% endfor %}
                         </div>
                     {% else %}
-                        <div style="display: flex; align-items: baseline; gap: 0.25rem;">
-                            <span style="font-size: 1.2rem; font-weight: 800;">{{ p.quantidade|floatformat:0 }}</span>
-                            <span class="text-muted" style="font-size: 0.75rem; font-weight: 600;">{{ p.unidade_medida }}</span>
+                        <div class="saldo-geral">
+                            <span>F: {{ disp.saldo_fisico|floatformat:0 }} {{ p.unidade_medida }}</span>
+                            <span>R: {{ disp.saldo_reservado|floatformat:0 }} {{ p.unidade_medida }}</span>
+                            <span>D: {{ disp.saldo_disponivel|floatformat:0 }} {{ p.unidade_medida }}</span>
                         </div>
                     {% endif %}
                 </td>
                 <td class="mono" style="font-weight: 600;">{{ p.estoque_minimo|floatformat:0 }}</td>
                 <td>
-                    {% if p.categoria.familia == FAMILIA_MDF %}
-                        {% with critico=False %}
-                            {% for s in p.saldos_mdf.all %}
-                                {% if s.quantidade <= p.estoque_minimo %}<span class="badge badge-error">Crítico</span>{% endif %}
-                            {% endfor %}
-                            {% if not critico %}<span class="badge badge-success">OK</span>{% endif %}
-                        {% endwith %}
+                    {% if critico %}
+                        <span class="badge badge-error">Critico</span>
                     {% else %}
-                        {% if p.quantidade <= p.estoque_minimo %}
-                            <span class="badge badge-error">Crítico</span>
-                        {% else %}
-                            <span class="badge badge-success">OK</span>
-                        {% endif %}
+                        <span class="badge badge-success">OK</span>
                     {% endif %}
                 </td>
                 <td class="actions-cell">
@@ -215,23 +216,23 @@
                     </div>
                 </td>
             </tr>
+            {% endwith %}
             {% endfor %}
         </tbody>
     </table>
 </div>
 
-<!-- Modal de Configuração -->
 <div id="configModal" class="modal">
     <div class="modal-content">
         <h2 style="margin-bottom: 1.5rem; letter-spacing: -0.02em;">Configurar Material</h2>
         <form id="configForm" method="POST">
             {% csrf_token %}
             <div class="form-group">
-                <label>Estoque Mínimo Geral</label>
+                <label>Estoque Minimo Geral</label>
                 <input type="number" name="estoque_minimo" id="modalMinimo" required>
             </div>
             <div class="form-group">
-                <label>Espessura (para Preço de Custo)</label>
+                <label>Espessura (para Preco de Custo)</label>
                 <select name="espessura">
                     <option value="6">6 mm</option>
                     <option value="15">15 mm</option>
@@ -240,11 +241,11 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>Preço de Custo da Chapa (R$)</label>
+                <label>Preco de Custo da Chapa (R$)</label>
                 <input type="number" name="preco_custo" step="0.01" placeholder="0.00">
             </div>
             <div style="display: flex; gap: 0.75rem; margin-top: 2rem;">
-                <button type="submit" class="btn btn-primary" style="flex: 1;">Salvar Alterações</button>
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Salvar Alteracoes</button>
                 <button type="button" class="btn btn-outline" style="flex: 1;" onclick="closeModal()">Cancelar</button>
             </div>
         </form>
@@ -256,7 +257,7 @@
         const modal = document.getElementById('configModal');
         const form = document.getElementById('configForm');
         const inputMin = document.getElementById('modalMinimo');
-        
+
         form.action = `/estoque/produtos/${id}/config/`;
         inputMin.value = Math.round(minimo);
         modal.style.display = 'flex';

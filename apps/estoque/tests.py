@@ -1,8 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from apps.estoque.models import CategoriaProduto, Produto
+from apps.estoque.models import CategoriaProduto, Produto, SaldoMDF
 from apps.estoque.selectors.disponibilidade_selector import get_saldo_disponivel, get_saldo_fisico
+from apps.estoque.services.public_interface import EstoquePublicService
 from apps.estoque.services.reserva_service import ReservaService
 
 
@@ -66,3 +67,38 @@ class ReservaIndustrialTestCase(TestCase):
         self.assertEqual(reserva.status, "consumida")
         self.assertEqual(self.produto.quantidade, 8)
         self.assertEqual(get_saldo_disponivel(self.produto), 8)
+
+
+class AlertaMDFPorDemandaTestCase(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="tester2", password="123456")
+        self.categoria_mdf = CategoriaProduto.objects.create(nome="MDF", familia="mdf")
+        self.produto_mdf = Produto.objects.create(
+            nome="MDF Branco TX",
+            sku="MDF-BRANCO-TX",
+            categoria=self.categoria_mdf,
+            quantidade=0,
+            estoque_minimo=5,
+            unidade_medida="un",
+        )
+        SaldoMDF.objects.create(produto=self.produto_mdf, espessura=18, quantidade=3)
+
+    def test_mdf_sem_demanda_nao_gera_alerta(self):
+        alertas = EstoquePublicService.get_alertas_baixo_estoque()
+        self.assertEqual(len(alertas), 0)
+
+    def test_mdf_com_demanda_gera_alerta(self):
+        ReservaService.criar_reserva(
+            {
+                "produto_id": self.produto_mdf.id,
+                "quantidade": 2,
+                "espessura": 18,
+                "referencia_externa": "LOTE-001",
+                "origem_externa": "pcp",
+            },
+            usuario=self.user,
+        )
+        alertas = EstoquePublicService.get_alertas_baixo_estoque()
+        self.assertEqual(len(alertas), 1)
+        self.assertEqual(alertas[0]["produto_id"], self.produto_mdf.id)
+        self.assertEqual(alertas[0]["espessura"], 18)

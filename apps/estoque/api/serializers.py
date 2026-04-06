@@ -13,6 +13,22 @@ class ProdutoSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "criado_em"]
 
 
+class ProdutoListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Produto
+        fields = [
+            "id",
+            "nome",
+            "sku",
+            "unidade_medida",
+            "estoque_minimo",
+            "localizacao",
+            "lote",
+            "categoria",
+        ]
+        read_only_fields = fields
+
+
 class MovimentacaoSerializer(serializers.Serializer):
     produto_id = serializers.IntegerField()
     quantidade = serializers.IntegerField(min_value=1)
