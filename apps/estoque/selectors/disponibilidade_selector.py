@@ -4,6 +4,24 @@ from apps.estoque.domain.tipos import FamiliaProduto
 from apps.estoque.models import Produto, Reserva, SaldoMDF
 
 
+def get_espessuras_operacionais(produto: Produto) -> list[int]:
+    """Define quais espessuras devem ser consideradas para o produto MDF."""
+    if produto.categoria.familia != FamiliaProduto.MDF:
+        return []
+
+    atributos = produto.atributos_especificos or {}
+    esp_atributo = atributos.get("espessura")
+    try:
+        esp_unica = int(esp_atributo) if esp_atributo is not None else None
+    except (TypeError, ValueError):
+        esp_unica = None
+
+    if esp_unica:
+        return [esp_unica]
+
+    return sorted(set(produto.saldos_mdf.values_list("espessura", flat=True)))
+
+
 def get_saldo_fisico(produto: Produto, espessura: int | None = None) -> int:
     familia = produto.categoria.familia
     if familia == FamiliaProduto.MDF:
@@ -48,7 +66,7 @@ def get_disponibilidade_por_produto(produto: Produto, espessura: int | None = No
 def get_disponibilidade_resumida(produto: Produto) -> dict:
     if produto.categoria.familia == FamiliaProduto.MDF:
         por_espessura = []
-        for esp in produto.saldos_mdf.values_list("espessura", flat=True):
+        for esp in get_espessuras_operacionais(produto):
             por_espessura.append(get_disponibilidade_por_produto(produto, espessura=esp))
         return {
             "produto_id": produto.id,

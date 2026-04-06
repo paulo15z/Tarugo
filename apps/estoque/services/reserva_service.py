@@ -5,7 +5,10 @@ from pydantic import ValidationError as PydanticValidationError
 from apps.estoque.domain.tipos import FamiliaProduto
 from apps.estoque.models import Reserva
 from apps.estoque.schemas.movimentacao import ReservaCreateSchema
-from apps.estoque.selectors.disponibilidade_selector import get_saldo_disponivel
+from apps.estoque.selectors.disponibilidade_selector import (
+    get_espessuras_operacionais,
+    get_saldo_disponivel,
+)
 from apps.estoque.selectors.produto_selector import ProdutoSelector
 from apps.estoque.services.movimentacao_service import MovimentacaoService
 
@@ -26,6 +29,13 @@ class ReservaService:
 
         if familia == FamiliaProduto.MDF and schema.espessura is None:
             raise ValidationError("Espessura e obrigatoria para reservar produtos da familia MDF.")
+        if familia == FamiliaProduto.MDF:
+            espessuras_operacionais = get_espessuras_operacionais(produto)
+            if espessuras_operacionais and schema.espessura not in espessuras_operacionais:
+                raise ValidationError(
+                    f"Espessura {schema.espessura}mm invalida para este item. "
+                    f"Permitidas: {', '.join(str(e) for e in espessuras_operacionais)}mm."
+                )
 
         saldo_disponivel = get_saldo_disponivel(produto, espessura=schema.espessura)
         if saldo_disponivel < schema.quantidade:

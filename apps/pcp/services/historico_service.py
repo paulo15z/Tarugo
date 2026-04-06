@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from django.db import transaction
+from django.db.models import ProtectedError
+from django.db.utils import IntegrityError
 
 from apps.pcp.models import AuditoriaProcessamentoPCP, LotePCP, ProcessamentoPCP
 
@@ -43,9 +45,26 @@ class HistoricoPCPService:
         if processamento.arquivo_saida:
             processamento.arquivo_saida.delete(save=False)
 
-        if lote_pcp:
-            lote_pcp.delete()
-        processamento.delete()
+        try:
+            if lote_pcp:
+                lote_pcp.delete()
+            processamento.delete()
+        except ProtectedError:
+            return {
+                'sucesso': False,
+                'mensagem': (
+                    'Nao foi possivel remover este lote porque existem registros '
+                    'protegidos vinculados a ele.'
+                ),
+            }
+        except IntegrityError:
+            return {
+                'sucesso': False,
+                'mensagem': (
+                    'Nao foi possivel remover este lote por conflito de integridade '
+                    'de dados. Verifique vinculos no PCP/Bipagem.'
+                ),
+            }
 
         return {
             'sucesso': True,

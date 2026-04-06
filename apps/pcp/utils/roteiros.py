@@ -1,4 +1,5 @@
 import pandas as pd
+import re
 
 BORDA_COLS = ['BORDA_FACE_FRENTE', 'BORDA_FACE_TRASEIRA', 'BORDA_FACE_LE', 'BORDA_FACE_LD']
 
@@ -11,18 +12,30 @@ def determinar_plano_de_corte(row: pd.Series, roteiro: str) -> str:
     material = str(row.get('MATERIAL DA PE?A', '')).strip().lower()
 
     tag_ripa = '_ripa_' in obs
+    eh_porta_frontal = (
+        'porta' in desc
+        or 'porta' in local
+        or 'frontal' in desc
+        or 'frontal' in local
+        or 'frente' in desc
+        or 'frente' in local
+    )
+    eh_ripa_corte = 'ripa corte' in desc
+    eh_ripa_literal = bool(re.search(r'\bripa\b', desc))
     tag_painel = '_painel_' in obs
     tag_passagem = '_passagem_' in obs
     tag_lamina = '_lamina_' in obs
     tag_pintura = '_pin_' in obs or 'PIN' in roteiro
     tag_pre_montagem = '_pre_' in obs or '_pr?_' in obs or 'PR?' in roteiro
 
+    # Regra operacional: plano 03 para ripas reais.
+    # Nao classificar "porta ripada"/frontal como ripa de corte.
+    if tag_ripa or eh_ripa_corte or (eh_ripa_literal and not eh_porta_frontal):
+        return '03'
     if tag_pintura:
         return '01'
     if tag_lamina or 'lamina' in material or 'l?mina' in material or 'folha' in material:
         return '02'
-    if tag_ripa:
-        return '03'
     if tag_painel or tag_passagem:
         return '07'
     if 'DUP' in roteiro:

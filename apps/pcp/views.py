@@ -82,7 +82,7 @@ def pcp_processar(request):
         arquivo_content = ContentFile(xls_bytes, name=nome_saida)
         processamento.arquivo_saida.save(nome_saida, arquivo_content, save=True)
 
-        cols_previa = ['DESCRICAO DA PECA', 'LOCAL', 'PLANO', 'ROTEIRO']
+        cols_previa = ['DESCRICAO DA PECA', 'DESCRIÇÃO DA PEÇA', 'LOCAL', 'PLANO', 'ROTEIRO']
         if 'LOTE' in df.columns:
             cols_previa.insert(0, 'LOTE')
         if 'OBSERVACAO' in df.columns or 'OBSERVA??O' in df.columns:
@@ -91,6 +91,7 @@ def pcp_processar(request):
         cols_existentes = []
         variantes = {
             'DESCRICAO DA PECA': 'DESCRI??O DA PE?A',
+            'DESCRIÇÃO DA PEÇA': 'DESCRI??O DA PE?A',
             'OBSERVACAO': 'OBSERVA??O',
         }
         for col in cols_previa:
@@ -189,10 +190,20 @@ def pcp_remover(request, pid):
     if not _user_pode_gerenciar_pcp(request.user):
         return _json_forbidden()
 
-    motivo = request.POST.get('motivo', '').strip() or request.GET.get('motivo', '').strip()
-    resultado = HistoricoPCPService.remover_processamento(pid=pid, motivo=motivo, usuario=request.user)
-    status_code = 200 if resultado.get('sucesso') else 400
-    return JsonResponse(resultado, status=status_code)
+    try:
+        motivo = request.POST.get('motivo', '').strip() or request.GET.get('motivo', '').strip()
+        resultado = HistoricoPCPService.remover_processamento(pid=pid, motivo=motivo, usuario=request.user)
+        if resultado.get('sucesso'):
+            return JsonResponse(resultado, status=200)
+        return JsonResponse(
+            {
+                'erro': resultado.get('mensagem', 'Nao foi possivel remover o lote.'),
+                **resultado,
+            },
+            status=400,
+        )
+    except Exception as e:
+        return JsonResponse({'erro': str(e)}, status=500)
 
 
 # ---------------------------------------------------------------------------

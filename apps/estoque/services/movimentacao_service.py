@@ -5,7 +5,10 @@ from pydantic import ValidationError as PydanticValidationError
 from apps.estoque.domain.tipos import FamiliaProduto
 from apps.estoque.models import Movimentacao, Produto, SaldoMDF
 from apps.estoque.schemas.movimentacao import MovimentacaoCreateSchema
-from apps.estoque.selectors.disponibilidade_selector import get_saldo_reservado
+from apps.estoque.selectors.disponibilidade_selector import (
+    get_espessuras_operacionais,
+    get_saldo_reservado,
+)
 from apps.estoque.selectors.produto_selector import ProdutoSelector
 
 
@@ -30,6 +33,12 @@ class MovimentacaoService:
         if familia == FamiliaProduto.MDF:
             if espessura is None:
                 raise ValidationError("Espessura e obrigatoria para produtos da familia MDF.")
+            espessuras_operacionais = get_espessuras_operacionais(produto)
+            if espessuras_operacionais and espessura not in espessuras_operacionais:
+                raise ValidationError(
+                    f"Espessura {espessura}mm invalida para este item. "
+                    f"Permitidas: {', '.join(str(e) for e in espessuras_operacionais)}mm."
+                )
 
             saldo_mdf, _ = SaldoMDF.objects.get_or_create(produto=produto, espessura=espessura)
             reservado = get_saldo_reservado(produto, espessura=espessura)

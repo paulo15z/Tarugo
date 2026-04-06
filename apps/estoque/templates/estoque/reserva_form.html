@@ -109,6 +109,7 @@
                   data-qtd="{{ produto.quantidade }}"
                   data-sku="{{ produto.sku }}"
                   data-familia="{{ produto.categoria.familia }}"
+                  data-espessura-unica="{{ produto.atributos_especificos.espessura|default:'' }}"
                   {% if produto.categoria.familia == FAMILIA_MDF %}
                   data-saldos='{ {% for saldo in produto.saldos_mdf.all %}"{{ saldo.espessura }}": {{ saldo.quantidade }}{% if not forloop.last %}, {% endif %}{% endfor %} }'
                   {% endif %}>
@@ -163,6 +164,26 @@
   const referenciaInput = document.getElementById('referencia_externa');
   const origemChip = document.getElementById('origem-chip');
 
+  function getEspessurasDisponiveis(opt, saldos) {
+    const espUnica = (opt.dataset.espessuraUnica || '').trim();
+    if (espUnica) return [espUnica];
+    return Object.keys(saldos || {}).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+  }
+
+  function preencherSelectEspessura(espessuras) {
+    const atual = espessuraSelect.value;
+    espessuraSelect.innerHTML = '<option value=\"\">Selecione a espessura...</option>';
+    espessuras.forEach((esp) => {
+      const option = document.createElement('option');
+      option.value = esp;
+      option.textContent = `${esp} mm`;
+      espessuraSelect.appendChild(option);
+    });
+    if (espessuras.includes(atual)) {
+      espessuraSelect.value = atual;
+    }
+  }
+
   function atualizarProdutoInfo() {
     const opt = selectProduto.options[selectProduto.selectedIndex];
     if (!opt || !opt.value) {
@@ -173,6 +194,9 @@
 
     const familia = (opt.dataset.familia || '').toLowerCase();
     const isMDF = familia === 'mdf';
+    let saldos = {};
+    try { saldos = JSON.parse(opt.dataset.saldos || '{}'); } catch (e) { saldos = {}; }
+    preencherSelectEspessura(getEspessurasDisponiveis(opt, saldos));
     espessuraGroup.style.display = isMDF ? 'block' : 'none';
     espessuraSelect.required = isMDF;
   }

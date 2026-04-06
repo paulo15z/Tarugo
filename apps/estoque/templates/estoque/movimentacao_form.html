@@ -141,6 +141,7 @@
                   data-min="{{ produto.estoque_minimo }}"
                   data-sku="{{ produto.sku }}"
                   data-familia="{{ produto.categoria.familia }}"
+                  data-espessura-unica="{{ produto.atributos_especificos.espessura|default:'' }}"
                   {% if produto.categoria.familia == FAMILIA_MDF %}
                   data-saldos='{ {% for saldo in produto.saldos_mdf.all %}"{{ saldo.espessura }}": {{ saldo.quantidade }}{% if not forloop.last %}, {% endif %}{% endfor %} }'
                   {% endif %}
@@ -241,6 +242,26 @@
   const espessuraSelect = document.getElementById('espessura');
   const saldoStrip = document.getElementById('saldo-strip');
 
+  function getEspessurasDisponiveis(opt, saldos) {
+    const espUnica = (opt.dataset.espessuraUnica || '').trim();
+    if (espUnica) return [espUnica];
+    return Object.keys(saldos || {}).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+  }
+
+  function preencherSelectEspessura(espessuras) {
+    const atual = espessuraSelect.value;
+    espessuraSelect.innerHTML = '<option value="">Selecione a espessura...</option>';
+    espessuras.forEach((esp) => {
+      const option = document.createElement('option');
+      option.value = esp;
+      option.textContent = `${esp} mm`;
+      espessuraSelect.appendChild(option);
+    });
+    if (espessuras.includes(atual)) {
+      espessuraSelect.value = atual;
+    }
+  }
+
   const hints = {
     entrada: 'Entrada adiciona ao saldo atual.',
     saida: 'Saida desconta do saldo atual. Nao pode ser maior que o saldo disponivel.',
@@ -261,7 +282,10 @@
       saldos = {};
     }
 
-    ['6', '15', '18', '25'].forEach((esp) => {
+    const espessuras = getEspessurasDisponiveis(opt, saldos);
+    preencherSelectEspessura(espessuras);
+
+    espessuras.forEach((esp) => {
       const qtd = parseInt(saldos[esp] || 0, 10);
       const chip = document.createElement('span');
       chip.className = `saldo-chip ${qtd <= 0 ? 'is-zero' : ''}`;
@@ -293,6 +317,9 @@
     renderSaldosMDF(opt);
 
     if (familia === 'mdf') {
+      let saldos = {};
+      try { saldos = JSON.parse(opt.dataset.saldos || '{}'); } catch (e) { saldos = {}; }
+      preencherSelectEspessura(getEspessurasDisponiveis(opt, saldos));
       espessuraGroup.style.display = 'block';
       espessuraSelect.required = true;
       espessuraSelect.name = 'espessura';
