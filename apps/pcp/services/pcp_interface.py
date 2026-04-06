@@ -18,6 +18,47 @@ def _processamento_liberado_para_bipagem(pid: str):
     return ProcessamentoPCP.objects.filter(id=pid, liberado_para_bipagem=True).first()
 
 
+def _resolver_peca_por_codigo(pid: str, codigo_peca: str):
+    """
+    Resolve a peca operacional pelo codigo dentro do lote.
+
+    Regra:
+    - Se houver uma unica ocorrencia, retorna ela.
+    - Se houver multiplas ocorrencias, prioriza as que ainda faltam bipagem.
+    - Se continuar ambiguo, nao escolhe "a primeira": retorna erro explicito.
+    """
+    from apps.pcp.models.lote import PecaPCP
+
+    candidatas = list(
+        PecaPCP.objects
+        .filter(modulo__ambiente__lote__pid=pid, codigo_peca=codigo_peca)
+        .select_related('modulo__ambiente__lote')
+        .order_by('id')
+    )
+    if not candidatas:
+        return None, 'Peca nao encontrada neste lote.'
+
+    if len(candidatas) == 1:
+        return candidatas[0], None
+
+    pendentes = [
+        p for p in candidatas
+        if p.quantidade_produzida < p.quantidade_planejada
+    ]
+    if len(pendentes) == 1:
+        return pendentes[0], None
+
+    if len(pendentes) > 1:
+        planos = sorted({p.plano for p in pendentes if p.plano})
+        return None, (
+            'Codigo de peca duplicado no lote. '
+            f'Nao foi possivel identificar unicamente (planos: {", ".join(planos) or "--"}).'
+        )
+
+    # Todas finalizadas; retorna uma para mensagem de repetido.
+    return candidatas[0], None
+
+
 def _proxima_etapa_operacional(roteiro: str | None) -> str | None:
     if not roteiro:
         return None
@@ -258,20 +299,14 @@ def registrar_bipagem_peca(
     localizacao: str = '',
 ) -> dict:
     from apps.bipagem.models import EventoBipagem
-    from apps.pcp.models.lote import PecaPCP
     from apps.pcp.services.lote_service import LotePCPService
 
     if not _processamento_liberado_para_bipagem(pid):
         return {'sucesso': False, 'mensagem': 'Lote bloqueado ou nao liberado para bipagem.'}
 
-    peca = (
-        PecaPCP.objects
-        .filter(modulo__ambiente__lote__pid=pid, codigo_peca=codigo_peca)
-        .select_related('modulo__ambiente__lote')
-        .first()
-    )
-    if not peca:
-        return {'sucesso': False, 'mensagem': 'Peca nao encontrada neste lote.'}
+    peca, erro_resolucao = _resolver_peca_por_codigo(pid, codigo_peca)
+    if erro_resolucao:
+        return {'sucesso': False, 'mensagem': erro_resolucao}
 
     faltam = max(peca.quantidade_planejada - peca.quantidade_produzida, 0)
     if faltam <= 0:
@@ -306,19 +341,14 @@ def estornar_bipagem_peca(
     motivo: str,
 ) -> dict:
     from apps.bipagem.models import EventoBipagem
-    from apps.pcp.models.lote import PecaPCP
 
     if not _processamento_liberado_para_bipagem(pid):
         return {'sucesso': False, 'mensagem': 'Lote bloqueado ou nao liberado para bipagem.'}
 
-    peca = (
-        PecaPCP.objects
-        .filter(modulo__ambiente__lote__pid=pid, codigo_peca=codigo_peca)
-        .select_related('modulo__ambiente__lote')
-        .first()
-    )
-    if not peca:
-        return {'sucesso': False, 'mensagem': 'Peca nao encontrada neste lote.'}
+    peca, erro_resolucao = _resolver_peca_por_codigo(pid, codigo_peca)
+    if erro_resolucao:
+        return {'sucesso': False, 'mensagem': erro_resolucao}
+
     if peca.quantidade_produzida <= 0:
         return {'sucesso': False, 'mensagem': 'Peca ainda nao possui bipagem para estornar.'}
 

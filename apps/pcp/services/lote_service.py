@@ -29,13 +29,20 @@ class LotePCPService:
         nome_arquivo: str,
         ordem_producao: str | None = None,
     ) -> LotePCP:
-        """Fluxo principal: DataFrame -> Pydantic -> Models."""
+        """Fluxo principal: DataFrame -> Pydantic -> Models.
+
+        Importante: se o DataFrame ja vier com ROTEIRO/PLANO calculados pelo
+        processamento do PCP, nao recalcular para evitar divergencia entre PCP
+        e Bipagem.
+        """
         df = df.copy()
-        df["ROTEIRO"] = df.apply(calcular_roteiro, axis=1)
-        df["PLANO"] = df.apply(
-            lambda row: determinar_plano_de_corte(row, row["ROTEIRO"]),
-            axis=1,
-        )
+        if "ROTEIRO" not in df.columns:
+            df["ROTEIRO"] = df.apply(calcular_roteiro, axis=1)
+        if "PLANO" not in df.columns:
+            df["PLANO"] = df.apply(
+                lambda row: determinar_plano_de_corte(row, row["ROTEIRO"]),
+                axis=1,
+            )
 
         lote_input = LotePCPService._build_lote_input(df, pid, nome_arquivo, ordem_producao)
         return LotePCPService._persist_lote(lote_input)
