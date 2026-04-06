@@ -88,13 +88,13 @@ class MovimentacaoAdmin(admin.ModelAdmin):
 # ===================== RESERVAS =====================
 @admin.register(Reserva)
 class ReservaAdmin(admin.ModelAdmin):
-    list_display = ['projeto_display', 'produto', 'quantidade', 'status', 'criado_em']
-    list_filter = ['status', 'criado_em']
-    search_fields = ['projeto_legado', 'pedido__numero', 'produto__nome']
+    list_display = ['projeto_display', 'origem_externa', 'produto', 'quantidade', 'status', 'criado_em']
+    list_filter = ['status', 'origem_externa', 'criado_em']
+    search_fields = ['projeto_legado', 'referencia_externa', 'produto__nome', 'produto__sku']
     ordering = ['-criado_em']
     readonly_fields = ['criado_em', 'atualizado_em']
 
     def projeto_display(self, obj):
         return obj.projeto
     projeto_display.short_description = "Projeto/Pedido"
-    projeto_display.admin_order_field = 'pedido'
+    projeto_display.admin_order_field = 'referencia_externa'

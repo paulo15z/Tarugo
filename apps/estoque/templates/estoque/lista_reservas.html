@@ -1,127 +1,43 @@
 {% extends "base/base.html" %}
 {% load static %}
-{% block title %}Reservas — Tarugo{% endblock %}
-
-{% block extra_css %}
-<style>
-    .reserva-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        transition: var(--transition);
-        box-shadow: var(--shadow);
-    }
-    
-    .reserva-card:hover {
-        border-color: var(--accent);
-        transform: translateY(-2px);
-    }
-    
-    .reserva-card.bloqueado {
-        border-left: 6px solid var(--error);
-        background: #fff5f5;
-    }
-
-    .reserva-main { display: flex; gap: 2rem; align-items: center; flex: 1; }
-    
-    .reserva-material { min-width: 250px; }
-    .reserva-material h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 0.25rem; color: var(--text); }
-    .reserva-material p { font-size: 0.8rem; color: var(--text-muted); font-family: var(--mono); font-weight: 600; }
-    
-    .reserva-projeto { min-width: 200px; }
-    .reserva-projeto h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.2rem; color: var(--text); }
-    .reserva-projeto p { font-size: 0.75rem; color: var(--text-dim); font-weight: 600; }
-    
-    .reserva-stats { text-align: center; min-width: 100px; }
-    .reserva-stats .qtd { font-size: 1.5rem; font-weight: 800; line-height: 1; color: var(--text); }
-    .reserva-stats .un { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
-
-    .actions-group { display: flex; gap: 0.5rem; }
-    
-    .btn-icon {
-        width: 40px; height: 40px;
-        display: flex; align-items: center; justify-content: center;
-        border-radius: 8px;
-        border: 1px solid var(--border-strong);
-        background: var(--surface);
-        color: var(--text-muted);
-        cursor: pointer;
-        transition: var(--transition);
-        text-decoration: none;
-    }
-    
-    .btn-icon:hover { background: var(--surface-raised); color: var(--text); border-color: var(--text); }
-    .btn-icon.danger:hover { background: var(--error); color: white; border-color: var(--error); }
-    .btn-icon.success:hover { background: var(--success); color: white; border-color: var(--success); }
-</style>
-{% endblock %}
+{% block title %}Reservas - Tarugo{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <div>
-        <h1 class="page-title">Reservas de Materiais</h1>
-        <p class="page-subtitle">Controle de insumos vinculados a projetos e pedidos</p>
-    </div>
-    <div style="display: flex; gap: 0.75rem;">
-        <a href="{% url 'estoque:reserva_create' %}" class="btn btn-accent">
-            <i class="fas fa-bookmark"></i> Nova Reserva
-        </a>
-    </div>
+  <div>
+    <h1 class="page-title">Reservas de Materiais</h1>
+    <p class="page-subtitle">Saldo disponivel = saldo fisico - reservas ativas.</p>
+  </div>
+  <a href="{% url 'estoque:reserva_create' %}" class="btn btn-accent">Nova Reserva</a>
 </div>
 
-<div style="margin-top: 2rem;">
-    {% for r in reservas %}
-    <div class="reserva-card {% if r.pedido.bloqueado %}bloqueado{% endif %}">
-        <div class="reserva-main">
-            <div class="reserva-material">
-                <h3>{{ r.produto.nome }}</h3>
-                <p>
-                    {% if r.espessura %}<span class="text-accent">{{ r.espessura }}mm</span> • {% endif %}
-                    {{ r.produto.sku }}
-                </p>
-            </div>
-            
-            <div class="reserva-projeto">
-                <h4>{{ r.pedido.cliente_nome|default:"PROJETO INTERNO" }}</h4>
-                <p>PEDIDO: {{ r.pedido.numero_pedido|default:"---" }}</p>
-            </div>
-            
-            <div class="reserva-stats">
-                <div class="qtd">{{ r.quantidade|floatformat:0 }}</div>
-                <div class="un">{% if r.produto.categoria.familia == FAMILIA_MDF %}unidades{% else %}{{ r.produto.unidade_medida }}{% endif %}</div>
-            </div>
-            
-            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <span class="badge {% if r.status == 'ATIVA' %}badge-success{% else %}badge-neutral{% endif %}">
-                    {{ r.status }}
-                </span>
-                <!-- Status de bloqueio visível apenas na Bipagem -->
-            </div>
-        </div>
-        
-        <div class="actions-group">
-            <!-- Ações de bloqueio movidas para o Painel de Bipagem -->
-            
-            <a href="#" class="btn-icon success" title="Liberar Reserva">
-                <i class="fas fa-check"></i>
-            </a>
-            
-            <button class="btn-icon danger" title="Cancelar Reserva">
-                <i class="fas fa-trash-alt"></i>
-            </button>
-        </div>
+<div style="margin-top: 2rem; display: grid; gap: 1rem;">
+  {% for r in reservas %}
+  <div class="card" style="padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+    <div>
+      <div style="font-weight: 700;">{{ r.produto.nome }} ({{ r.produto.sku }})</div>
+      <div class="text-muted" style="font-size: 0.85rem;">
+        Referencia: {{ r.referencia_externa|default:"Sem referencia" }} | Origem: {{ r.get_origem_externa_display }}
+        {% if r.espessura %}| Espessura: {{ r.espessura }}mm{% endif %}
+      </div>
+      <div class="text-muted" style="font-size: 0.8rem;">Quantidade: {{ r.quantidade }} | Status: {{ r.get_status_display }}</div>
     </div>
-    {% empty %}
-    <div class="card" style="padding: 4rem; text-align: center;">
-        <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.2;">🔖</div>
-        <h3 style="margin-bottom: 0.5rem;">Nenhuma reserva ativa</h3>
-        <p class="text-muted">Vincule materiais a projetos para garantir o suprimento da produção.</p>
+
+    {% if r.status == 'ativa' %}
+    <div style="display: flex; gap: 0.5rem;">
+      <form method="post" action="{% url 'estoque:reserva_consumir' r.id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">Consumir</button>
+      </form>
+      <form method="post" action="{% url 'estoque:reserva_cancelar' r.id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline">Cancelar</button>
+      </form>
     </div>
-    {% endfor %}
+    {% endif %}
+  </div>
+  {% empty %}
+  <div class="card" style="padding: 3rem; text-align: center;">Nenhuma reserva registrada.</div>
+  {% endfor %}
 </div>
 {% endblock %}

@@ -10,6 +10,12 @@ from .movimentacao_selectors import (
     get_movimentacoes_recentes,
     listar_movimentacoes,
 )
+from .disponibilidade_selector import (
+    get_saldo_fisico,
+    get_saldo_reservado,
+    get_saldo_disponivel,
+    get_disponibilidade_por_produto,
+)
 
 __all__ = [
     'get_produtos_com_saldo_baixo',
@@ -18,4 +24,8 @@ __all__ = [
     'get_produtos_baixo_estoque',
     'get_movimentacoes_recentes',
     'listar_movimentacoes',
+    'get_saldo_fisico',
+    'get_saldo_reservado',
+    'get_saldo_disponivel',
+    'get_disponibilidade_por_produto',
 ]

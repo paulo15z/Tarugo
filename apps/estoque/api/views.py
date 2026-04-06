@@ -1,32 +1,29 @@
-# apps/estoque/api/views.py
 from datetime import datetime
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.estoque.api.serializers import (
-    ProdutoSerializer,
-    MovimentacaoSerializer,
-    MovimentacaoListSerializer,
     AjusteLoteSerializer,
+    MovimentacaoListSerializer,
+    MovimentacaoSerializer,
+    ProdutoSerializer,
+    ReservaCreateSerializer,
+    ReservaSerializer,
 )
-
-# Imports alinhados com o padrão Tarugo
+from apps.estoque.selectors import listar_movimentacoes
 from apps.estoque.services.movimentacao_service import MovimentacaoService
 from apps.estoque.services.produto_service import ProdutoService
-
-from apps.estoque.selectors import (
-    listar_movimentacoes,
-    get_produtos_baixo_estoque,
-)
+from apps.estoque.services.public_interface import EstoquePublicService
+from apps.estoque.services.reserva_service import ReservaService
 
 
 def _parse_date(value: str, field_name: str):
     try:
         return datetime.fromisoformat(value)
-    except ValueError:
-        raise ValueError(f'{field_name} inválida. Use o formato ISO: YYYY-MM-DD.')
+    except ValueError as exc:
+        raise ValueError(f"{field_name} invalida. Use o formato ISO: YYYY-MM-DD.") from exc
 
 
 class ProdutoCreateView(APIView):
@@ -38,6 +35,31 @@ class ProdutoCreateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class DisponibilidadeView(APIView):
+    def get(self, request):
+        params = request.query_params
+
+        produto_id = params.get("produto_id")
+        espessura = params.get("espessura")
+
+        try:
+            disponibilidade = EstoquePublicService.consultar_disponibilidade(
+                produto_id=int(produto_id) if produto_id else None,
+                sku=params.get("sku"),
+                familia=params.get("familia"),
+                espessura=int(espessura) if espessura else None,
+            )
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(disponibilidade, status=status.HTTP_200_OK)
+
+
+class BaixoEstoqueView(APIView):
+    def get(self, request):
+        return Response(EstoquePublicService.get_alertas_baixo_estoque(), status=status.HTTP_200_OK)
+
+
 class MovimentacaoView(APIView):
     def post(self, request):
         serializer = MovimentacaoSerializer(data=request.data)
@@ -47,19 +69,23 @@ class MovimentacaoView(APIView):
         usuario = request.user if request.user.is_authenticated else None
 
         try:
-            # Chamada corrigida para o novo service
-            movimentacao = MovimentacaoService.processar_movimentacao(
-                serializer.validated_data,
-                usuario=usuario
+            movimentacao = MovimentacaoService.processar_movimentacao(serializer.validated_data, usuario=usuario)
+            disponibilidade = EstoquePublicService.consultar_disponibilidade(
+                produto_id=movimentacao.produto_id,
+                espessura=movimentacao.espessura,
             )
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({
-            'message': 'Movimentação realizada com sucesso.',
-            'produto_id': movimentacao.produto_id,
-            'quantidade_atual': movimentacao.produto.quantidade,
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "message": "Movimentacao realizada com sucesso.",
+                "movimentacao_id": movimentacao.id,
+                "produto_id": movimentacao.produto_id,
+                "disponibilidade": disponibilidade,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class MovimentacaoListView(APIView):
@@ -67,41 +93,41 @@ class MovimentacaoListView(APIView):
         params = request.query_params
 
         try:
-            limit = int(params.get('limit', 10))
-            offset = int(params.get('offset', 0))
+            limit = int(params.get("limit", 10))
+            offset = int(params.get("offset", 0))
         except (ValueError, TypeError):
-            return Response({'error': 'limit e offset devem ser inteiros.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "limit e offset devem ser inteiros."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            produto_id = int(params['produto_id']) if params.get('produto_id') else None
-            usuario_id = int(params['usuario_id']) if params.get('usuario_id') else None
-            data_inicio = _parse_date(params['data_inicio'], 'data_inicio') if params.get('data_inicio') else None
-            data_fim = _parse_date(params['data_fim'], 'data_fim') if params.get('data_fim') else None
-        except (ValueError, TypeError) as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-        tipo = params.get('tipo')
+            produto_id = int(params["produto_id"]) if params.get("produto_id") else None
+            usuario_id = int(params["usuario_id"]) if params.get("usuario_id") else None
+            data_inicio = _parse_date(params["data_inicio"], "data_inicio") if params.get("data_inicio") else None
+            data_fim = _parse_date(params["data_fim"], "data_fim") if params.get("data_fim") else None
+        except (ValueError, TypeError) as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         movimentacoes = listar_movimentacoes(
             produto_id=produto_id,
-            tipo=tipo,
+            tipo=params.get("tipo"),
             usuario_id=usuario_id,
             data_inicio=data_inicio,
             data_fim=data_fim,
         )
 
         total = movimentacoes.count()
-        paginated = movimentacoes[offset:offset + limit]
+        paginated = movimentacoes[offset : offset + limit]
 
-        return Response({
-            'meta': {
-                'total': total,
-                'limit': limit,
-                'offset': offset,
-                'tem_proxima': (offset + limit) < total,
-            },
-            'data': MovimentacaoListSerializer(paginated, many=True).data,
-        })
+        return Response(
+            {
+                "meta": {
+                    "total": total,
+                    "limit": limit,
+                    "offset": offset,
+                    "tem_proxima": (offset + limit) < total,
+                },
+                "data": MovimentacaoListSerializer(paginated, many=True).data,
+            }
+        )
 
 
 class AjusteLoteView(APIView):
@@ -113,20 +139,50 @@ class AjusteLoteView(APIView):
         usuario = request.user if request.user.is_authenticated else None
 
         try:
-            produtos = MovimentacaoService.processar_ajuste_em_lote(
-                serializer.validated_data,
-                usuario=usuario
-            )
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            produtos = MovimentacaoService.processar_ajuste_em_lote(serializer.validated_data, usuario=usuario)
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({
-            'message': f'{len(produtos)} movimentação(ões) processada(s) com sucesso.',
-            'produtos': [{'id': p.id, 'quantidade_atual': p.quantidade} for p in produtos],
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "message": f"{len(produtos)} movimentacao(oes) processada(s) com sucesso.",
+                "produtos": [{"id": p.id} for p in produtos],
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
-class BaixoEstoqueView(APIView):
-    def get(self, request):
-        produtos = get_produtos_baixo_estoque()
-        return Response(ProdutoSerializer(produtos, many=True).data)
+class ReservaView(APIView):
+    def post(self, request):
+        serializer = ReservaCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        usuario = request.user if request.user.is_authenticated else None
+
+        try:
+            reserva = ReservaService.criar_reserva(serializer.validated_data, usuario=usuario)
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(ReservaSerializer(reserva).data, status=status.HTTP_201_CREATED)
+
+
+class ReservaCancelarView(APIView):
+    def post(self, request, reserva_id: int):
+        usuario = request.user if request.user.is_authenticated else None
+        try:
+            reserva = ReservaService.cancelar_reserva(reserva_id, usuario=usuario)
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ReservaSerializer(reserva).data, status=status.HTTP_200_OK)
+
+
+class ReservaConsumirView(APIView):
+    def post(self, request, reserva_id: int):
+        usuario = request.user if request.user.is_authenticated else None
+        try:
+            reserva = ReservaService.consumir_reserva(reserva_id, usuario=usuario)
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ReservaSerializer(reserva).data, status=status.HTTP_200_OK)

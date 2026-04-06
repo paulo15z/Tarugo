@@ -1,91 +1,84 @@
-# apps/estoque/services/reserva_service.py
-from django.db import models, transaction
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from pydantic import ValidationError as PydanticValidationError
-from apps.estoque.services.schemas import ReservaCreateSchema
-from apps.estoque.models import Produto, Reserva, SaldoMDF
-from apps.estoque.selectors.produto_selector import ProdutoSelector
+
 from apps.estoque.domain.tipos import FamiliaProduto
-from apps.bipagem.models.pedido import Pedido
+from apps.estoque.models import Reserva
+from apps.estoque.schemas.movimentacao import ReservaCreateSchema
+from apps.estoque.selectors.disponibilidade_selector import get_saldo_disponivel
+from apps.estoque.selectors.produto_selector import ProdutoSelector
+from apps.estoque.services.movimentacao_service import MovimentacaoService
+
 
 class ReservaService:
-    """
-    Service para gerenciar reservas de estoque por projeto.
-    Garante que o material de um projeto aprovado não seja consumido por outro.
-    """
+    """Service de reservas industriais com impacto em saldo disponivel."""
 
     @staticmethod
     @transaction.atomic
     def criar_reserva(data: dict, usuario=None) -> Reserva:
         try:
             schema = ReservaCreateSchema(**data)
-        except PydanticValidationError as e:
-            raise ValidationError(f"Erro de validação: {e.errors()}")
-        produto_id = schema.produto_id
-        pedido_id = schema.pedido_id
-        quantidade = schema.quantidade
-        espessura = schema.espessura
-        observacao = schema.observacao
-        """
-        Cria uma reserva de material para um pedido específico.
-        Valida contra o estoque físico disponível.
-        """
+        except PydanticValidationError as exc:
+            raise ValidationError(f"Erro de validacao: {exc.errors()}") from exc
 
-        produto = ProdutoSelector.get_produto_para_movimentacao(produto_id)
-        pedido = Pedido.objects.get(id=pedido_id)
+        produto = ProdutoSelector.get_produto_para_movimentacao(schema.produto_id)
         familia = produto.categoria.familia
 
-        if familia == FamiliaProduto.MDF:
-            if not espessura:
-                raise ValidationError("Espessura é obrigatória para reservar produtos da família MDF.")
-            
-            saldo_mdf, _ = SaldoMDF.objects.get_or_create(
-                produto=produto,
-                espessura=espessura,
-                defaults={'quantidade': 0}
+        if familia == FamiliaProduto.MDF and schema.espessura is None:
+            raise ValidationError("Espessura e obrigatoria para reservar produtos da familia MDF.")
+
+        saldo_disponivel = get_saldo_disponivel(produto, espessura=schema.espessura)
+        if saldo_disponivel < schema.quantidade:
+            raise ValidationError(
+                f"Saldo disponivel insuficiente. Disponivel: {saldo_disponivel}, solicitado: {schema.quantidade}."
             )
-            if saldo_mdf.quantidade < quantidade:
-                raise ValidationError(
-                    f"Estoque insuficiente para {espessura}mm. Disponível: {saldo_mdf.quantidade}, solicitado: {quantidade}."
-                )
-        else:
-            if produto.quantidade < quantidade:
-                raise ValidationError(
-                    f"Estoque insuficiente. Disponível: {produto.quantidade}, solicitado: {quantidade}."
-                )
-        reserva = Reserva.objects.create(
+
+        return Reserva.objects.create(
             produto=produto,
-            pedido=pedido,
-            espessura=espessura,
-            quantidade=quantidade,
+            espessura=schema.espessura,
+            quantidade=int(schema.quantidade),
             usuario=usuario,
-            observacao=observacao,
-            status='ativa'
+            observacao=schema.observacao,
+            status="ativa",
+            referencia_externa=schema.referencia_externa,
+            origem_externa=schema.origem_externa,
+        )
+
+    @staticmethod
+    @transaction.atomic
+    def consumir_reserva(reserva_id: int, usuario=None) -> Reserva:
+        reserva = Reserva.objects.select_for_update().select_related("produto", "produto__categoria").get(id=reserva_id)
+        if reserva.status != "ativa":
+            raise ValidationError(f"Reserva nao pode ser consumida. Status atual: {reserva.status}")
+
+        reserva.status = "consumida"
+        reserva.save(update_fields=["status", "atualizado_em"])
+
+        observacao = (
+            f"Consumo de reserva #{reserva.id}"
+            + (f" ({reserva.referencia_externa})" if reserva.referencia_externa else "")
+        )
+
+        MovimentacaoService.processar_movimentacao(
+            {
+                "produto_id": reserva.produto_id,
+                "tipo": "saida",
+                "quantidade": int(reserva.quantidade),
+                "espessura": reserva.espessura,
+                "observacao": observacao,
+            },
+            usuario=usuario,
         )
 
         return reserva
 
     @staticmethod
     @transaction.atomic
-    def consumir_reserva(reserva_id: int, usuario=None):
-        """
-        Marca uma reserva como consumida (quando o material é bipado na produção).
-        """
+    def cancelar_reserva(reserva_id: int, usuario=None) -> Reserva:
         reserva = Reserva.objects.select_for_update().get(id=reserva_id)
-        if reserva.status != 'ativa':
-            raise ValidationError(f"Reserva não pode ser consumida. Status atual: {reserva.status}")
+        if reserva.status != "ativa":
+            raise ValidationError(f"Reserva nao pode ser cancelada. Status atual: {reserva.status}")
 
-        reserva.status = 'consumida'
-        reserva.save(update_fields=['status', 'atualizado_em'])
-        return reserva
-
-    @staticmethod
-    @transaction.atomic
-    def cancelar_reserva(reserva_id: int, usuario=None):
-        """
-        Libera o material reservado de volta para o estoque geral.
-        """
-        reserva = Reserva.objects.select_for_update().get(id=reserva_id)
-        reserva.status = 'cancelada'
-        reserva.save(update_fields=['status', 'atualizado_em'])
+        reserva.status = "cancelada"
+        reserva.save(update_fields=["status", "atualizado_em"])
         return reserva

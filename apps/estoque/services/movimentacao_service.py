@@ -1,93 +1,80 @@
-# apps/estoque/services/movimentacao_service.py
-from django.db import transaction
 from django.core.exceptions import ValidationError
+from django.db import transaction
+from pydantic import ValidationError as PydanticValidationError
 
-from apps.estoque.models import Produto, Movimentacao, SaldoMDF
-from apps.estoque.selectors.produto_selector import ProdutoSelector
 from apps.estoque.domain.tipos import FamiliaProduto
-from apps.estoque.services.schemas import MovimentacaoSchema
+from apps.estoque.models import Movimentacao, Produto, SaldoMDF
+from apps.estoque.schemas.movimentacao import MovimentacaoCreateSchema
+from apps.estoque.selectors.disponibilidade_selector import get_saldo_reservado
+from apps.estoque.selectors.produto_selector import ProdutoSelector
 
 
 class MovimentacaoService:
-    """Service central do MVP - toda regra de negócio fica aqui"""
+    """Service central do estoque industrial."""
 
     @staticmethod
     @transaction.atomic
     def processar_movimentacao(data: dict, usuario=None) -> Movimentacao:
-        # Valida os dados de entrada com o schema Pydantic
-        schema = MovimentacaoSchema(**data)
-        produto_id = schema.produto_id
-        tipo = schema.tipo
-        quantidade = schema.quantidade
+        try:
+            schema = MovimentacaoCreateSchema(**data)
+        except PydanticValidationError as exc:
+            raise ValidationError(f"Erro de validacao: {exc.errors()}") from exc
+
+        produto = ProdutoSelector.get_produto_para_movimentacao(schema.produto_id)
+        tipo = schema.tipo.value
+        quantidade = int(schema.quantidade)
         espessura = schema.espessura
         observacao = schema.observacao
-        """
-        Processa uma única movimentação.
-        Recebe dict validado pelo DRF serializer.
-        """
 
-
-        # Lock de concorrência (evita race condition)
-        produto = ProdutoSelector.get_produto_para_movimentacao(produto_id)
         familia = produto.categoria.familia
-
-        # Lógica específica para MDF (por espessura)
         if familia == FamiliaProduto.MDF:
-            if not espessura:
-                raise ValidationError("Espessura é obrigatória para produtos da família MDF.")
-            
-            saldo_mdf, _ = SaldoMDF.objects.get_or_create(
-                produto=produto, 
-                espessura=espessura
-            )
+            if espessura is None:
+                raise ValidationError("Espessura e obrigatoria para produtos da familia MDF.")
 
-            if tipo == 'saida' and saldo_mdf.quantidade < quantidade:
+            saldo_mdf, _ = SaldoMDF.objects.get_or_create(produto=produto, espessura=espessura)
+            reservado = get_saldo_reservado(produto, espessura=espessura)
+            disponivel = max(0, saldo_mdf.quantidade - reservado)
+
+            if tipo == "saida" and disponivel < quantidade:
                 raise ValidationError(
-                    f"Estoque insuficiente para {espessura}mm. Disponível: {saldo_mdf.quantidade}, solicitado: {quantidade}."
+                    f"Saldo disponivel insuficiente para {espessura}mm. Disponivel: {disponivel}, solicitado: {quantidade}."
+                )
+            if tipo == "ajuste" and quantidade < reservado:
+                raise ValidationError(
+                    f"Ajuste invalido. Reservado para {espessura}mm: {reservado}. Novo saldo fisico nao pode ser menor que o reservado."
                 )
 
-            if tipo == 'ajuste' and quantidade < 0:
-                raise ValidationError("Quantidade de ajuste não pode ser negativa.")
-
-            if tipo == 'entrada':
+            if tipo == "entrada":
                 saldo_mdf.quantidade += quantidade
-            elif tipo == 'saida':
+            elif tipo == "saida":
                 saldo_mdf.quantidade -= quantidade
-            elif tipo == 'ajuste':
+            elif tipo == "ajuste":
                 saldo_mdf.quantidade = quantidade
-            elif tipo == 'transferencia':
-                # TODO: Implementar lógica de transferência entre localizações ou produtos
-                raise ValidationError("Tipo de movimentação 'transferencia' ainda não implementado.")
-            
-            saldo_mdf.save()
-            
-            # Opcional: Manter produto.quantidade como a soma de todas as espessuras
-            # produto.quantidade = SaldoMDF.objects.filter(produto=produto).aggregate(total=models.Sum('quantidade'))['total'] or 0
-            # produto.save()
 
+            saldo_mdf.save(update_fields=["quantidade"])
         else:
-            # Lógica para demais itens (Ferragens, Fitas, etc.)
-            if tipo == 'saida' and produto.quantidade < quantidade:
+            reservado = get_saldo_reservado(produto)
+            disponivel = max(0, int(produto.quantidade) - reservado)
+
+            if tipo == "saida" and disponivel < quantidade:
                 raise ValidationError(
-                    f"Estoque insuficiente. Disponível: {produto.quantidade}, solicitado: {quantidade}."
+                    f"Saldo disponivel insuficiente. Disponivel: {disponivel}, solicitado: {quantidade}."
+                )
+            if tipo == "ajuste" and quantidade < reservado:
+                raise ValidationError(
+                    f"Ajuste invalido. Reservado: {reservado}. Novo saldo fisico nao pode ser menor que o reservado."
                 )
 
-            if tipo == 'ajuste' and quantidade < 0:
-                raise ValidationError("Quantidade de ajuste não pode ser negativa.")
-
-            if tipo == 'entrada':
+            if tipo == "entrada":
                 produto.quantidade += quantidade
-            elif tipo == 'saida':
+            elif tipo == "saida":
                 produto.quantidade -= quantidade
-            elif tipo == 'ajuste':
+            elif tipo == "ajuste":
                 produto.quantidade = quantidade
-            elif tipo == 'transferencia':
-                # TODO: Implementar lógica de transferência entre localizações ou produtos
-                raise ValidationError("Tipo de movimentação 'transferencia' ainda não implementado.")
-            
-            produto.save()
 
-        movimentacao = Movimentacao.objects.create(
+            produto.save(update_fields=["quantidade", "atualizado_em"])
+
+        return Movimentacao.objects.create(
             produto=produto,
             tipo=tipo,
             espessura=espessura,
@@ -96,23 +83,14 @@ class MovimentacaoService:
             observacao=observacao,
         )
 
-        return movimentacao
-
     @staticmethod
     @transaction.atomic
     def processar_ajuste_em_lote(data: dict, usuario=None) -> list[Produto]:
-        """
-        Processa múltiplas movimentações de uma vez.
-        Recebe dict com chave 'movimentacoes' (lista de dicts validados pelo DRF).
-        Retorna lista de produtos atualizados.
-        """
-        movimentacoes_data = data['movimentacoes']
-
+        movimentacoes_data = data["movimentacoes"]
         if not movimentacoes_data:
-            raise ValidationError("A lista de movimentações não pode estar vazia.")
+            raise ValidationError("A lista de movimentacoes nao pode estar vazia.")
 
         produtos_atualizados = []
-
         for mov_data in movimentacoes_data:
             movimentacao = MovimentacaoService.processar_movimentacao(mov_data, usuario=usuario)
             produtos_atualizados.append(movimentacao.produto)
