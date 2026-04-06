@@ -25,6 +25,26 @@ class Reserva(models.Model):
         related_name="reservas",
         verbose_name="Produto",
     )
+    lote_pcp_id = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        verbose_name="Lote PCP",
+        help_text="Identificador do lote no PCP.",
+    )
+    modulo_id = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        verbose_name="Modulo PCP",
+        help_text="Quando aplicavel.",
+    )
+    ambiente = models.CharField(
+        max_length=80,
+        null=True,
+        blank=True,
+        verbose_name="Ambiente / Setor",
+    )
     referencia_externa = models.CharField(
         max_length=120,
         null=True,
@@ -73,12 +93,17 @@ class Reserva(models.Model):
         verbose_name = "Reserva"
         verbose_name_plural = "Reservas"
         ordering = ["-criado_em"]
-        indexes = [models.Index(fields=["status", "produto"])]
+        indexes = [
+            models.Index(fields=["status", "produto"]),
+            models.Index(fields=["lote_pcp_id"]),
+        ]
 
     @property
     def projeto(self):
         if self.referencia_externa:
             return self.referencia_externa
+        if self.lote_pcp_id:
+            return f"Lote {self.lote_pcp_id}"
         return self.projeto_legado or "Sem Referencia"
 
     def __str__(self):

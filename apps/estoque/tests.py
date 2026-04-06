@@ -2,7 +2,11 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from apps.estoque.models import CategoriaProduto, Produto, SaldoMDF
-from apps.estoque.selectors.disponibilidade_selector import get_saldo_disponivel, get_saldo_fisico
+from apps.estoque.selectors.disponibilidade_selector import (
+    get_comprometimento_por_lote,
+    get_saldo_disponivel,
+    get_saldo_fisico,
+)
 from apps.estoque.services.public_interface import EstoquePublicService
 from apps.estoque.services.reserva_service import ReservaService
 
@@ -27,6 +31,7 @@ class ReservaIndustrialTestCase(TestCase):
                 "quantidade": 4,
                 "referencia_externa": "PED-001",
                 "origem_externa": "pcp",
+                "lote_pcp_id": "LOTE-001",
             },
             usuario=self.user,
         )
@@ -42,6 +47,7 @@ class ReservaIndustrialTestCase(TestCase):
                 "quantidade": 3,
                 "referencia_externa": "PED-002",
                 "origem_externa": "pcp",
+                "lote_pcp_id": "LOTE-002",
             },
             usuario=self.user,
         )
@@ -56,6 +62,7 @@ class ReservaIndustrialTestCase(TestCase):
                 "quantidade": 2,
                 "referencia_externa": "PED-003",
                 "origem_externa": "pcp",
+                "lote_pcp_id": "LOTE-003",
             },
             usuario=self.user,
         )
@@ -95,6 +102,7 @@ class AlertaMDFPorDemandaTestCase(TestCase):
                 "espessura": 18,
                 "referencia_externa": "LOTE-001",
                 "origem_externa": "pcp",
+                "lote_pcp_id": "LOTE-001",
             },
             usuario=self.user,
         )
@@ -102,3 +110,42 @@ class AlertaMDFPorDemandaTestCase(TestCase):
         self.assertEqual(len(alertas), 1)
         self.assertEqual(alertas[0]["produto_id"], self.produto_mdf.id)
         self.assertEqual(alertas[0]["espessura"], 18)
+
+
+class ComprometimentoLoteTestCase(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="tester3", password="123456")
+        self.categoria = CategoriaProduto.objects.create(nome="Ferragens", familia="ferragens")
+        self.produto = Produto.objects.create(
+            nome="Corredica 450",
+            sku="COR-450",
+            categoria=self.categoria,
+            quantidade=20,
+            estoque_minimo=3,
+            unidade_medida="un",
+        )
+
+    def test_comprometimento_por_lote_agrega_quantidade(self):
+        ReservaService.criar_reserva(
+            {
+                "produto_id": self.produto.id,
+                "quantidade": 2,
+                "origem_externa": "pcp",
+                "lote_pcp_id": "LOTE-900",
+            },
+            usuario=self.user,
+        )
+        ReservaService.criar_reserva(
+            {
+                "produto_id": self.produto.id,
+                "quantidade": 3,
+                "origem_externa": "pcp",
+                "lote_pcp_id": "LOTE-900",
+            },
+            usuario=self.user,
+        )
+
+        data = get_comprometimento_por_lote("LOTE-900")
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["produto_id"], self.produto.id)
+        self.assertEqual(data[0]["quantidade"], 5)

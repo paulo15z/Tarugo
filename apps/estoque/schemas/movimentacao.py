@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from apps.estoque.domain.tipos import TipoMovimentacao
 
@@ -45,6 +45,9 @@ class ReservaCreateSchema(BaseModel):
     quantidade: int
     espessura: int | None = None
     referencia_externa: str | None = None
+    lote_pcp_id: str | None = None
+    modulo_id: str | None = None
+    ambiente: str | None = None
     origem_externa: str = "pcp"
     observacao: str | None = None
 
@@ -62,3 +65,15 @@ class ReservaCreateSchema(BaseModel):
         if origem not in ORIGENS_RESERVA:
             raise ValueError(f"Origem invalida. Use uma de: {', '.join(sorted(ORIGENS_RESERVA))}.")
         return origem
+
+    @model_validator(mode="after")
+    def contexto_pcp(self):
+        origem = self.origem_externa
+        lote_id = self.lote_pcp_id
+        referencia = self.referencia_externa
+
+        if origem == "pcp" and not lote_id:
+            raise ValueError("Lote PCP deve ser informado quando a origem for PCP.")
+        if origem != "pcp" and not referencia:
+            raise ValueError("Referencia externa eh obrigatoria para reservas manuais ou integradas.")
+        return self

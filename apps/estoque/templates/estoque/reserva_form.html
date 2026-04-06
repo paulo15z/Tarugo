@@ -31,6 +31,23 @@
     </div>
 
     <div class="form-group">
+      <label for="lote_pcp_id">Lote PCP</label>
+      <input type="text" name="lote_pcp_id" id="lote_pcp_id" placeholder="Ex: LOTE-2026-041">
+      <p class="form-hint">Identificador do lote no PCP (obrigatorio para origens PCP).</p>
+    </div>
+
+    <div class="form-group">
+      <label for="modulo_id">Modulo PCP</label>
+      <input type="text" name="modulo_id" id="modulo_id" placeholder="Ex: MOD-23">
+    </div>
+
+    <div class="form-group">
+      <label for="ambiente">Ambiente / Setor</label>
+      <input type="text" name="ambiente" id="ambiente" placeholder="Ex: Cozinha Inferior">
+      <p class="form-hint">Contexto operacional do PCP.</p>
+    </div>
+
+    <div class="form-group">
       <label for="produto_id">Produto</label>
       <select name="produto_id" id="produto_id" required>
         <option value="">Selecione um produto...</option>
@@ -82,6 +99,9 @@
   const selectProduto = document.getElementById('produto_id');
   const espessuraGroup = document.getElementById('espessura-group');
   const espessuraSelect = document.getElementById('espessura');
+  const origemSelect = document.getElementById('origem_externa');
+  const loteInput = document.getElementById('lote_pcp_id');
+  const referenciaInput = document.getElementById('referencia_externa');
   const FAMILIA_MDF = "{{ FAMILIA_MDF }}";
 
   function atualizarProdutoInfo() {
@@ -98,7 +118,16 @@
     espessuraSelect.required = isMDF;
   }
 
+  function atualizarContextoOrigem() {
+    const origem = (origemSelect.value || '').toLowerCase();
+    const origemPCP = origem === 'pcp';
+    loteInput.required = origemPCP;
+    referenciaInput.required = !origemPCP;
+  }
+
   selectProduto.addEventListener('change', atualizarProdutoInfo);
+  origemSelect.addEventListener('change', atualizarContextoOrigem);
   if (selectProduto.value) atualizarProdutoInfo();
+  atualizarContextoOrigem();
 </script>
 {% endblock %}

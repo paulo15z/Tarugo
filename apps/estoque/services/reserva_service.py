@@ -42,6 +42,9 @@ class ReservaService:
             status="ativa",
             referencia_externa=schema.referencia_externa,
             origem_externa=schema.origem_externa,
+            lote_pcp_id=schema.lote_pcp_id,
+            modulo_id=schema.modulo_id,
+            ambiente=schema.ambiente,
         )
 
     @staticmethod

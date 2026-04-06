@@ -72,6 +72,19 @@ class BaixoEstoqueView(APIView):
         return Response(EstoquePublicService.get_alertas_baixo_estoque(), status=status.HTTP_200_OK)
 
 
+class ComprometimentoLoteView(APIView):
+    def get(self, request):
+        lote_pcp_id = request.query_params.get("lote_pcp_id")
+        if not lote_pcp_id:
+            return Response({"error": "lote_pcp_id e obrigatorio."}, status=status.HTTP_400_BAD_REQUEST)
+        status_reserva = request.query_params.get("status", "ativa")
+        data = EstoquePublicService.consultar_comprometimento_lote(
+            lote_pcp_id=lote_pcp_id,
+            status=status_reserva,
+        )
+        return Response(data, status=status.HTTP_200_OK)
+
+
 class MovimentacaoView(APIView):
     def post(self, request):
         serializer = MovimentacaoSerializer(data=request.data)

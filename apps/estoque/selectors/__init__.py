@@ -16,6 +16,8 @@ from .disponibilidade_selector import (
     get_saldo_disponivel,
     get_disponibilidade_por_produto,
     get_disponibilidade_resumida,
+    listar_reservas_por_lote,
+    get_comprometimento_por_lote,
 )
 
 __all__ = [
@@ -30,4 +32,6 @@ __all__ = [
     'get_saldo_disponivel',
     'get_disponibilidade_por_produto',
     'get_disponibilidade_resumida',
+    'listar_reservas_por_lote',
+    'get_comprometimento_por_lote',
 ]

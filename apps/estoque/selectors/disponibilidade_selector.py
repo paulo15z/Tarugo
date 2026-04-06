@@ -68,3 +68,27 @@ def get_disponibilidade_resumida(produto: Produto) -> dict:
         "saldo_disponivel": base["saldo_disponivel"],
         "por_espessura": [],
     }
+
+
+def listar_reservas_por_lote(lote_pcp_id: str):
+    """Retorna reservas ordenadas do lote solicitado (importante para PCP)."""
+    return Reserva.objects.select_related("produto").filter(lote_pcp_id=lote_pcp_id).order_by("-criado_em")
+
+
+def get_comprometimento_por_lote(lote_pcp_id: str, status: str = "ativa") -> list[dict]:
+    """Agrupa o que está comprometido por produto/espessura dentro de um lote PCP."""
+    qs = Reserva.objects.filter(lote_pcp_id=lote_pcp_id, status=status)
+    agregados = (
+        qs.values("produto_id", "produto__nome", "espessura")
+        .annotate(quantidade=Sum("quantidade"))
+        .order_by("produto_id", "espessura")
+    )
+    return [
+        {
+            "produto_id": item["produto_id"],
+            "produto_nome": item["produto__nome"],
+            "espessura": item["espessura"],
+            "quantidade": item["quantidade"],
+        }
+        for item in agregados
+    ]

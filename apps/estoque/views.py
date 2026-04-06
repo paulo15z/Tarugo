@@ -146,6 +146,9 @@ def reserva_create(request):
                 "quantidade": int(request.POST.get("quantidade")),
                 "espessura": int(request.POST.get("espessura")) if request.POST.get("espessura") else None,
                 "referencia_externa": request.POST.get("referencia_externa") or None,
+                "lote_pcp_id": request.POST.get("lote_pcp_id") or None,
+                "modulo_id": request.POST.get("modulo_id") or None,
+                "ambiente": request.POST.get("ambiente") or None,
                 "origem_externa": request.POST.get("origem_externa") or "pcp",
                 "observacao": request.POST.get("observacao"),
             }

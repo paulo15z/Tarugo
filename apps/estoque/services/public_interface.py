@@ -1,6 +1,9 @@
 from apps.estoque.domain.tipos import FamiliaProduto
 from apps.estoque.models import Produto
-from apps.estoque.selectors.disponibilidade_selector import get_disponibilidade_por_produto
+from apps.estoque.selectors.disponibilidade_selector import (
+    get_comprometimento_por_lote,
+    get_disponibilidade_por_produto,
+)
 
 
 class EstoquePublicService:
@@ -49,3 +52,7 @@ class EstoquePublicService:
                 if disponibilidade["saldo_disponivel"] <= produto.estoque_minimo:
                     alertas.append(disponibilidade)
         return alertas
+
+    @staticmethod
+    def consultar_comprometimento_lote(lote_pcp_id: str, status: str = "ativa") -> list[dict]:
+        return get_comprometimento_por_lote(lote_pcp_id=lote_pcp_id, status=status)

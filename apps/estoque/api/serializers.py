@@ -73,6 +73,9 @@ class ReservaCreateSerializer(serializers.Serializer):
     referencia_externa = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     origem_externa = serializers.ChoiceField(choices=["pcp", "manual", "integracao"], default="pcp")
     observacao = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    lote_pcp_id = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    modulo_id = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    ambiente = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
 
 class ReservaSerializer(serializers.ModelSerializer):
@@ -88,6 +91,9 @@ class ReservaSerializer(serializers.ModelSerializer):
             "produto_sku",
             "quantidade",
             "espessura",
+            "lote_pcp_id",
+            "modulo_id",
+            "ambiente",
             "status",
             "referencia_externa",
             "origem_externa",
