@@ -34,62 +34,88 @@
         line-height: 1;
     }
 
-    .product-name { font-weight: 700; color: var(--text); font-size: 1rem; }
-    .product-sku { font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim); }
-
-    .saldo-badge {
+    .product-name { font-weight: 700; color: var(--text); font-size: 1rem; margin-bottom: 0.25rem; }
+    .sku-pill {
         display: inline-flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.1rem;
-        padding: 0.45rem 0.55rem;
-        background: var(--surface-raised);
+        align-items: center;
+        gap: 0.4rem;
+        max-width: 170px;
+        padding: 0.2rem 0.45rem;
+        border-radius: 999px;
         border: 1px solid var(--border);
-        border-radius: 4px;
-        min-width: 145px;
+        background: var(--surface-raised);
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        color: var(--text-dim);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    .saldo-badge .esp { font-size: 0.65rem; font-weight: 800; color: var(--accent); margin-bottom: 2px; }
-    .saldo-badge .qtd { font-family: var(--mono); font-size: 0.82rem; font-weight: 700; }
+    .thickness-strip {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .thickness-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.32rem 0.55rem;
+        background: var(--surface-raised);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        font-family: var(--mono);
+        line-height: 1;
+        white-space: nowrap;
+    }
+    .thickness-chip .esp {
+        font-size: 0.68rem;
+        font-weight: 800;
+        color: var(--text-dim);
+    }
+    .thickness-chip .disp-main {
+        font-size: 0.98rem;
+        font-weight: 900;
+        color: var(--text);
+    }
+    .thickness-chip .qtd-meta {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+    }
+    .thickness-chip.is-zero {
+        border-color: #ffd7d7;
+        background: #fff8f8;
+    }
 
     .saldo-geral {
         display: flex;
         flex-direction: column;
-        gap: 0.2rem;
+        gap: 0.18rem;
+    }
+    .saldo-geral .disp-main {
         font-family: var(--mono);
-        font-size: 0.85rem;
-        font-weight: 700;
+        font-size: 1.05rem;
+        font-weight: 800;
+    }
+    .saldo-geral .qtd-meta {
+        font-family: var(--mono);
+        font-size: 0.76rem;
+        color: var(--text-muted);
     }
 
     .actions-cell { text-align: right; }
-    .dropdown { position: relative; display: inline-block; }
-    .dropdown-content {
-        display: none;
-        position: absolute;
-        right: 0;
-        background: var(--surface);
-        min-width: 160px;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-        z-index: 10;
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        overflow: hidden;
+    .actions-group {
+        display: inline-flex;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
     }
-    .dropdown-content a, .dropdown-content button {
-        color: var(--text);
-        padding: 0.75rem 1rem;
-        text-decoration: none;
-        display: block;
-        font-size: 0.85rem;
-        font-weight: 600;
-        text-align: left;
-        width: 100%;
-        background: none;
-        border: none;
-        cursor: pointer;
+    .actions-group .btn {
+        min-width: 122px;
+        justify-content: center;
     }
-    .dropdown-content a:hover, .dropdown-content button:hover { background: var(--surface-raised); }
-    .dropdown:hover .dropdown-content { display: block; }
 
     .modal {
         display: none;
@@ -153,7 +179,7 @@
             <tr>
                 <th>Material / SKU</th>
                 <th>Familia</th>
-                <th>Saldo (Fisico / Reservado / Disponivel)</th>
+                <th>Saldo operacional</th>
                 <th>Minimo</th>
                 <th>Status</th>
                 <th class="actions-cell">Acoes</th>
@@ -165,20 +191,19 @@
             <tr>
                 <td>
                     <div class="product-name">{{ p.nome }}</div>
-                    <div class="product-sku">{{ p.sku }}</div>
+                    <span class="sku-pill" title="{{ p.sku }}">{{ p.sku }}</span>
                 </td>
                 <td>
                     <span class="badge badge-neutral">{{ p.categoria.familia|default:"GERAL" }}</span>
                 </td>
                 <td>
                     {% if p.categoria.familia == FAMILIA_MDF %}
-                        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                        <div class="thickness-strip">
                             {% for item in disp.por_espessura %}
-                                <div class="saldo-badge">
+                                <div class="thickness-chip {% if item.saldo_disponivel <= 0 %}is-zero{% endif %}" title="Disponivel: {{ item.saldo_disponivel|floatformat:0 }} | Fisico: {{ item.saldo_fisico|floatformat:0 }} | Reservado: {{ item.saldo_reservado|floatformat:0 }}">
                                     <span class="esp">{{ item.espessura }}mm</span>
-                                    <span class="qtd">F: {{ item.saldo_fisico|floatformat:0 }}</span>
-                                    <span class="qtd">R: {{ item.saldo_reservado|floatformat:0 }}</span>
-                                    <span class="qtd">D: {{ item.saldo_disponivel|floatformat:0 }}</span>
+                                    <span class="disp-main">{{ item.saldo_disponivel|floatformat:0 }}</span>
+                                    <span class="qtd-meta">{{ item.saldo_fisico|floatformat:0 }}/{{ item.saldo_reservado|floatformat:0 }}</span>
                                 </div>
                             {% empty %}
                                 <span class="text-dim" style="font-size: 0.8rem;">Sem saldos inicializados</span>
@@ -186,9 +211,8 @@
                         </div>
                     {% else %}
                         <div class="saldo-geral">
-                            <span>F: {{ disp.saldo_fisico|floatformat:0 }} {{ p.unidade_medida }}</span>
-                            <span>R: {{ disp.saldo_reservado|floatformat:0 }} {{ p.unidade_medida }}</span>
-                            <span>D: {{ disp.saldo_disponivel|floatformat:0 }} {{ p.unidade_medida }}</span>
+                            <span class="disp-main">{{ disp.saldo_disponivel|floatformat:0 }} {{ p.unidade_medida }}</span>
+                            <span class="qtd-meta">{{ disp.saldo_fisico|floatformat:0 }}/{{ disp.saldo_reservado|floatformat:0 }}</span>
                         </div>
                     {% endif %}
                 </td>
@@ -201,18 +225,13 @@
                     {% endif %}
                 </td>
                 <td class="actions-cell">
-                    <div class="dropdown">
-                        <button class="btn btn-outline" style="padding: 0.4rem 0.8rem;">
-                            <i class="fas fa-ellipsis-v"></i>
+                    <div class="actions-group">
+                        <a class="btn btn-outline" href="{% url 'estoque:movimentacao_create' %}?produto_id={{ p.id }}">
+                            <i class="fas fa-truck-loading"></i> Movimentar
+                        </a>
+                        <button class="btn btn-outline" type="button" onclick="openConfigModal('{{ p.id }}', '{{ p.nome }}', '{{ p.estoque_minimo }}')">
+                            <i class="fas fa-cog"></i> Configurar
                         </button>
-                        <div class="dropdown-content">
-                            <a href="{% url 'estoque:movimentacao_create' %}?produto_id={{ p.id }}">
-                                <i class="fas fa-truck-loading"></i> Movimentar
-                            </a>
-                            <button onclick="openConfigModal('{{ p.id }}', '{{ p.nome }}', '{{ p.estoque_minimo }}')">
-                                <i class="fas fa-cog"></i> Configurar
-                            </button>
-                        </div>
                     </div>
                 </td>
             </tr>

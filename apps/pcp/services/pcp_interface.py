@@ -302,7 +302,6 @@ def registrar_bipagem_peca(
 def estornar_bipagem_peca(
     pid: str,
     codigo_peca: str,
-    quantidade: int,
     usuario: str,
     motivo: str,
 ) -> dict:
@@ -323,7 +322,8 @@ def estornar_bipagem_peca(
     if peca.quantidade_produzida <= 0:
         return {'sucesso': False, 'mensagem': 'Peca ainda nao possui bipagem para estornar.'}
 
-    quantidade_estornada = min(quantidade, peca.quantidade_produzida)
+    # Estorno operacional e unitario: cada peca e tratada individualmente.
+    quantidade_estornada = 1
     peca.quantidade_produzida -= quantidade_estornada
     if peca.quantidade_produzida <= 0:
         peca.quantidade_produzida = 0

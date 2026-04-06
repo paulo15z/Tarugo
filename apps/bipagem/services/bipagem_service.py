@@ -39,7 +39,6 @@ def estornar_bipagem(data: dict[str, Any]) -> dict[str, Any]:
     return estornar_bipagem_peca(
         pid=payload.pid,
         codigo_peca=payload.codigo_peca,
-        quantidade=payload.quantidade,
         usuario=payload.usuario,
         motivo=payload.motivo,
     )

@@ -76,12 +76,10 @@ def estornar_peca_view(request, numero_pedido):
     pid = numero_pedido
     codigo_peca = request.POST.get('codigo_peca', '').strip()
     motivo = request.POST.get('motivo', '').strip()
-    quantidade = int(request.POST.get('quantidade', '1') or 1)
 
     resultado = estornar_bipagem({
         'pid': pid,
         'codigo_peca': codigo_peca,
-        'quantidade': quantidade,
         'usuario': request.user.username or 'SISTEMA',
         'motivo': motivo,
     })

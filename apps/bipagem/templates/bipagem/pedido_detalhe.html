@@ -119,7 +119,6 @@
       <form method="post" action="{% url 'bipagem:estornar_peca' pid %}" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
         {% csrf_token %}
         <input class="field mono" type="text" name="codigo_peca" placeholder="Codigo para estornar" required>
-        <input class="field" type="number" min="1" name="quantidade" value="1" style="max-width:120px;">
         <input class="field" type="text" name="motivo" placeholder="Motivo do estorno" required style="min-width:260px;">
         <button class="btn btn-danger" type="submit">Estornar peca</button>
       </form>
