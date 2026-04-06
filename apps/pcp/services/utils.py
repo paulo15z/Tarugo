@@ -242,6 +242,7 @@ def calcular_roteiro(row) -> str:
     eh_painel = '_painel_' in obs
 
     tem_pintura = '_pin_' in obs
+    tem_tamponamento_tag = '_tamp_' in obs or '_tamponamento_' in obs
     tem_tapecar = '_tap_' in obs
     tem_eletrica = '_led_' in obs
     tem_curvo = '_curvo_' in obs
@@ -257,12 +258,12 @@ def calcular_roteiro(row) -> str:
     if tem_furo:
         rota.append('USI')
         rota.append('FUR')
-    if (eh_gaveta or eh_caixa) and not eh_painel and not tem_duplagem:
+    if (eh_gaveta or eh_caixa) and not eh_painel and not tem_duplagem and not tem_tamponamento_tag:
         rota.append('MCX')
     elif tem_puxador or eh_porta or eh_frontal:
         rota.append('MPE')
         rota.append('MAR')
-    if eh_painel or (eh_tamponamento and not eh_gaveta):
+    if eh_painel or eh_tamponamento or tem_tamponamento_tag:
         rota.append('MAR')
     if tem_pintura:
         rota.append('PIN')

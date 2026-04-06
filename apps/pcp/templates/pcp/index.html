@@ -60,6 +60,56 @@
     #resultado table tbody tr:nth-child(odd) { background: rgba(15, 23, 42, 0.62); }
     #resultado table tbody tr:nth-child(even) { background: rgba(30, 41, 59, 0.48); }
     #resultado table tbody tr:hover { background: rgba(249, 115, 22, 0.12); }
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 90;
+        padding: 1rem;
+    }
+    .modal-card {
+        width: min(1200px, 95vw);
+        max-height: 92vh;
+        overflow-y: auto;
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-radius: 18px;
+        box-shadow: 0 30px 80px rgba(15, 23, 42, 0.25);
+    }
+    #modal-retorno .border-gray-800 { border-color: #e2e8f0 !important; }
+    #modal-retorno .card {
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: none;
+    }
+    #modal-retorno .text-gray-100 { color: #0f172a !important; }
+    #modal-retorno .text-gray-400,
+    #modal-retorno .text-gray-500 { color: #475569 !important; }
+    #modal-retorno table thead tr { background: #e5e7eb; }
+    #modal-retorno table thead th {
+        color: #4b5563;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+    }
+    #modal-retorno table tbody td { color: #1f2937; }
+    #modal-retorno table tbody tr:nth-child(odd) { background: #ffffff; }
+    #modal-retorno table tbody tr:nth-child(even) { background: #f8fafc; }
+    #modal-retorno table tbody tr:hover { background: #eef2ff; }
+    #modal-retorno .text-green-400 { color: #15803d !important; }
+    #modal-retorno .text-yellow-400 { color: #b45309 !important; }
+    #modal-retorno .text-gray-400.text-xs { color: #475569 !important; }
+    #modal-retorno .mono { color: #111827; }
+    #modal-retorno .bg-blue-700 { background-color: #1d4ed8 !important; }
+    #modal-retorno .bg-gray-700 { background-color: #334155 !important; }
+    #modal-retorno .bg-indigo-700 { background-color: #4338ca !important; }
+    #modal-retorno .text-orange-500 { color: #ea580c !important; }
+    #modal-retorno .p-6.space-y-6 { background: #f8fafc; }
+    #modal-retorno .p-6.border-b {
+        background: linear-gradient(90deg, #eff6ff, #f8fafc);
+    }
 </style>
 {% endblock %}
 
@@ -74,6 +124,8 @@
 <input type="hidden" id="url-download-base" value="{% url 'pcp:download' pid='PID_PLACEHOLDER' %}">
 <input type="hidden" id="url-liberar-viagem-base" value="{% url 'pcp:liberar-viagem' pid='PID_PLACEHOLDER' %}">
 <input type="hidden" id="url-remover-base" value="{% url 'pcp:remover' pid='PID_PLACEHOLDER' %}">
+<input type="hidden" id="url-retorno-base" value="{% url 'pcp:retorno' pid='PID_PLACEHOLDER' %}">
+<input type="hidden" id="url-retorno-relatorio-base" value="{% url 'pcp:retorno-relatorio' pid='PID_PLACEHOLDER' %}">
 <input type="hidden" id="can-manage-pcp" value="{{ pode_gerenciar_pcp|yesno:'true,false' }}">
 
 <div class="page-header">
@@ -221,7 +273,77 @@
     </div>
 </div>
 
- </div>
+<div id="modal-retorno" class="modal-overlay hidden">
+    <div class="modal-card">
+        <div class="p-6 border-b border-gray-800 flex items-center justify-between gap-4">
+            <div>
+                <h3 class="text-lg font-bold text-gray-100 display uppercase tracking-wider">Retorno da Bipagem</h3>
+                <p id="retorno-subtitle" class="text-sm text-gray-400 mt-1">Lote</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="btn-retorno-relatorio"
+                        class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition-all display">
+                    <i class="fas fa-file-csv mr-1"></i>RELATORIO CSV
+                </button>
+                <button onclick="fecharModalRetorno()"
+                        class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition-all display">
+                    <i class="fas fa-times mr-1"></i>FECHAR
+                </button>
+            </div>
+        </div>
+
+        <div class="p-6 space-y-6">
+            <div id="retorno-indicadores" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4"></div>
+
+            <div class="card p-0 overflow-hidden">
+                <div class="p-4 border-b border-gray-800">
+                    <h4 class="font-bold text-gray-100 display uppercase tracking-wider">Preview das Pecas</h4>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr>
+                                <th>Codigo</th>
+                                <th>Descricao</th>
+                                <th>Ambiente</th>
+                                <th>Modulo</th>
+                                <th>Plano</th>
+                                <th>Produzida / Planejada</th>
+                                <th>Faltam</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="retorno-preview-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card p-0 overflow-hidden">
+                <div class="p-4 border-b border-gray-800">
+                    <h4 class="font-bold text-gray-100 display uppercase tracking-wider">Log de Bipagem</h4>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr>
+                                <th>Momento</th>
+                                <th>Tipo</th>
+                                <th>Peca</th>
+                                <th>Usuario</th>
+                                <th>Qtd</th>
+                                <th>Localizacao</th>
+                                <th>Motivo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="retorno-log-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
 <script>
     const CONFIG = {
         urls: {
@@ -233,6 +355,8 @@
             downloadBase: document.getElementById('url-download-base').value,
             liberarViagemBase: document.getElementById('url-liberar-viagem-base').value,
             removerBase: document.getElementById('url-remover-base').value,
+            retornoBase: document.getElementById('url-retorno-base').value,
+            retornoRelatorioBase: document.getElementById('url-retorno-relatorio-base').value,
         },
         csrf: () => document.getElementById('csrf-token').value,
     };
@@ -412,6 +536,11 @@
                                     class="p-2 text-gray-400 hover:text-white transition-colors" title="Download XLS">
                                 <i class="fas fa-download"></i>
                             </button>
+                            <button onclick="abrirRetorno('${r.id}')"
+                                    class="bg-indigo-700 hover:bg-indigo-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
+                                    title="Ver retorno da bipagem">
+                                <i class="fas fa-rotate-left mr-1"></i>RETORNO
+                            </button>
                             ${_acoesBipagem(r)}
                             ${CAN_MANAGE_PCP && !r.liberado_viagem && r.liberado ? `
                                 <button onclick="liberarViagem('${r.id}')"
@@ -459,6 +588,101 @@
             title="Bloquear bipagem deste lote">
             <i class="fas fa-lock mr-1"></i>BLOQUEAR
         </button>`;
+    }
+
+    async function abrirRetorno(pid) {
+        const url = CONFIG.urls.retornoBase.replace('PID_PLACEHOLDER', pid);
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.erro || 'Falha ao carregar retorno');
+
+            const lote = data.lote || {};
+            const indicadores = data.indicadores || {};
+            const preview = data.preview || [];
+            const log = data.log || [];
+
+            document.getElementById('retorno-subtitle').textContent =
+                `PID ${lote.pid || '-'} | Lote ${lote.lote || '-'} | Cliente ${lote.cliente_nome || '-'}`;
+
+            document.getElementById('btn-retorno-relatorio').onclick = () => {
+                window.location.href = CONFIG.urls.retornoRelatorioBase.replace('PID_PLACEHOLDER', pid);
+            };
+
+            document.getElementById('retorno-indicadores').innerHTML = `
+                <div class="card p-4">
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Status</p>
+                    <p class="text-lg font-bold text-orange-500 mono">${_statusRetornoLabel(indicadores.status_retorno)}</p>
+                </div>
+                <div class="card p-4">
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Concluido</p>
+                    <p class="text-2xl font-bold text-gray-100 mono">${indicadores.percentual_concluido ?? 0}%</p>
+                </div>
+                <div class="card p-4">
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Produzido</p>
+                    <p class="text-2xl font-bold text-gray-100 mono">${indicadores.total_produzida ?? 0} / ${indicadores.total_planejada ?? 0}</p>
+                </div>
+                <div class="card p-4">
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Pecas</p>
+                    <p class="text-lg font-bold text-gray-100 mono">${indicadores.pecas_finalizadas ?? 0} finalizadas | ${indicadores.pecas_pendentes ?? 0} pendentes</p>
+                </div>
+                <div class="card p-4">
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Eventos</p>
+                    <p class="text-lg font-bold text-gray-100 mono">${indicadores.total_bipagens ?? 0} bipagens | ${indicadores.total_estornos ?? 0} estornos</p>
+                </div>
+            `;
+
+            document.getElementById('retorno-preview-body').innerHTML = preview.length
+                ? preview.map(item => `
+                    <tr>
+                        <td class="mono text-xs">${item.codigo_peca || ''}</td>
+                        <td>${item.descricao || ''}</td>
+                        <td>${item.ambiente || ''}</td>
+                        <td>${item.modulo || ''}</td>
+                        <td class="mono">${item.plano || ''}</td>
+                        <td class="mono">${item.quantidade_produzida || 0} / ${item.quantidade_planejada || 0}</td>
+                        <td class="mono">${item.faltam || 0}</td>
+                        <td>${_badgeStatusPeca(item.status)}</td>
+                    </tr>
+                `).join('')
+                : '<tr><td colspan="8" class="text-center text-gray-500 py-6">Sem pecas neste lote.</td></tr>';
+
+            document.getElementById('retorno-log-body').innerHTML = log.length
+                ? log.map(item => `
+                    <tr>
+                        <td class="mono text-xs">${new Date(item.momento).toLocaleString('pt-BR')}</td>
+                        <td>${item.tipo || ''}</td>
+                        <td class="mono">${item.codigo_peca || ''}</td>
+                        <td>${item.usuario || ''}</td>
+                        <td class="mono">${item.quantidade || 0}</td>
+                        <td>${item.localizacao || '-'}</td>
+                        <td>${item.motivo || '-'}</td>
+                    </tr>
+                `).join('')
+                : '<tr><td colspan="7" class="text-center text-gray-500 py-6">Sem eventos de bipagem para este lote.</td></tr>';
+
+            document.getElementById('modal-retorno').classList.remove('hidden');
+        } catch (err) {
+            alert(err.message);
+        }
+    }
+
+    function fecharModalRetorno() {
+        document.getElementById('modal-retorno').classList.add('hidden');
+    }
+
+    function _statusRetornoLabel(status) {
+        if (status === 'concluido') return 'Concluido';
+        if (status === 'em_producao') return 'Em Producao';
+        if (status === 'pendente') return 'Pendente';
+        if (status === 'sem_pecas') return 'Sem Pecas';
+        return 'Nao informado';
+    }
+
+    function _badgeStatusPeca(status) {
+        if (status === 'finalizado') return '<span class="text-green-400 text-xs font-bold">Finalizado</span>';
+        if (status === 'em_producao') return '<span class="text-yellow-400 text-xs font-bold">Em producao</span>';
+        return '<span class="text-gray-400 text-xs font-bold">Pendente</span>';
     }
 
     // Ações

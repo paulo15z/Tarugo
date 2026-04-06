@@ -77,6 +77,7 @@ def calcular_roteiro(row: pd.Series) -> str:
     eh_painel = '_painel_' in obs
 
     tem_pintura = '_pin_' in obs
+    tem_tamponamento_tag = '_tamp_' in obs or '_tamponamento_' in obs
     tem_tapecar = '_tap_' in obs
     tem_eletrica = '_led_' in obs
     tem_curvo = '_curvo_' in obs
@@ -94,14 +95,14 @@ def calcular_roteiro(row: pd.Series) -> str:
         rota.append('USI')
         rota.append('FUR')
 
-    if (eh_gaveta or eh_caixa) and not eh_painel and not tem_duplagem:
+    if (eh_gaveta or eh_caixa) and not eh_painel and not tem_duplagem and not tem_tamponamento_tag:
         rota.append('MCX')
     elif (tem_puxador or eh_porta or eh_frontal) and not eh_ripa:
         rota.append('MPE')
         rota.append('MAR')
 
     # Ripas vão para Marcenaria (MAR)
-    if eh_painel or (eh_tamponamento and not eh_gaveta) or eh_ripa:
+    if eh_painel or eh_tamponamento or tem_tamponamento_tag or eh_ripa:
         rota.append('MAR')
 
     if tem_pintura:

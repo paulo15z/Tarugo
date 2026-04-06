@@ -71,7 +71,7 @@ class ProcessamentoPCPService:
                 df[col] = (
                     df[col]
                     .astype(str)
-                    .str.replace(r' *_(pin|tap|led|curvo|painel|ripa|lamina)_ *', ' ', case=False, regex=True)
+                    .str.replace(r' *_(pin|tamp|tap|led|curvo|painel|ripa|lamina|tamponamento)_ *', ' ', case=False, regex=True)
                     .str.strip()
                 )
 

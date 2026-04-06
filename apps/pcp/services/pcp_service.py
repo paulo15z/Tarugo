@@ -71,7 +71,7 @@ def processar_arquivo_dinabox(uploaded_file, lote: int):
     obs_col = _pick_col(df, "OBSERVAÇÃO", "OBSERVAÃ‡ÃƒO", "OBSERVA??O")
     if obs_col:
         df[obs_col] = df[obs_col].str.replace(
-            r" *_(pin|tap|led|curvo|painel|ripa|lamina)_ *",
+            r" *_(pin|tamp|tap|led|curvo|painel|ripa|lamina|tamponamento)_ *",
             " ",
             case=False,
             regex=True,
@@ -79,7 +79,7 @@ def processar_arquivo_dinabox(uploaded_file, lote: int):
 
     if "OBS" in df.columns:
         df["OBS"] = df["OBS"].str.replace(
-            r" *_(pin|tap|led|curvo|painel|ripa|lamina)_ *",
+            r" *_(pin|tamp|tap|led|curvo|painel|ripa|lamina|tamponamento)_ *",
             " ",
             case=False,
             regex=True,

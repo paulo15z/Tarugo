@@ -23,6 +23,8 @@ urlpatterns = [
 
     # Histórico de processamentos
     path('historico/', views.pcp_historico, name='historico'),
+    path('lote/<str:pid>/retorno/', views.pcp_retorno_lote, name='retorno'),
+    path('lote/<str:pid>/retorno/relatorio/', views.pcp_retorno_relatorio, name='retorno-relatorio'),
 
     # Ciclo de vida do lote para bipagem (PCP é dono)
     path('lote/<str:pid>/liberar/', views.pcp_liberar, name='liberar'),

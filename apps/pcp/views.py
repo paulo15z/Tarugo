@@ -8,7 +8,7 @@ import re
 import unicodedata
 
 from django.core.files.base import ContentFile
-from django.http import FileResponse, Http404, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
@@ -19,6 +19,7 @@ from apps.pcp.services.pcp_interface import (
     liberar_lote_para_bipagem,
     reabrir_lote_bipagem,
 )
+from apps.pcp.services.retorno_bipagem_service import RetornoBipagemService
 from apps.pcp.services.pcp_service import processar_arquivo_dinabox
 
 
@@ -233,6 +234,29 @@ def pcp_historico(request):
     ]
 
     return JsonResponse(data, safe=False)
+
+
+@require_GET
+def pcp_retorno_lote(request, pid):
+    retorno = RetornoBipagemService.obter_retorno_lote(pid=pid)
+    if not retorno:
+        return JsonResponse({'erro': 'Lote nao encontrado para retorno.'}, status=404)
+    return JsonResponse(retorno)
+
+
+@require_GET
+def pcp_retorno_relatorio(request, pid):
+    csv_content = RetornoBipagemService.gerar_relatorio_csv(pid=pid)
+    if csv_content is None:
+        raise Http404('Lote nao encontrado para relatorio.')
+
+    processamento = ProcessamentoPCP.objects.filter(id=pid).only('lote').first()
+    lote_str = processamento.lote if processamento and processamento.lote else pid
+    filename = f"retorno_bipagem_lote_{lote_str}.csv"
+
+    response = HttpResponse(csv_content, content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 
 @require_GET
