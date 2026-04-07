@@ -63,6 +63,13 @@ class LotePCPService:
         for _, row in df.iterrows():
             ambiente_nome = str(row.get("NOME DO PROJETO", "")).strip() or "SEM AMBIENTE"
             modulo_nome = str(row.get("DESCRIÇÃO MÓDULO", "")).strip() or "SEM MÓDULO"
+            id_peca_dinabox = LotePCPService._get_valor_texto(
+                row,
+                "ID DA PEÇA",
+                "ID DA PECA",
+                "ID DA PEÃ‡A",
+                "ID DA PEÃƒâ€¡A",
+            )
             ref_bruta = LotePCPService._get_valor_texto(
                 row,
                 "REFERENCIA",
@@ -83,11 +90,14 @@ class LotePCPService:
                 "material": row.get("MATERIAL DA PEÇA"),
                 "codigo_material": row.get("CODIGO DO MATERIAL"),
                 "quantidade": quantidade,
+                # Etiqueta deve respeitar exatamente o ID DA PEÇA.
+                # So cai para parsing de REFERENCIA quando o ID nao vier no arquivo.
+                "codigo_peca": id_peca_dinabox or None,
                 "roteiro": row.get("ROTEIRO"),
                 "plano": row.get("PLANO"),
                 "observacoes": row.get("OBSERVAÇÃO") or row.get("OBS"),
                 "lote": row.get("LOTE"),
-                "id_peca_dinabox": row.get("ID DA PEÇA"),
+                "id_peca_dinabox": id_peca_dinabox or None,
                 **{k: v for k, v in row.items() if k not in ["ROTEIRO", "PLANO"]},
             }
             peca = Peca.model_validate(peca_data)

@@ -7,6 +7,7 @@ liberar -> bloquear -> reabrir -> liberar viagem -> remover historico
 import re
 import unicodedata
 
+from django.contrib.auth.decorators import login_required
 from django.core.files.base import ContentFile
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import render
@@ -45,6 +46,7 @@ def _json_forbidden():
 # Interface
 # ---------------------------------------------------------------------------
 
+@login_required
 def pcp_index(request):
     return render(request, 'pcp/index.html', {
         'pode_gerenciar_pcp': _user_pode_gerenciar_pcp(request.user),
@@ -56,7 +58,10 @@ def pcp_index(request):
 # ---------------------------------------------------------------------------
 
 @require_POST
+@login_required
 def pcp_processar(request):
+    if not _user_pode_gerenciar_pcp(request.user):
+        return _json_forbidden()
     arquivo = request.FILES.get('arquivo')
 
     if not arquivo:
@@ -128,6 +133,7 @@ def pcp_processar(request):
 # ---------------------------------------------------------------------------
 
 @require_POST
+@login_required
 def pcp_liberar(request, pid):
     if not _user_pode_gerenciar_pcp(request.user):
         return _json_forbidden()
@@ -141,6 +147,7 @@ def pcp_liberar(request, pid):
 
 
 @require_POST
+@login_required
 def pcp_bloquear(request, pid):
     if not _user_pode_gerenciar_pcp(request.user):
         return _json_forbidden()
@@ -151,6 +158,7 @@ def pcp_bloquear(request, pid):
 
 
 @require_POST
+@login_required
 def pcp_reabrir(request, pid):
     if not _user_pode_gerenciar_pcp(request.user):
         return _json_forbidden()
@@ -164,6 +172,7 @@ def pcp_reabrir(request, pid):
 # ---------------------------------------------------------------------------
 
 @require_POST
+@login_required
 def pcp_liberar_viagem(request, pid):
     if not _user_pode_gerenciar_pcp(request.user):
         return _json_forbidden()
@@ -187,6 +196,7 @@ def pcp_liberar_viagem(request, pid):
 
 
 @require_POST
+@login_required
 def pcp_remover(request, pid):
     if not _user_pode_gerenciar_pcp(request.user):
         return _json_forbidden()
@@ -212,7 +222,10 @@ def pcp_remover(request, pid):
 # ---------------------------------------------------------------------------
 
 @require_GET
+@login_required
 def pcp_historico(request):
+    if not _user_pode_gerenciar_pcp(request.user):
+        return _json_forbidden()
     registros = ProcessamentoPCP.objects.order_by('-criado_em')[:50]
 
     data = [
@@ -237,7 +250,10 @@ def pcp_historico(request):
 
 
 @require_GET
+@login_required
 def pcp_retorno_lote(request, pid):
+    if not _user_pode_gerenciar_pcp(request.user):
+        return _json_forbidden()
     retorno = RetornoBipagemService.obter_retorno_lote(pid=pid)
     if not retorno:
         return JsonResponse({'erro': 'Lote nao encontrado para retorno.'}, status=404)
@@ -245,7 +261,10 @@ def pcp_retorno_lote(request, pid):
 
 
 @require_GET
+@login_required
 def pcp_retorno_relatorio(request, pid):
+    if not _user_pode_gerenciar_pcp(request.user):
+        return HttpResponse('Acesso negado.', status=403)
     csv_content = RetornoBipagemService.gerar_relatorio_csv(pid=pid)
     if csv_content is None:
         raise Http404('Lote nao encontrado para relatorio.')
@@ -260,7 +279,10 @@ def pcp_retorno_relatorio(request, pid):
 
 
 @require_GET
+@login_required
 def pcp_download(request, pid):
+    if not _user_pode_gerenciar_pcp(request.user):
+        return HttpResponse('Acesso negado.', status=403)
     try:
         processamento = ProcessamentoPCP.objects.get(id=pid)
     except ProcessamentoPCP.DoesNotExist:

@@ -136,6 +136,7 @@
     <div id="clock" class="mono text-accent" style="font-size: 0.9rem; font-weight: 600;"></div>
 </div>
 
+{% if pode_gerenciar_pcp %}
 <!-- Tabs -->
 <div class="flex border-b border-gray-200 mb-8">
     <button onclick="showTab(0)" id="tab-0"
@@ -342,8 +343,20 @@
         </div>
     </div>
 </div>
+{% else %}
+<div class="card p-8">
+    <h2 class="text-lg font-bold text-gray-100 display uppercase tracking-wider">Acesso Restrito</h2>
+    <p class="text-gray-400 mt-3">
+        A raiz do PCP é restrita para usuários autorizados (PCP, TI ou administradores).
+    </p>
+    <p class="text-gray-500 mt-2 text-sm">
+        Preview simples: este painel mostra somente esta mensagem de acesso. Para gestão de lotes, solicite liberação de perfil.
+    </p>
+</div>
+{% endif %}
 
 </div>
+{% if pode_gerenciar_pcp %}
 <script>
     const CONFIG = {
         urls: {
@@ -601,6 +614,8 @@
             const indicadores = data.indicadores || {};
             const preview = data.preview || [];
             const log = data.log || [];
+            const logBipagem = log.filter(item => item.tipo === 'BIPAGEM');
+            const logEstorno = log.filter(item => item.tipo === 'ESTORNO');
 
             document.getElementById('retorno-subtitle').textContent =
                 `PID ${lote.pid || '-'} | Lote ${lote.lote || '-'} | Cliente ${lote.cliente_nome || '-'}`;
@@ -647,8 +662,7 @@
                 `).join('')
                 : '<tr><td colspan="8" class="text-center text-gray-500 py-6">Sem pecas neste lote.</td></tr>';
 
-            document.getElementById('retorno-log-body').innerHTML = log.length
-                ? log.map(item => `
+            const htmlBipagem = logBipagem.map(item => `
                     <tr>
                         <td class="mono text-xs">${new Date(item.momento).toLocaleString('pt-BR')}</td>
                         <td>${item.tipo || ''}</td>
@@ -658,7 +672,32 @@
                         <td>${item.localizacao || '-'}</td>
                         <td>${item.motivo || '-'}</td>
                     </tr>
-                `).join('')
+                `).join('');
+
+            const htmlEstornoHeader = logEstorno.length
+                ? `
+                    <tr>
+                        <td colspan="7" class="text-xs font-bold text-orange-500 uppercase tracking-wider py-3">
+                            Estornos de peça
+                        </td>
+                    </tr>
+                `
+                : '';
+
+            const htmlEstorno = logEstorno.map(item => `
+                    <tr>
+                        <td class="mono text-xs">${new Date(item.momento).toLocaleString('pt-BR')}</td>
+                        <td>${item.tipo || ''}</td>
+                        <td class="mono">${item.codigo_peca || ''}</td>
+                        <td>${item.usuario || ''}</td>
+                        <td class="mono">${item.quantidade || 0}</td>
+                        <td>${item.localizacao || '-'}</td>
+                        <td>${item.motivo || '-'}</td>
+                    </tr>
+                `).join('');
+
+            document.getElementById('retorno-log-body').innerHTML = log.length
+                ? `${htmlBipagem}${htmlEstornoHeader}${htmlEstorno}`
                 : '<tr><td colspan="7" class="text-center text-gray-500 py-6">Sem eventos de bipagem para este lote.</td></tr>';
 
             document.getElementById('modal-retorno').classList.remove('hidden');
@@ -672,16 +711,16 @@
     }
 
     function _statusRetornoLabel(status) {
-        if (status === 'concluido') return 'Concluido';
-        if (status === 'em_producao') return 'Em Producao';
+        if (status === 'concluido') return 'Concluído';
+        if (status === 'em_producao') return 'Em produção';
         if (status === 'pendente') return 'Pendente';
-        if (status === 'sem_pecas') return 'Sem Pecas';
-        return 'Nao informado';
+        if (status === 'sem_pecas') return 'Sem peças';
+        return 'Não informado';
     }
 
     function _badgeStatusPeca(status) {
         if (status === 'finalizado') return '<span class="text-green-400 text-xs font-bold">Finalizado</span>';
-        if (status === 'em_producao') return '<span class="text-yellow-400 text-xs font-bold">Em producao</span>';
+        if (status === 'em_producao') return '<span class="text-yellow-400 text-xs font-bold">Em produção</span>';
         return '<span class="text-gray-400 text-xs font-bold">Pendente</span>';
     }
 
@@ -730,4 +769,11 @@
         }
     }
 </script>
+{% else %}
+<script>
+    const clockEl = document.getElementById('clock');
+    setInterval(() => { clockEl.textContent = new Date().toLocaleString('pt-BR'); }, 1000);
+    clockEl.textContent = new Date().toLocaleString('pt-BR');
+</script>
+{% endif %}
 {% endblock %}
