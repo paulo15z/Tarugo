@@ -2,6 +2,10 @@ services:
   web:
     build: .
     container_name: tarugo_web
+    environment:
+      DEFAULT_PASSWORD: "Trocar123!"
+      RESET_PASSWORDS: "0"
+      RUN_ESTOQUE_SEEDS: "0"
     ports:
       - "8000:8000"
     volumes:
