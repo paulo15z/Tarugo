@@ -27,6 +27,12 @@ def _parse_date(value: str, field_name: str):
         raise ValueError(f"{field_name} invalida. Use o formato ISO: YYYY-MM-DD.") from exc
 
 
+def _parse_bool_param(value: str | None, default: bool = False) -> bool:
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on", "sim"}
+
+
 class ProdutoCreateView(APIView):
     def post(self, request):
         serializer = ProdutoSerializer(data=request.data)
@@ -82,6 +88,55 @@ class ComprometimentoLoteView(APIView):
             lote_pcp_id=lote_pcp_id,
             status=status_reserva,
         )
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class RiscoRupturaLoteView(APIView):
+    def get(self, request):
+        lote_pcp_id = request.query_params.get("lote_pcp_id")
+        if not lote_pcp_id:
+            return Response({"error": "lote_pcp_id e obrigatorio."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            dias = int(request.query_params.get("dias", 30))
+        except (TypeError, ValueError):
+            return Response({"error": "dias deve ser inteiro."}, status=status.HTTP_400_BAD_REQUEST)
+
+        data = EstoquePublicService.consultar_risco_ruptura_lote(lote_pcp_id=lote_pcp_id, dias=dias)
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class SinaisOperacionaisView(APIView):
+    def get(self, request):
+        try:
+            dias = int(request.query_params.get("dias", 30))
+        except (TypeError, ValueError):
+            return Response({"error": "dias deve ser inteiro."}, status=status.HTTP_400_BAD_REQUEST)
+
+        familia = request.query_params.get("familia")
+        apenas_risco = _parse_bool_param(request.query_params.get("apenas_risco"), default=False)
+
+        data = EstoquePublicService.listar_sinais_operacionais(dias=dias)
+        if familia:
+            data = [item for item in data if item.get("familia") == familia]
+        if apenas_risco:
+            data = [item for item in data if item.get("risco_ruptura")]
+
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class NecessidadesReposicaoView(APIView):
+    def get(self, request):
+        try:
+            dias = int(request.query_params.get("dias", 30))
+        except (TypeError, ValueError):
+            return Response({"error": "dias deve ser inteiro."}, status=status.HTTP_400_BAD_REQUEST)
+
+        familia = request.query_params.get("familia")
+        data = EstoquePublicService.listar_necessidades_reposicao(dias=dias)
+        if familia:
+            data = [item for item in data if item.get("familia") == familia]
+
         return Response(data, status=status.HTTP_200_OK)
 
 

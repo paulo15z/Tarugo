@@ -10,6 +10,7 @@ class Command(BaseCommand):
     GROUP_OPERATOR = "Operador Maquina"
     GROUP_PCP = "PCP"
     GROUP_GESTAO = "Gestao"
+    GROUP_TI = "TI"
 
     USER_SPECS = [
         {
@@ -64,7 +65,7 @@ class Command(BaseCommand):
         default_password = options["default_password"]
         reset_passwords = options["reset_passwords"]
 
-        required_groups = {self.GROUP_OPERATOR, self.GROUP_PCP, self.GROUP_GESTAO}
+        required_groups = {self.GROUP_OPERATOR, self.GROUP_PCP, self.GROUP_GESTAO, self.GROUP_TI}
         for group_name in required_groups:
             Group.objects.get_or_create(name=group_name)
 
@@ -120,4 +121,3 @@ class Command(BaseCommand):
                 f"Criados: {created}. Atualizados: {updated}. Senhas redefinidas: {passwords_reset}."
             )
         )
-

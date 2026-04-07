@@ -3,6 +3,9 @@ from apps.estoque.models import Produto
 from apps.estoque.selectors.disponibilidade_selector import (
     get_comprometimento_por_lote,
     get_disponibilidade_por_produto,
+    get_necessidades_reposicao,
+    get_risco_ruptura_por_lote,
+    get_sinais_operacionais,
 )
 
 
@@ -56,3 +59,15 @@ class EstoquePublicService:
     @staticmethod
     def consultar_comprometimento_lote(lote_pcp_id: str, status: str = "ativa") -> list[dict]:
         return get_comprometimento_por_lote(lote_pcp_id=lote_pcp_id, status=status)
+
+    @staticmethod
+    def consultar_risco_ruptura_lote(lote_pcp_id: str, dias: int = 30) -> dict:
+        return get_risco_ruptura_por_lote(lote_pcp_id=lote_pcp_id, dias=dias)
+
+    @staticmethod
+    def listar_sinais_operacionais(dias: int = 30) -> list[dict]:
+        return get_sinais_operacionais(dias=dias)
+
+    @staticmethod
+    def listar_necessidades_reposicao(dias: int = 30) -> list[dict]:
+        return get_necessidades_reposicao(dias=dias)

@@ -4,6 +4,8 @@ from django.test import TestCase
 from apps.estoque.models import CategoriaProduto, Produto, SaldoMDF
 from apps.estoque.selectors.disponibilidade_selector import (
     get_comprometimento_por_lote,
+    get_necessidades_reposicao,
+    get_risco_ruptura_por_lote,
     get_saldo_disponivel,
     get_saldo_fisico,
 )
@@ -149,3 +151,38 @@ class ComprometimentoLoteTestCase(TestCase):
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]["produto_id"], self.produto.id)
         self.assertEqual(data[0]["quantidade"], 5)
+
+    def test_risco_ruptura_por_lote_identifica_quando_comprometimento_excede_disponivel(self):
+        ReservaService.criar_reserva(
+            {
+                "produto_id": self.produto.id,
+                "quantidade": 18,
+                "origem_externa": "pcp",
+                "lote_pcp_id": "LOTE-901",
+            },
+            usuario=self.user,
+        )
+
+        risco = get_risco_ruptura_por_lote("LOTE-901")
+        self.assertTrue(risco["risco_ruptura"])
+        self.assertTrue(len(risco["itens_criticos"]) >= 1)
+
+
+class NecessidadeReposicaoTestCase(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="tester4", password="123456")
+        self.categoria = CategoriaProduto.objects.create(nome="Ferragens", familia="ferragens")
+        self.produto = Produto.objects.create(
+            nome="Puxador Slim",
+            sku="PUX-SLIM",
+            categoria=self.categoria,
+            quantidade=5,
+            estoque_minimo=8,
+            unidade_medida="un",
+        )
+
+    def test_lista_reposicao_sugere_quantidade_para_estoque_abaixo_do_minimo(self):
+        necessidades = get_necessidades_reposicao(dias=30)
+        item = next((n for n in necessidades if n["produto_id"] == self.produto.id), None)
+        self.assertIsNotNone(item)
+        self.assertGreaterEqual(item["quantidade_sugerida"], 3)

@@ -11,8 +11,12 @@ from django.shortcuts import redirect, render
 from apps.estoque.domain.tipos import FamiliaProduto
 from apps.estoque.models import Produto, Reserva
 from apps.estoque.models.categoria import CategoriaProduto
-from apps.estoque.permissions import grupo_requerido
-from apps.estoque.selectors.disponibilidade_selector import get_disponibilidade_resumida
+from apps.estoque.permissions import grupo_requerido, pode_cadastrar_estoque, pode_movimentar_estoque
+from apps.estoque.selectors.disponibilidade_selector import (
+    get_disponibilidade_resumida,
+    get_necessidades_reposicao,
+    get_sinais_operacionais,
+)
 from apps.estoque.selectors.produto_selector import ProdutoSelector
 from apps.estoque.services.movimentacao_service import MovimentacaoService
 from apps.estoque.services.produto_service import ProdutoService
@@ -139,9 +143,8 @@ def lista_produtos(request):
     display_rows.sort(key=lambda row: (row["nome_exibicao"] if row["kind"] == "mdf_group" else row["produto"].nome))
     produtos_criticos_count = sum(1 for row in display_rows if row["critico"])
 
-    grupos = set(request.user.groups.values_list("name", flat=True))
-    pode_movimentar = request.user.is_superuser or bool(grupos & {"estoque.02", "estoque.03"})
-    pode_cadastrar = request.user.is_superuser or "estoque.03" in grupos
+    pode_movimentar = pode_movimentar_estoque(request.user)
+    pode_cadastrar = pode_cadastrar_estoque(request.user)
 
     return render(
         request,
@@ -162,7 +165,7 @@ def lista_produtos(request):
     )
 
 
-@grupo_requerido("estoque.02", "estoque.03")
+@grupo_requerido("estoque.movimentar")
 def movimentacao_create(request):
     if request.method == "POST":
         try:
@@ -194,7 +197,7 @@ def movimentacao_create(request):
     )
 
 
-@grupo_requerido("estoque.03")
+@grupo_requerido("estoque.cadastrar")
 def produto_create(request):
     if request.method == "POST":
         try:
@@ -242,7 +245,7 @@ def lista_reservas(request):
     )
 
 
-@grupo_requerido("estoque.02", "estoque.03")
+@grupo_requerido("estoque.movimentar")
 def reserva_create(request):
     if request.method == "POST":
         try:
@@ -276,7 +279,7 @@ def reserva_create(request):
     )
 
 
-@grupo_requerido("estoque.02", "estoque.03")
+@grupo_requerido("estoque.movimentar")
 def reserva_consumir(request, reserva_id):
     if request.method == "POST":
         try:
@@ -287,7 +290,7 @@ def reserva_consumir(request, reserva_id):
     return redirect("estoque:lista_reservas")
 
 
-@grupo_requerido("estoque.02", "estoque.03")
+@grupo_requerido("estoque.movimentar")
 def reserva_cancelar(request, reserva_id):
     if request.method == "POST":
         try:
@@ -298,7 +301,7 @@ def reserva_cancelar(request, reserva_id):
     return redirect("estoque:lista_reservas")
 
 
-@grupo_requerido("estoque.03")
+@grupo_requerido("estoque.cadastrar")
 def produto_config_update(request, produto_id):
     if request.method == "POST":
         try:
@@ -317,3 +320,42 @@ def produto_config_update(request, produto_id):
             messages.error(request, f"Erro ao atualizar: {exc}")
 
     return redirect("estoque:lista_produtos")
+
+
+@login_required
+def dashboard_operacional(request):
+    dias = int(request.GET.get("dias", 30) or 30)
+    dias = max(7, min(120, dias))
+    familia = (request.GET.get("familia") or "").strip()
+    apenas_risco = (request.GET.get("apenas_risco") or "").strip() in {"1", "true", "on", "sim"}
+
+    sinais = get_sinais_operacionais(dias=dias)
+    necessidades = get_necessidades_reposicao(dias=dias)
+
+    if familia:
+        sinais = [item for item in sinais if item.get("familia") == familia]
+        necessidades = [item for item in necessidades if item.get("familia") == familia]
+
+    if apenas_risco:
+        sinais = [item for item in sinais if item.get("risco_ruptura")]
+
+    riscos_altos = [item for item in sinais if item["risco_ruptura"]]
+
+    return render(
+        request,
+        "estoque/dashboard_operacional.html",
+        {
+            "dias": dias,
+            "familia": familia,
+            "apenas_risco": apenas_risco,
+            "sinais": sinais[:120],
+            "necessidades": necessidades[:60],
+            "riscos_altos": riscos_altos[:60],
+            "pode_movimentar": pode_movimentar_estoque(request.user),
+            "pode_cadastrar": pode_cadastrar_estoque(request.user),
+            "total_itens_monitorados": len(sinais),
+            "total_riscos_altos": len(riscos_altos),
+            "total_necessidades": len(necessidades),
+            "familias_disponiveis": [choice[0] for choice in FamiliaProduto.choices()],
+        },
+    )

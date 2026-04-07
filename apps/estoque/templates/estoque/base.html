@@ -344,6 +344,7 @@
 <header>
   <div class="header-brand">Estoque</div>
   <nav class="header-nav">
+    <a href="{% url 'estoque:dashboard_operacional' %}" {% if request.resolver_match.url_name == 'dashboard_operacional' %}class="active"{% endif %}>Dashboard</a>
     <a href="{% url 'estoque:lista_produtos' %}" {% if request.resolver_match.url_name == 'lista_produtos' %}class="active"{% endif %}>Produtos</a>
     {% if pode_movimentar or user.is_superuser %}
     <a href="{% url 'estoque:movimentacao_create' %}" {% if request.resolver_match.url_name == 'movimentacao_create' %}class="active"{% endif %}>Movimentar</a>

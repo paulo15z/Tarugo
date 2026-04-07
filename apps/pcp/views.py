@@ -8,6 +8,7 @@ import re
 import unicodedata
 
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.core.files.base import ContentFile
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import render
@@ -40,6 +41,55 @@ def _user_pode_gerenciar_pcp(user) -> bool:
 
 def _json_forbidden():
     return JsonResponse({'erro': 'Somente PCP, TI ou admin podem executar esta acao.'}, status=403)
+
+
+def _validar_risco_estoque_para_liberacao(pid: str):
+    """
+    Valida risco de ruptura antes da liberacao do lote para bipagem.
+    Regra protegida por feature-flag para nao impactar operacao atual.
+    """
+    if not getattr(settings, "PCP_BLOQUEAR_LIBERACAO_COM_RISCO_ESTOQUE", False):
+        return None
+
+    processamento = ProcessamentoPCP.objects.filter(id=pid).only("id", "lote").first()
+    if not processamento:
+        return JsonResponse({'erro': 'Lote nao encontrado.'}, status=404)
+
+    try:
+        from apps.estoque.services.public_interface import EstoquePublicService
+
+        chaves_lote = [str(processamento.id)]
+        if processamento.lote:
+            chaves_lote.append(str(processamento.lote))
+            chaves_lote.append(f"LOTE-{processamento.lote}")
+
+        janela_dias = int(getattr(settings, "PCP_ESTOQUE_RISCO_JANELA_DIAS", 30))
+        for lote_ref in chaves_lote:
+            analise = EstoquePublicService.consultar_risco_ruptura_lote(
+                lote_pcp_id=lote_ref,
+                dias=janela_dias,
+            )
+            if analise.get("itens"):
+                if analise.get("risco_ruptura"):
+                    return JsonResponse(
+                        {
+                            'erro': 'Liberacao bloqueada por risco de ruptura de estoque.',
+                            'lote_referencia': lote_ref,
+                            'analise_estoque': analise,
+                        },
+                        status=409,
+                    )
+                break
+    except Exception as exc:
+        return JsonResponse(
+            {
+                'erro': 'Falha ao validar risco de estoque para liberacao.',
+                'detalhe': str(exc),
+            },
+            status=503,
+        )
+
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -138,6 +188,9 @@ def pcp_liberar(request, pid):
     if not _user_pode_gerenciar_pcp(request.user):
         return _json_forbidden()
     try:
+        bloqueio = _validar_risco_estoque_para_liberacao(pid)
+        if bloqueio is not None:
+            return bloqueio
         resultado = liberar_lote_para_bipagem(pid, usuario=request.user)
         if not resultado.get('sucesso'):
             return JsonResponse({'erro': resultado.get('mensagem')}, status=400)

@@ -10,6 +10,7 @@ class Command(BaseCommand):
         "Operador Maquina",
         "PCP",
         "Gestao",
+        "TI",
     ]
 
     def add_arguments(self, parser):
@@ -38,4 +39,3 @@ class Command(BaseCommand):
                 f"Seed de grupos concluido. Criados: {created}. Existentes: {len(groups) - created}."
             )
         )
-

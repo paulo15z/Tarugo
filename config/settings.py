@@ -144,6 +144,16 @@ LOGIN_REDIRECT_URL = '/estoque/'
 LOGOUT_REDIRECT_URL = '/login/'
  
 # ── FUSO HORÁRIO (Brasil) ──────────────────────────────────────
+def _env_bool(name: str, default: str = "0") -> bool:
+    return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
+
+
+PCP_BLOQUEAR_LIBERACAO_COM_RISCO_ESTOQUE = _env_bool(
+    "PCP_BLOQUEAR_LIBERACAO_COM_RISCO_ESTOQUE",
+    "0",
+)
+PCP_ESTOQUE_RISCO_JANELA_DIAS = int(os.getenv("PCP_ESTOQUE_RISCO_JANELA_DIAS", "30"))
+
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "America/Sao_Paulo"
  
