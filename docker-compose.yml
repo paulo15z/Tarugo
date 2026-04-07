@@ -3,7 +3,7 @@ services:
     build: .
     container_name: tarugo_web
     environment:
-      DEFAULT_PASSWORD: "Trocar123!"
+      DEFAULT_PASSWORD: "Renara.123"
       RESET_PASSWORDS: "0"
       RUN_ESTOQUE_SEEDS: "0"
     ports:

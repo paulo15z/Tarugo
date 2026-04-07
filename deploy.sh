@@ -24,16 +24,22 @@ mkdir -p media/pcp/outputs
 mkdir -p media
 
 if [ ! -f db.sqlite3 ]; then
-  echo "Criando db.sqlite3 (será inicializado via migrations)..."
+  echo "Criando db.sqlite3 (sera inicializado via migrations)..."
   touch db.sqlite3
 fi
 
-echo "Subindo Tarugo (build + migrações + servidor)..."
-$COMPOSE up -d --build
+echo "Build da imagem..."
+$COMPOSE build web
+
+echo "Executando bootstrap idempotente (migrate + seeds)..."
+$COMPOSE run --rm --no-deps web sh ./bootstrap/99_bootstrap_all.sh
+
+echo "Subindo Tarugo..."
+$COMPOSE up -d --no-build
 
 echo "Status do container:"
 $COMPOSE ps
 
-echo "Logs recentes (últimas ~100 linhas):"
+echo "Logs recentes (ultimas ~100 linhas):"
 $COMPOSE logs --tail=100
 
