@@ -1,82 +1,181 @@
-🎯 ESCOPO DO APP pedidos (versão “no code”)
-Nome do módulo: pedidos
-Objetivo principal: Ser o Kanban macro de acompanhamento de pedidos, com granularidade por Ambiente.
-O app permite que o Comercial crie um Pedido e já divida-o em Ambientes (Cozinha, Living, Quarto, etc.). Cada Ambiente evolui independentemente no fluxo de etapas.
-O Pedido como um todo só é considerado concluído quando todos os seus Ambientes estiverem concluídos.
-Regra de negócio central (que vai para o Service):
-Um lote gerado pelo PCP pode conter peças de vários Ambientes e até de vários Clientes. Por isso o link entre PCP e Pedidos/Ambientes será flexível (não 1:1 rígido).
+﻿# Sprint Roadmap - App Pedidos
 
-📋 Etapas do fluxo (catálogo configurável)
-O app terá um modelo chamado Etapa com as seguintes etapas iniciais (populadas automaticamente):
+## Contexto
+O app `Pedidos` sera o kanban macro de acompanhamento por `Ambiente`.
 
-COMERCIAL – Prospecção, orçamento, negociação e fechamento
-PROJETOS – Elaboração do projeto executivo e validação de método construtivo
-COMPRAS – Separação de insumos e matérias-primas
-PCP – Otimização de lote, geração de roteiro e envio para fábrica
-PRODUÇÃO – Estágios do roteiro + serviços de terceiros
-CQL + EXPEDIÇÃO – Controle de qualidade final e expedição
-MONTAGEM – Instalação em obra e assistências técnicas
+Regras centrais do dominio:
+- `Pedido` e o cabecalho.
+- `Ambiente` e o cartao operacional real.
+- Um pedido so termina quando todos os seus ambientes terminam.
+- `HistoricoEtapa` guarda cada passagem de um ambiente por uma etapa.
+- Integracoes com `Bipagem`, `PCP`, `Estoque` e `Compras` existem como dependencias, nao como sprints separadas.
 
-Cada Etapa terá: ordem, cor, descrição e possibilidade de customização futura por cliente SaaS.
+Etapas iniciais do fluxo:
+- `COMERCIAL`
+- `PROJETOS`
+- `COMPRAS`
+- `PCP`
+- `PRODUCAO`
+- `CQL + EXPEDICAO`
+- `MONTAGEM`
 
-🧱 Modelos principais (descrição teórica)
+## Sprint 1 - Fundacao do dominio de Pedidos
 
-Etapa
-Catálogo central de etapas do fluxo. É reutilizável e configurável.
-Pedido
-Cabeçalho do pedido (não tem mais “etapa atual” direta).
-Número do pedido
-Cliente
-Link opcional com Orçamento
-Link flexível com ProcessamentoPCP (porque um lote pode ter vários Ambientes)
-Data de criação, conclusão e status geral
-Previsão de entrega final (calculada automaticamente como a maior previsão dos Ambientes)
+### Objetivo
+Criar a base estrutural do app `Pedidos` com os modelos e regras essenciais para trabalhar por ambiente.
 
-Ambiente
-Este é o cartão real do Kanban.
-Pertence a um Pedido
-Nome (ex: “Cozinha”, “Living”, “Quarto Suíte”)
-Descrição (detalhes que o Comercial preenche)
-Etapa atual
-Previsão de entrega específica deste Ambiente
-Status e data de conclusão
-Ordem de exibição dentro do Pedido
+### Escopo
+- Criar `Etapa` como catalogo configuravel.
+- Criar `Pedido` como entidade pai.
+- Criar `Ambiente` como unidade operacional do kanban.
+- Criar `HistoricoEtapa` como trilha de auditoria do fluxo.
+- Definir status agregado do pedido com base nos ambientes.
+- Calcular previsao final do pedido como a maior previsao entre os ambientes.
 
-HistoricoEtapa
-Registro de cada passagem de um Ambiente por uma Etapa.
-Vinculado ao Ambiente (não ao Pedido)
-Qual Etapa
-Data de entrada, conclusão e previsão de saída manual
-Responsável e observações
+### Entregaveis
+- Modelos principais definidos.
+- Services com regras basicas de criacao e atualizacao.
+- Selectors para consolidar pedido, ambientes e historico.
+- Admin ou API minima para inspecao do dominio.
 
+### Criterios de aceite
+- Um pedido pode existir com zero ou mais ambientes.
+- Um ambiente pertence a um unico pedido.
+- O pedido mostra progresso agregado sem depender de etapa atual unica.
+- O historico registra entrada e saida de etapa por ambiente.
 
+### Fora do escopo
+- Automacao com PCP.
+- Reservas de estoque.
+- Lista de compras.
 
-🔄 FLUXO PRÁTICO (como vai funcionar no dia a dia)
+## Sprint 2 - Entrada comercial e montagem rapida de ambientes
 
-Comercial
-Cria o Pedido
-Adiciona um ou mais Ambientes (pode fazer isso de uma vez, em linhas rápidas)
-Cada Ambiente começa automaticamente na Etapa COMERCIAL ou PROJETOS
+### Objetivo
+Permitir que o Comercial crie pedidos e ambientes de forma rapida, com pouco atrito operacional.
 
-Demais áreas
-Trabalham por Ambiente (ex: aprovar só o projeto da Cozinha)
-Avançam a Etapa apenas daquele Ambiente
-Podem colocar previsão de saída manual em cada Etapa
+### Escopo
+- Criacao de pedido a partir de dados basicos do cliente.
+- Adicao em massa de ambientes.
+- Ordenacao de ambientes dentro do pedido.
+- Edicao de nome, descricao e previsao por ambiente.
+- Definicao do ambiente inicial por regra do negocio.
+- Opcional de vinculacao com orcamento.
 
-PCP
-Ao processar um arquivo Dinabox, o sistema identifica quais Ambientes estão presentes no lote
-Cria ou vincula o ProcessamentoPCP a vários Ambientes (relação Many-to-Many ou via tabela intermediária)
-Avança automaticamente os Ambientes presentes para a Etapa PCP
+### Entregaveis
+- Tela ou endpoint de criacao rapida.
+- Validacoes para nomes duplicados de ambiente no mesmo pedido.
+- Regras para ativar o primeiro status de cada ambiente.
+- Fluxo comercial simples para abrir e revisar pedidos.
 
-Visão geral
-Tela de Kanban mostra colunas por Etapa e cartões são os Ambientes
-Pedido pai mostra status agregado (ex: “3 de 5 Ambientes concluídos”)
+### Criterios de aceite
+- O Comercial consegue abrir um pedido e cadastrar varios ambientes em uma unica interacao.
+- Cada ambiente nasce ja posicionado na etapa inicial correta.
+- Nao ha duplicidade de ambiente no mesmo pedido.
+- A previsao individual do ambiente fica visivel e editavel.
 
+### Fora do escopo
+- Avanco automatico por PCP.
+- Movimentacao de estoque.
+- Sugestao de compra.
 
+## Sprint 3 - Fluxo operacional por ambiente e integracao com PCP
 
-🔗 RELAÇÕES COM OUTROS APPS (atual e futuro)
+### Objetivo
+Fazer o pedido refletir a execucao real da producao por ambiente, com integracao flexivel ao PCP.
 
+### Escopo
+- Vinculo flexivel entre `Pedido`/`Ambiente` e `ProcessamentoPCP`.
+- Permitir que um lote do PCP aponte para varios ambientes.
+- Permitir que um ambiente seja encontrado em mais de um contexto de lote quando necessario.
+- Avancar ambiente para a etapa `PCP` quando identificado no processamento.
+- Registrar no historico a origem da movimentacao.
+- Exibir um resumo por pedido com ambientes em cada etapa.
 
-AppTipo de relaçãoComo acontece na práticacorePedido → ClienteInalteradoorcamentosPedido → OrçamentoAo aprovar orçamento → cria Pedido + Ambientes automaticamentepcpProcessamentoPCP ↔ Vários AmbientesUm lote pode ter peças de múltiplos Ambientes e múltiplos Clientes → link flexívelestoqueFuturo: Movimentação → AmbienteSaída de material vinculada diretamente ao AmbienteproducaoFuturo (ou dentro de pedidos)Estágios do roteiro avançam Ambiente automaticamenteintegracoesWebhooksFuturo: integração com ERP cria Pedido + Ambientes automaticamente
-Ponto crítico de integração com PCP:
-Como o PCP já gera lotes mistos, não vamos forçar relação 1:1. O service do PCP, ao finalizar o processamento, vai identificar os Ambientes presentes (pelo número do pedido ou tag no arquivo) e avançar cada um para a Etapa PCP de forma independente.
+### Entregaveis
+- Relacionamento de integracao com PCP.
+- Service para receber o retorno do PCP e atualizar ambientes.
+- Historico completo das transicoes originadas por lote.
+- Resumo operacional do pedido com contagem por status.
+
+### Criterios de aceite
+- Um lote pode atualizar varios ambientes sem forcar relacao 1:1.
+- O historico mostra quando o PCP moveu um ambiente.
+- O pedido consolida corretamente ambientes em andamento, concluidos e pendentes.
+- O fluxo nao quebra quando o mesmo lote envolve varios pedidos.
+
+### Fora do escopo
+- Planejamento de producao dentro do PCP.
+- Compras automatizadas.
+- Liberacao de material no estoque.
+
+## Sprint 4 - Kanban operacional, governanca e visibilidade
+
+### Objetivo
+Transformar o pedido em uma tela operacional de acompanhamento com leitura clara para comercial, producao e gestao.
+
+### Escopo
+- Kanban por etapa com cartoes de ambiente.
+- Filtros por cliente, pedido, etapa e status.
+- Marcacao de atrasos e previsao vencida.
+- Tela de detalhe do pedido com resumo do progresso.
+- Trilha visual do historico de etapas do ambiente.
+- Regras de permissao para visualizar e mover ambientes.
+
+### Entregaveis
+- Interface principal do kanban.
+- Visao consolidada do pedido.
+- Componentes de status e atraso.
+- Controle minimo de permissao por perfil.
+
+### Criterios de aceite
+- Um usuario consegue enxergar rapidamente em que etapa esta cada ambiente.
+- O pedido mostra progresso agregado sem ambiguidade.
+- A visao de historico permite auditar o caminho de um ambiente.
+- Apenas perfis autorizados conseguem executar acoes sensiveis.
+
+### Fora do escopo
+- Integracao financeira.
+- Regras de reserva de estoque.
+- Compra efetiva em lista externa.
+
+## Sprint 5 - Orquestracao para estoque e compras
+
+### Objetivo
+Fechar o ciclo do `Pedidos` criando os ganchos operacionais para estoque e compras, sem transformar esses apps em requisito da sprint.
+
+### Escopo
+- Gerar sinalizacao de necessidade de material a partir do pedido e de seus ambientes.
+- Expor contexto de consumo esperado por ambiente.
+- Preparar dados para reserva futura no estoque.
+- Preparar dados para sugestao na lista de compras.
+- Consolidar falta, urgencia e prioridade por pedido.
+- Criar contrato para integracao com a lista de compras.
+
+### Entregaveis
+- Service de consolidacao de necessidades por pedido.
+- Estrutura para exportar demandas por ambiente.
+- Contrato de integracao com estoque e compras.
+- Resumo de pendencias para compras com base no pedido.
+
+### Criterios de aceite
+- O app `Pedidos` consegue indicar o que falta para atender um pedido.
+- A necessidade fica ligada a um ambiente, nao apenas ao pedido inteiro.
+- O mesmo dado pode alimentar estoque e compras sem retrabalho manual.
+- A lista de compras recebe um contexto claro de origem e prioridade.
+
+### Fora do escopo
+- Tela completa de compras.
+- Movimentacao fisica de estoque.
+- Regras detalhadas do app de compras.
+
+## Sequencia recomendada
+1. Sprint 1 - Fundacao do dominio de Pedidos
+2. Sprint 2 - Entrada comercial e montagem rapida de ambientes
+3. Sprint 3 - Fluxo operacional por ambiente e integracao com PCP
+4. Sprint 4 - Kanban operacional, governanca e visibilidade
+5. Sprint 5 - Orquestracao para estoque e compras
+
+## Observacao final
+Este roadmap foi desenhado so para o app `Pedidos`.
+As dependencias `Bipagem`, `PCP`, `Estoque` e `Compras` entram apenas como integracoes externas que o app precisa consumir ou acionar.
