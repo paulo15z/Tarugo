@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import json
 from urllib.parse import urljoin
 
 import requests
@@ -211,7 +212,23 @@ class DinaboxAPIClient:
             "text": response.text,
         }
 
+    @staticmethod
+    def _encode_params(params: dict | None) -> dict | None:
+        if not params:
+            return params
+        encoded = {}
+        for key, value in params.items():
+            if value is None:
+                continue
+            if isinstance(value, (dict, list)):
+                encoded[key] = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+            else:
+                encoded[key] = value
+        return encoded
+
     def _request(self, method: str, endpoint: str, **kwargs) -> dict:
+        if "params" in kwargs:
+            kwargs["params"] = self._encode_params(kwargs.get("params"))
         meta = self.request_meta(method, endpoint, **kwargs)
 
         if meta["status"] in (401, 403):
@@ -256,6 +273,82 @@ class DinaboxAPIClient:
             params["s"] = search
         return self._request("GET", "/api/v1/customers", params=params)
 
+    def create_customer(
+        self,
+        customer_name: str,
+        customer_type: str = "pf",
+        customer_status: str = "on",
+        customer_emails: str | None = None,
+        customer_phones: str | None = None,
+        customer_pf_data: dict | None = None,
+        customer_pj_data: dict | None = None,
+        customer_addresses: list[dict] | None = None,
+        customer_note: str | None = None,
+        custom_fields: dict | None = None,
+    ) -> dict:
+        params = {
+            "customer_name": customer_name,
+            "customer_type": customer_type,
+            "customer_status": customer_status,
+        }
+        if customer_emails:
+            params["customer_emails"] = customer_emails
+        if customer_phones:
+            params["customer_phones"] = customer_phones
+        if customer_pf_data:
+            params["customer_pf_data"] = customer_pf_data
+        if customer_pj_data:
+            params["customer_pj_data"] = customer_pj_data
+        if customer_addresses:
+            params["customer_addresses"] = customer_addresses
+        if customer_note:
+            params["customer_note"] = customer_note
+        if custom_fields:
+            params["custom_fields"] = custom_fields
+        return self._request("PUT", "/api/v1/customer", params=params)
+
+    def update_customer(
+        self,
+        customer_id: str,
+        customer_name: str,
+        customer_type: str = "pf",
+        customer_status: str = "on",
+        customer_emails: str | None = None,
+        customer_phones: str | None = None,
+        customer_pf_data: dict | None = None,
+        customer_pj_data: dict | None = None,
+        customer_addresses: list[dict] | None = None,
+        customer_note: str | None = None,
+        custom_fields: dict | None = None,
+    ) -> dict:
+        params = {
+            "customer_id": customer_id,
+            "customer_name": customer_name,
+            "customer_type": customer_type,
+            "customer_status": customer_status,
+        }
+        if customer_emails:
+            params["customer_emails"] = customer_emails
+        if customer_phones:
+            params["customer_phones"] = customer_phones
+        if customer_pf_data:
+            params["customer_pf_data"] = customer_pf_data
+        if customer_pj_data:
+            params["customer_pj_data"] = customer_pj_data
+        if customer_addresses:
+            params["customer_addresses"] = customer_addresses
+        if customer_note:
+            params["customer_note"] = customer_note
+        if custom_fields:
+            params["custom_fields"] = custom_fields
+        return self._request("PATCH", "/api/v1/customer", params=params)
+
+    def get_customer(self, customer_id: str) -> dict:
+        return self._request("GET", "/api/v1/customer", params={"customer_id": customer_id})
+
+    def delete_customer(self, customer_id: str) -> dict:
+        return self._request("DELETE", "/api/v1/customer", params={"customer_id": customer_id})
+
     def get_designers(self, page: int = 1, search: str | None = None) -> dict:
         params = {"p": page}
         if search:
@@ -297,3 +390,14 @@ class DinaboxAPIClient:
         if search:
             params["s"] = search
         return self._request("GET", "/api/v1/labels", params=params)
+
+    def create_label(self, label_name: str, label_type: str, label_content: str = "") -> dict:
+        params = {
+            "label_name": label_name,
+            "label_type": label_type,
+            "label_content": label_content,
+        }
+        return self._request("POST", "/api/v1/label", params=params)
+
+    def delete_label(self, label_id: str) -> dict:
+        return self._request("DELETE", "/api/v1/label", params={"label_id": label_id})

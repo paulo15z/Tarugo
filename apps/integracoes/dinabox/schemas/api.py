@@ -67,3 +67,47 @@ class DinaboxGroupDetail(BaseModel):
     is_new_pcp: bool = False
     last_update: str | None = None
     lot_info: dict[str, Any] | None = None
+
+
+class DinaboxCustomerItem(BaseModel):
+    customer_id: str
+    customer_name: str
+    customer_emails: Any | None = None
+    customer_phones: Any | None = None
+    customer_type: str | None = None
+    customer_status: str | None = None
+    customer_city: str | None = None
+    customer_state: str | None = None
+
+
+class DinaboxCustomerListResponse(BaseModel):
+    page: int
+    total: int
+    customers: list[DinaboxCustomerItem] = []
+
+
+class DinaboxLabelItem(BaseModel):
+    label_id: str
+    label_type: str | None = None
+    label_name: str | None = None
+    label_content: str | None = None
+
+
+class DinaboxLabelListResponse(BaseModel):
+    page: int
+    total: int
+    labels: list[DinaboxLabelItem] = []
+
+
+class DinaboxMaterialItem(BaseModel):
+    material_id: str | None = None
+    name: str | None = None
+    category: str | None = None
+    category_name: str | None = None
+    details: str | None = None
+
+
+class DinaboxMaterialListResponse(BaseModel):
+    page: int
+    total: int
+    materials: list[DinaboxMaterialItem] = []

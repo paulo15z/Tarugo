@@ -38,3 +38,39 @@ class MapeamentoMaterial(models.Model):
 
     def __str__(self):
         return f"{self.nome_dinabox} -> {self.produto.nome}"
+
+
+class DinaboxClienteIndex(models.Model):
+    """
+    Indice local de clientes Dinabox para busca e listagem rapida no Tarugo.
+    """
+
+    customer_id = models.CharField(max_length=64, unique=True, db_index=True)
+    customer_name = models.CharField(max_length=255, blank=True, default="")
+    customer_name_normalized = models.CharField(max_length=255, blank=True, default="", db_index=True)
+    customer_type = models.CharField(max_length=16, blank=True, default="", db_index=True)
+    customer_status = models.CharField(max_length=16, blank=True, default="", db_index=True)
+    customer_emails_text = models.TextField(blank=True, default="")
+    customer_phones_text = models.TextField(blank=True, default="")
+    raw_payload = models.JSONField(default=dict, blank=True)
+    synced_at = models.DateTimeField(auto_now=True, db_index=True)
+
+    class Meta:
+        verbose_name = "Indice Cliente Dinabox"
+        verbose_name_plural = "Indices de Clientes Dinabox"
+        indexes = [
+            models.Index(fields=["customer_name_normalized"], name="dinabox_cli_nome_idx"),
+            models.Index(fields=["customer_status", "customer_type"], name="dinabox_cli_st_tp_idx"),
+            models.Index(fields=["synced_at"], name="dinabox_cli_sync_idx"),
+        ]
+
+    @staticmethod
+    def _normalize(value: str) -> str:
+        return " ".join((value or "").strip().lower().split())
+
+    def save(self, *args, **kwargs):
+        self.customer_name_normalized = self._normalize(self.customer_name)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.customer_id} - {self.customer_name}"
