@@ -140,8 +140,8 @@ MEDIA_URL = '/media/'
 
 # ── AUTENTICAÇÃO ──────────────────────────────────────────────
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/estoque/'
-LOGOUT_REDIRECT_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
  
 # ── FUSO HORÁRIO (Brasil) ──────────────────────────────────────
 def _env_bool(name: str, default: str = "0") -> bool:
@@ -153,6 +153,13 @@ PCP_BLOQUEAR_LIBERACAO_COM_RISCO_ESTOQUE = _env_bool(
     "0",
 )
 PCP_ESTOQUE_RISCO_JANELA_DIAS = int(os.getenv("PCP_ESTOQUE_RISCO_JANELA_DIAS", "30"))
+
+# ── INTEGRACAO DINABOX (TESTES) ─────────────────────────────────
+DINABOX_BASE_URL = os.getenv("DINABOX_BASE_URL", "https://www.dinabox.app")
+DINABOX_SERVICE_USERNAME = os.getenv("DINABOX_SERVICE_USERNAME", "80385122")
+DINABOX_SERVICE_PASSWORD = os.getenv("DINABOX_SERVICE_PASSWORD", "abacatudo.renara.123")
+DINABOX_TIMEOUT_SECONDS = int(os.getenv("DINABOX_TIMEOUT_SECONDS", "15"))
+DINABOX_VERIFY_SSL = _env_bool("DINABOX_VERIFY_SSL", "1")
 
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "America/Sao_Paulo"

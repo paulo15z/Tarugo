@@ -324,7 +324,7 @@
 
 <header>
     <div class="header-container">
-        <a href="/" class="brand">
+        <a href="{% if user.is_authenticated %}{% url 'estoque:lista_produtos' %}{% else %}{% url 'login' %}{% endif %}" class="brand">
             <div class="brand-dot"></div>
             <span>Tarugo</span>
         </a>
@@ -334,6 +334,7 @@
             <a href="{% url 'estoque:lista_reservas' %}" class="nav-link {% if 'reservas' in request.path %}active{% endif %}">Reservas</a>
             <a href="{% url 'pcp:index' %}" class="nav-link {% if 'pcp' in request.path %}active{% endif %}">PCP</a>
             <a href="{% url 'bipagem:index' %}" class="nav-link {% if 'bipagem' in request.path %}active{% endif %}">Bipagem</a>
+            <a href="{% url 'integracoes:dinabox-conectar' %}" class="nav-link {% if 'integracoes/dinabox' in request.path %}active{% endif %}">Dinabox</a>
         </nav>
 
         <div class="user-meta">
