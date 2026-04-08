@@ -118,3 +118,5 @@ logs/
 *.dump
 backups/
 features/
+dinabox samples/
+dinabox-samples/
