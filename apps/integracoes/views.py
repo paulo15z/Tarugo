@@ -12,6 +12,9 @@ from django.views.decorators.http import require_POST
 from apps.integracoes.dinabox.api_service import DinaboxApiService
 from apps.integracoes.dinabox.client import DinaboxAPIClient, DinaboxAuthError, DinaboxRequestError
 from apps.integracoes.models import DinaboxClienteIndex
+from collections import defaultdict
+from datetime import datetime
+from apps.integracoes.dinabox.parsers.project_detail import parse_project_detail
 
 
 def _user_pode_testar_integracoes(user) -> bool:
@@ -588,48 +591,42 @@ def dinabox_etiqueta_excluir(request: HttpRequest):
 @login_required
 def dinabox_projeto_modulos_pecas(request: HttpRequest, project_id: str):
     """
-    View HTML para visualizar módulos e peças de um projeto importado.
-    Por enquanto, simula com dados de exemplo.
+    Visualiza módulos e peças de um projeto Dinabox.
+    Busca detalhes via `DinaboxApiService` e tenta extrair todas as peças
+    buscando dentro de `woodwork` (fallback para estrutura vazia).
     """
     if not _user_pode_testar_integracoes(request.user):
         messages.error(request, "Somente PCP, TI, Gestao ou admin podem acessar a integracao Dinabox.")
         return redirect("estoque:lista_produtos")
 
-    # TODO: implementar busca real do projeto importado
-    # Por enquanto, simula dados
+    service = _obter_servico_dinabox()
+
+    try:
+        detail = service.get_project_detail(project_id)
+    except DinaboxAuthError as exc:
+        messages.error(request, f"Falha de autenticacao da conta tecnica Dinabox: {exc}")
+        return redirect("integracoes:dinabox-conectar")
+    except DinaboxRequestError as exc:
+        messages.error(request, f"Falha ao consultar projeto na Dinabox: {exc}")
+        return redirect("integracoes:dinabox-projetos-list")
+
+    # Usar parser dedicado para normalizar o detail em pecas/modulos
+    parsed = parse_project_detail(detail)
+
     projeto = {
-        "projeto": {"id": project_id, "nome": "Projeto Exemplo - Cozinha Superior"},
-        "cliente": {"nome": "João Silva"},
-        "pecas": [
-            {"descricao": "Painel Superior", "material": "MDF 15mm", "largura": 1200, "altura": 600, "espessura": 15, "quantidade": 2, "modulo": "Módulo Principal"},
-            {"descricao": "Gaveta Base", "material": "MDF 18mm", "largura": 800, "altura": 150, "espessura": 18, "quantidade": 3, "modulo": "Módulo Principal"},
-            {"descricao": "Prateleira", "material": "MDF 15mm", "largura": 1000, "altura": 300, "espessura": 15, "quantidade": 4, "modulo": "Módulo Secundário"},
-        ],
-        "modulos": [
-            {
-                "nome": "Módulo Principal",
-                "pecas": [
-                    {"descricao": "Painel Superior", "material": "MDF 15mm", "largura": 1200, "altura": 600, "espessura": 15, "quantidade": 2, "modulo": "Módulo Principal"},
-                    {"descricao": "Gaveta Base", "material": "MDF 18mm", "largura": 800, "altura": 150, "espessura": 18, "quantidade": 3, "modulo": "Módulo Principal"},
-                ]
-            },
-            {
-                "nome": "Módulo Secundário",
-                "pecas": [
-                    {"descricao": "Prateleira", "material": "MDF 15mm", "largura": 1000, "altura": 300, "espessura": 15, "quantidade": 4, "modulo": "Módulo Secundário"},
-                ]
-            }
-        ],
+        "projeto": {"id": getattr(detail, "project_id", project_id), "nome": getattr(detail, "project_description", None) or ""},
+        "cliente": {"nome": parsed.get("cliente", {}).get("nome", getattr(detail, "project_customer_name", "") or "")},
+        "pecas": parsed.get("pecas", []),
+        "modulos": parsed.get("modulos", []),
         "insumos": [],
         "chapas": [],
-        "metadata": {"origem": "dinabox", "data_importacao": "2024-01-01T00:00:00", "versao": 1}
+        "metadata": parsed.get("metadata", {}),
     }
 
-    # Calcular materiais únicos
-    materiais_unicos = set()
-    for peca in projeto["pecas"]:
-        if peca.get("material"):
-            materiais_unicos.add(peca["material"])
+    if not projeto["pecas"]:
+        messages.info(request, "Nenhuma peça encontrada no projeto Dinabox (payload não continha peças reconhecíveis).")
+
+    materiais_unicos = sorted({p["material"] for p in projeto["pecas"] if p.get("material")})
 
     return render(
         request,
