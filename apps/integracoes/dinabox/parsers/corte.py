@@ -16,6 +16,7 @@ def parse_corte(csv_content: str):
                 "altura": _to_float(row.get("ALTURA DA PEÇA")),
                 "espessura": _to_float(row.get("ESPESSURA")),
                 "quantidade": int(row.get("QUANTIDADE") or 1),
+                "modulo": row.get("DESCRIÇÃO MÓDULO"),
             })
         except Exception:
             continue

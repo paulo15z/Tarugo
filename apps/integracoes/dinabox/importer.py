@@ -1,9 +1,11 @@
 from datetime import datetime
+from collections import defaultdict
 
 from .parsers.corte import parse_corte
 from .parsers.compras import parse_compras
 
 from .schemas.projeto import ProjetoCompleto, Projeto, Cliente
+from .schemas.modulo import Modulo
 from .schemas.base import Metadata
 
 
@@ -38,6 +40,18 @@ def importar_projeto(
         data["cliente"].update(compras_data.get("cliente", {}))
 
     # -------------------------
+    # AGRUPAR PECAS POR MODULO
+    # -------------------------
+    modulos_dict = defaultdict(list)
+    for peca in data["pecas"]:
+        modulo_nome = peca.get("modulo") or "SEM MODULO"
+        modulos_dict[modulo_nome].append(peca)
+
+    modulos = []
+    for nome_modulo, pecas_modulo in modulos_dict.items():
+        modulos.append(Modulo(nome=nome_modulo, pecas=pecas_modulo))
+
+    # -------------------------
     # METADATA
     # -------------------------
     metadata = Metadata(
@@ -54,6 +68,7 @@ def importar_projeto(
         projeto=projeto,
         cliente=cliente,
         pecas=data["pecas"],
+        modulos=modulos,
         insumos=data["insumos"],
         metadata=metadata
     )

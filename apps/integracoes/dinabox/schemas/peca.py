@@ -9,3 +9,4 @@ class Peca(BaseModel):
     altura: Optional[float]
     espessura: Optional[float]
     quantidade: int
+    modulo: Optional[str]

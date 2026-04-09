@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 
 from . import views
 
@@ -20,6 +20,8 @@ urlpatterns = [
     path("dinabox/etiquetas/excluir/", views.dinabox_etiqueta_excluir, name="dinabox-etiqueta-excluir"),
     path("dinabox/projetos/", views.dinabox_projetos_list, name="dinabox-projetos-list"),
     path("dinabox/projetos/<str:project_id>/", views.dinabox_projeto_detail, name="dinabox-projeto-detail"),
+    path("dinabox/projetos/<str:project_id>/modulos-pecas/", views.dinabox_projeto_modulos_pecas, name="dinabox-projeto-modulos-pecas"),
     path("dinabox/lotes/", views.dinabox_lotes_list, name="dinabox-lotes-list"),
     path("dinabox/lotes/<str:group_id>/", views.dinabox_lote_detail, name="dinabox-lote-detail"),
+    path("dinabox/api/", include("apps.integracoes.dinabox.api.urls")),
 ]

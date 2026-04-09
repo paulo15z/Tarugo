@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from .insumo import Insumo
 from .peca import Peca
+from .modulo import Modulo
 from .base import Metadata
 from .material import Chapa
 
@@ -19,6 +20,7 @@ class ProjetoCompleto(BaseModel):
     cliente: Cliente
 
     pecas: List[Peca]
+    modulos: List[Modulo]
     insumos: List[Insumo]
 
     chapas: List[Chapa]

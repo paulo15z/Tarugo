@@ -583,3 +583,59 @@ def dinabox_etiqueta_excluir(request: HttpRequest):
         messages.error(request, f"Falha ao excluir etiqueta no Dinabox: {exc}")
 
     return redirect("integracoes:dinabox-etiquetas-list")
+
+
+@login_required
+def dinabox_projeto_modulos_pecas(request: HttpRequest, projeto_id: str):
+    """
+    View HTML para visualizar módulos e peças de um projeto importado.
+    Por enquanto, simula com dados de exemplo.
+    """
+    if not _user_pode_testar_integracoes(request.user):
+        messages.error(request, "Somente PCP, TI, Gestao ou admin podem acessar a integracao Dinabox.")
+        return redirect("estoque:lista_produtos")
+
+    # TODO: implementar busca real do projeto importado
+    # Por enquanto, simula dados
+    projeto = {
+        "projeto": {"id": projeto_id, "nome": "Projeto Exemplo - Cozinha Superior"},
+        "cliente": {"nome": "João Silva"},
+        "pecas": [
+            {"descricao": "Painel Superior", "material": "MDF 15mm", "largura": 1200, "altura": 600, "espessura": 15, "quantidade": 2, "modulo": "Módulo Principal"},
+            {"descricao": "Gaveta Base", "material": "MDF 18mm", "largura": 800, "altura": 150, "espessura": 18, "quantidade": 3, "modulo": "Módulo Principal"},
+            {"descricao": "Prateleira", "material": "MDF 15mm", "largura": 1000, "altura": 300, "espessura": 15, "quantidade": 4, "modulo": "Módulo Secundário"},
+        ],
+        "modulos": [
+            {
+                "nome": "Módulo Principal",
+                "pecas": [
+                    {"descricao": "Painel Superior", "material": "MDF 15mm", "largura": 1200, "altura": 600, "espessura": 15, "quantidade": 2, "modulo": "Módulo Principal"},
+                    {"descricao": "Gaveta Base", "material": "MDF 18mm", "largura": 800, "altura": 150, "espessura": 18, "quantidade": 3, "modulo": "Módulo Principal"},
+                ]
+            },
+            {
+                "nome": "Módulo Secundário",
+                "pecas": [
+                    {"descricao": "Prateleira", "material": "MDF 15mm", "largura": 1000, "altura": 300, "espessura": 15, "quantidade": 4, "modulo": "Módulo Secundário"},
+                ]
+            }
+        ],
+        "insumos": [],
+        "chapas": [],
+        "metadata": {"origem": "dinabox", "data_importacao": "2024-01-01T00:00:00", "versao": 1}
+    }
+
+    # Calcular materiais únicos
+    materiais_unicos = set()
+    for peca in projeto["pecas"]:
+        if peca.get("material"):
+            materiais_unicos.add(peca["material"])
+
+    return render(
+        request,
+        "integracoes/dinabox/projeto_modulos_pecas.html",
+        {
+            "projeto": projeto,
+            "materiais_unicos": list(materiais_unicos),
+        },
+    )
