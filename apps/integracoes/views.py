@@ -586,7 +586,7 @@ def dinabox_etiqueta_excluir(request: HttpRequest):
 
 
 @login_required
-def dinabox_projeto_modulos_pecas(request: HttpRequest, projeto_id: str):
+def dinabox_projeto_modulos_pecas(request: HttpRequest, project_id: str):
     """
     View HTML para visualizar módulos e peças de um projeto importado.
     Por enquanto, simula com dados de exemplo.
@@ -598,7 +598,7 @@ def dinabox_projeto_modulos_pecas(request: HttpRequest, projeto_id: str):
     # TODO: implementar busca real do projeto importado
     # Por enquanto, simula dados
     projeto = {
-        "projeto": {"id": projeto_id, "nome": "Projeto Exemplo - Cozinha Superior"},
+        "projeto": {"id": project_id, "nome": "Projeto Exemplo - Cozinha Superior"},
         "cliente": {"nome": "João Silva"},
         "pecas": [
             {"descricao": "Painel Superior", "material": "MDF 15mm", "largura": 1200, "altura": 600, "espessura": 15, "quantidade": 2, "modulo": "Módulo Principal"},

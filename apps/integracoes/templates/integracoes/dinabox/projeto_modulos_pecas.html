@@ -10,7 +10,11 @@
         <p class="page-subtitle">ID: <span class="mono">{{ projeto.projeto.id|default:"-" }}</span> | Cliente: {{ projeto.cliente.nome|default:"-" }}</p>
     </div>
     <div>
+        {% if projeto.projeto.id %}
         <a href="{% url 'integracoes:dinabox-projeto-detail' projeto.projeto.id %}" class="btn btn-outline">Ver Detalhes</a>
+        {% else %}
+        <span class="text-muted">Detalhes indisponíveis</span>
+        {% endif %}
     </div>
 </div>
 

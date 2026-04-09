@@ -1,4 +1,4 @@
-﻿from types import SimpleNamespace
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
@@ -81,3 +81,13 @@ class DinaboxViewsTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Projetos Dinabox")
+
+    def test_reverse_projeto_detail_existe(self):
+        """
+        Garante que a rota de detalhe de projeto está registrada no namespace correto.
+
+        Returns:
+            None: Este teste valida apenas o reverse.
+        """
+        url = reverse("integracoes:dinabox-projeto-detail", kwargs={"project_id": "ABC123"})
+        self.assertIn("/integracoes/dinabox/projetos/ABC123/", url)

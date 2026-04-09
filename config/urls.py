@@ -1,4 +1,4 @@
-﻿from django.conf import settings
+from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
@@ -24,7 +24,7 @@ urlpatterns = [
     path('api/bipagem/', include('apps.bipagem.api.urls')),
 
     # Integracoes
-    path('integracoes/', include('apps.integracoes.urls')),
+    path("integracoes/", include(("apps.integracoes.urls", "integracoes"), namespace="integracoes")),
 ]
 
 if settings.DEBUG:
