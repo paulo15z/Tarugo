@@ -1,4 +1,27 @@
-# Sprints do MVP de Bipagem (Separacao -> Usinagem -> Expedicao)
+# Sprints do MVP de Bipagem (Peca -> Preenchimento de Modulo -> Expedicao)
+
+## Regra estrutural consolidada
+
+- Antes dos setores de preenchimento de modulo, a unidade operacional e a `peca`.
+- A peca carrega todos os metadados de contexto: `lote`, `modulo`, `ambiente`, `pedido`, `cliente`.
+- Setores de preenchimento de modulo: `DUP`, `MCX`, `MPE`, `MAR`, `MEL`, `XMAR`, `XBOR`.
+- O modulo nao avanca em bloco. Ele fica `aguardando`, `parcial`, `liberado` ou `concluido` por setor.
+- Uma peca pode estar pronta para `MCX` enquanto outra do mesmo modulo ainda depende de `BOR`, `USI` ou `FUR`.
+- O sistema precisa mostrar prontidao do modulo por setor sem perder a auditoria fina por peca.
+
+## Caminho atual de entrega
+
+- `5 - Separacao de destinos`: operacional e ativo na nova base.
+- `7 - Entrada e saida da expedicao por envio`: operacional e ativo na nova base.
+- `1, 2, 3, 4, 6`: entram como estrutura de dominio e auditoria por peca, para evolucao gradual.
+
+## Contrato operacional novo
+
+- `EventoOperacional` registra passagem de uma peca em uma etapa.
+- `EnvioExpedicao` agrupa saidas parciais da expedicao.
+- `EnvioExpedicaoItem` amarra a peca enviada ao envio fisico.
+- O roteiro da peca continua sendo a fonte de verdade tecnica.
+- O preenchimento do modulo e um consolidado derivado do roteiro e dos eventos das pecas.
 
 ## Sprint 1 - Fundacao de dominio e acesso
 

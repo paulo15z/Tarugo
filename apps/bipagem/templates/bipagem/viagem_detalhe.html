@@ -1,0 +1,68 @@
+{% extends "bipagem/base.html" %}
+
+{% block title %}{{ viagem.codigo }}{% endblock %}
+
+{% block content %}
+<div class="grid">
+  <div class="panel">
+    <div style="display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+      <div>
+        <div class="muted mono">Viagem {{ viagem.codigo }}</div>
+        <h1 style="margin:6px 0 10px;">{{ viagem.destino_principal|default:"Sem destino principal" }}</h1>
+        <div class="muted">{{ viagem.motorista|default:"Sem motorista" }}{% if viagem.ajudante %} · {{ viagem.ajudante }}{% endif %}</div>
+        <div class="muted">{{ viagem.descricao|default:"-" }}</div>
+      </div>
+      <a class="btn" href="{% url 'bipagem:viagens' %}">Voltar</a>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card"><div class="label">Status</div><div class="value" style="font-size:22px;">{{ viagem.status }}</div></div>
+    <div class="card"><div class="label">Itens</div><div class="value">{{ viagem.total_itens }}</div></div>
+    <div class="card"><div class="label">Unidades</div><div class="value">{{ viagem.total_unidades }}</div></div>
+    <div class="card"><div class="label">Placa</div><div class="value" style="font-size:22px;">{{ viagem.placa_veiculo|default:"-" }}</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="label" style="margin-bottom:8px;">Destinos secundarios</div>
+    <div>{{ viagem.destinos_secundarios|join:", "|default:"-" }}</div>
+  </div>
+
+  <div class="panel">
+    <div class="label" style="margin-bottom:8px;">Lotes</div>
+    <div class="mono">{{ viagem.lotes|join:", " }}</div>
+  </div>
+
+  <div class="panel">
+    <div class="label" style="margin-bottom:8px;">Clientes</div>
+    <div>{{ viagem.clientes|join:", " }}</div>
+  </div>
+
+  <div class="panel">
+    <table>
+      <thead>
+        <tr>
+          <th>Codigo</th>
+          <th>Descricao</th>
+          <th>Lote</th>
+          <th>Ambiente</th>
+          <th>Modulo</th>
+          <th>Qtd</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in viagem.itens %}
+          <tr>
+            <td class="mono">{{ item.codigo_peca }}</td>
+            <td>{{ item.descricao }}</td>
+            <td class="mono">{{ item.lote_pid }}</td>
+            <td>{{ item.ambiente }}</td>
+            <td>{{ item.modulo }}</td>
+            <td>{{ item.quantidade }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

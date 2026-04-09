@@ -101,6 +101,7 @@
   <div class="brand">Bipagem <small>operacao assistida</small></div>
   <div class="header-actions">
     <a href="{% url 'bipagem:index' %}">Lotes Liberados</a>
+    <a href="{% url 'bipagem:viagens' %}">Viagens</a>
     <a href="{% url 'pcp:index' %}">PCP</a>
     {% if user.is_authenticated %}
       <span class="muted">{{ user.username }}</span>

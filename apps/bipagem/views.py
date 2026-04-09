@@ -9,6 +9,13 @@ from apps.bipagem.selectors.lote_selectors import (
     get_lotes_dashboard,
     get_pecas_do_lote,
 )
+from apps.bipagem.selectors.operacional_selector import (
+    get_envio_expedicao,
+    list_auditoria_pecas,
+    list_envios_expedicao,
+    list_modulos_preenchimento,
+    list_viagens_por_lote,
+)
 from apps.bipagem.services.bipagem_service import estornar_bipagem
 
 
@@ -64,6 +71,57 @@ def pedido_detalhe(request, numero_pedido):
             'status': status,
         },
         'pode_estornar': _user_pode_gerenciar(request),
+    })
+
+
+@login_required
+def operacional_lote(request, numero_pedido):
+    pid = numero_pedido
+    ambiente = request.GET.get('ambiente', '').strip()
+    modulo = request.GET.get('modulo', '').strip()
+
+    preview = get_lote_preview(pid)
+    if not preview:
+        messages.error(request, 'Lote nao encontrado ou nao liberado para bipagem.')
+        return redirect('bipagem:index')
+
+    auditoria_pecas = list_auditoria_pecas(pid, ambiente=ambiente, modulo=modulo)
+    modulos = list_modulos_preenchimento(pid, ambiente=ambiente)
+    envios_lote = list_viagens_por_lote(pid)
+
+    return render(request, 'bipagem/operacional_lote.html', {
+        'pid': pid,
+        'preview': preview,
+        'auditoria_pecas': auditoria_pecas,
+        'modulos': modulos,
+        'envios': envios_lote,
+        'ambientes': preview['ambientes'],
+        'filtros': {
+            'ambiente': ambiente,
+            'modulo': modulo,
+        },
+        'pode_gerenciar': _user_pode_gerenciar(request),
+    })
+
+
+@login_required
+def viagens_index(request):
+    status = request.GET.get("status", "").strip()
+    viagens = list_envios_expedicao(status=status)
+    return render(request, "bipagem/viagens.html", {
+        "viagens": viagens,
+        "status_filtro": status,
+    })
+
+
+@login_required
+def viagem_detalhe(request, codigo):
+    viagem = get_envio_expedicao(codigo)
+    if not viagem:
+        messages.error(request, "Viagem nao encontrada.")
+        return redirect("bipagem:viagens")
+    return render(request, "bipagem/viagem_detalhe.html", {
+        "viagem": viagem,
     })
 
 

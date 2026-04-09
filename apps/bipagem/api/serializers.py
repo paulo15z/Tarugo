@@ -1,6 +1,15 @@
 # apps/bipagem/api/serializers.py
 from rest_framework import serializers
-from apps.bipagem.models import Pedido, OrdemProducao, Modulo, Peca, EventoBipagem, LoteProducao
+from apps.bipagem.domain.operacional import ETAPAS_AUDITAVEIS_PECA, StatusEnvioExpedicao
+from apps.bipagem.models import (
+    Pedido,
+    OrdemProducao,
+    Modulo,
+    Peca,
+    EventoBipagem,
+    LoteProducao,
+    EnvioExpedicao,
+)
 
 
 class LoteProducaoSerializer(serializers.ModelSerializer):
@@ -115,3 +124,84 @@ class PedidoSerializer(serializers.ModelSerializer):
         if total == 0:
             return 0
         return int((obj.pecas_bipadas / total) * 100)
+
+
+class SeparacaoDestinoSerializer(serializers.Serializer):
+    pid = serializers.CharField(min_length=8, max_length=8)
+    codigo = serializers.CharField(min_length=1)
+    quantidade = serializers.IntegerField(min_value=1, default=1)
+    usuario = serializers.CharField(required=False, allow_blank=True, default="OPERADOR")
+    localizacao = serializers.CharField(required=False, allow_blank=True, default="SEPARACAO_DESTINOS")
+
+
+class EnvioExpedicaoCreateSerializer(serializers.Serializer):
+    codigo = serializers.CharField(required=False, allow_blank=True, min_length=4, max_length=30)
+    descricao = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    transportadora = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    placa_veiculo = serializers.CharField(required=False, allow_blank=True, max_length=20)
+    motorista = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    ajudante = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    destino_principal = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    destinos_secundarios = serializers.CharField(required=False, allow_blank=True)
+    observacoes = serializers.CharField(required=False, allow_blank=True)
+    usuario = serializers.CharField(required=False, allow_blank=True, default="SISTEMA")
+
+
+class EnvioExpedicaoAddItemSerializer(serializers.Serializer):
+    pid = serializers.CharField(min_length=8, max_length=8)
+    codigo = serializers.CharField(min_length=1)
+    quantidade = serializers.IntegerField(min_value=1, default=1)
+    usuario = serializers.CharField(required=False, allow_blank=True, default="OPERADOR")
+
+
+class EnvioExpedicaoAddModuloSerializer(serializers.Serializer):
+    pid = serializers.CharField(min_length=8, max_length=8)
+    codigo_modulo = serializers.CharField(min_length=1, max_length=50)
+    ambiente = serializers.CharField(required=False, allow_blank=True)
+    usuario = serializers.CharField(required=False, allow_blank=True, default="OPERADOR")
+
+
+class EnvioExpedicaoMovimentoSerializer(serializers.Serializer):
+    usuario = serializers.CharField(required=False, allow_blank=True, default="OPERADOR")
+    localizacao = serializers.CharField(required=False, allow_blank=True, default="EXPEDICAO")
+    observacao = serializers.CharField(required=False, allow_blank=True)
+
+
+class EnvioExpedicaoListSerializer(serializers.ModelSerializer):
+    total_itens = serializers.IntegerField(read_only=True)
+    total_unidades = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = EnvioExpedicao
+        fields = [
+            "codigo",
+            "descricao",
+            "status",
+            "transportadora",
+            "placa_veiculo",
+            "motorista",
+            "ajudante",
+            "destino_principal",
+            "recebido_em",
+            "liberado_em",
+            "total_itens",
+            "total_unidades",
+        ]
+
+
+class EnvioExpedicaoFiltroSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(
+        choices=[item.value for item in StatusEnvioExpedicao],
+        required=False,
+        allow_blank=True,
+    )
+
+
+class EventoPecaSerializer(serializers.Serializer):
+    pid = serializers.CharField(min_length=8, max_length=8)
+    codigo = serializers.CharField(min_length=1)
+    etapa = serializers.ChoiceField(choices=[item.value for item in ETAPAS_AUDITAVEIS_PECA])
+    quantidade = serializers.IntegerField(min_value=1, default=1)
+    usuario = serializers.CharField(required=False, allow_blank=True, default="OPERADOR")
+    localizacao = serializers.CharField(required=False, allow_blank=True, default="")
+    observacao = serializers.CharField(required=False, allow_blank=True)

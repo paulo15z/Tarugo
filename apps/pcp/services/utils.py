@@ -5,7 +5,11 @@ from io import BytesIO
 from typing import Any
 
 import pandas as pd
-import xlwt
+
+try:
+    import xlwt
+except ModuleNotFoundError:  # pragma: no cover - depende do ambiente
+    xlwt = None
 
 BORDA_COLS = ['BORDA_FACE_FRENTE', 'BORDA_FACE_TRASEIRA', 'BORDA_FACE_LE', 'BORDA_FACE_LD']
 
@@ -286,6 +290,8 @@ def calcular_roteiro(row) -> str:
 
 def gerar_xls_roteiro(df: pd.DataFrame) -> BytesIO:
     """Gera arquivo XLS formatado com estilos."""
+    if xlwt is None:
+        raise ModuleNotFoundError("xlwt nao esta instalado no ambiente.")
     wb = xlwt.Workbook(encoding='utf-8')
     ws = wb.add_sheet('Roteiro de Pecas')
 

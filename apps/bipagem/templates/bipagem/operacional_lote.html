@@ -1,0 +1,372 @@
+{% extends "bipagem/base.html" %}
+
+{% block title %}Operacional {{ preview.lote.lote }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .hero { display:grid; gap:16px; grid-template-columns:1.2fr .8fr; align-items:start; }
+  .section-title { margin:0 0 12px; font-size:18px; font-weight:800; letter-spacing:.02em; }
+  .stack { display:grid; gap:16px; }
+  .toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
+  .toolbar form { display:grid; gap:10px; grid-template-columns:repeat(3, minmax(180px, 1fr)) auto auto; width:100%; }
+  .chip-row { display:flex; gap:8px; flex-wrap:wrap; }
+  .chip { border:1px solid var(--border); border-radius:999px; padding:6px 10px; font-size:12px; color:var(--muted); background:#101820; }
+  .module-card { background:var(--panel-2); border:1px solid var(--border); border-radius:14px; padding:16px; display:grid; gap:12px; }
+  .sector-grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); }
+  .sector-card { border:1px solid var(--border); border-radius:12px; padding:12px; background:#121b24; display:grid; gap:10px; }
+  .progress-line { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; font-size:12px; }
+  .audit-grid { display:grid; gap:12px; }
+  .audit-card { border:1px solid var(--border); border-radius:12px; padding:14px; background:#131c25; display:grid; gap:10px; }
+  .timeline { display:flex; flex-wrap:wrap; gap:8px; }
+  .timeline .step { border-radius:999px; padding:6px 10px; font-size:12px; border:1px solid var(--border); background:#0f151c; color:var(--muted); }
+  .timeline .done { background:rgba(52,211,153,.12); color:#9bf3d1; border-color:rgba(52,211,153,.22); }
+  .timeline .next { background:rgba(251,191,36,.14); color:#fddd8f; border-color:rgba(251,191,36,.26); }
+  .forms-grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); }
+  .form-panel { background:var(--panel-2); border:1px solid var(--border); border-radius:12px; padding:16px; display:grid; gap:10px; }
+  .envio-table { max-height:320px; overflow:auto; }
+  .feedback { min-height:20px; font-weight:700; }
+  .split { display:grid; gap:10px; grid-template-columns:repeat(2, minmax(120px, 1fr)); }
+  @media (max-width: 1100px) {
+    .hero { grid-template-columns:1fr; }
+    .toolbar form { grid-template-columns:1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stack">
+  <div class="hero">
+    <div class="panel">
+      <div class="muted mono">PID {{ pid }}</div>
+      <h1 style="margin:6px 0 10px;">Operacional do lote {{ preview.lote.lote|default:"---" }}</h1>
+      <div class="muted">{{ preview.lote.cliente_nome }}{% if preview.lote.ordem_producao %} · OP {{ preview.lote.ordem_producao }}{% endif %}</div>
+      <div class="chip-row" style="margin-top:14px;">
+        {% for ambiente in preview.ambientes %}
+          <span class="chip">{{ ambiente }}</span>
+        {% endfor %}
+      </div>
+      <div class="toolbar" style="margin-top:18px;">
+        <form method="get">
+          <select class="select" name="ambiente">
+            <option value="">Todos os ambientes</option>
+            {% for item in ambientes %}
+              <option value="{{ item }}" {% if filtros.ambiente == item %}selected{% endif %}>{{ item }}</option>
+            {% endfor %}
+          </select>
+          <input class="field mono" type="text" name="modulo" placeholder="Codigo modulo" value="{{ filtros.modulo }}">
+          <div></div>
+          <button class="btn btn-primary" type="submit">Filtrar</button>
+          <a class="btn" href="{% url 'bipagem:operacional_lote' pid %}">Limpar</a>
+        </form>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card"><div class="label">Pecas auditadas</div><div class="value">{{ auditoria_pecas|length }}</div></div>
+      <div class="card"><div class="label">Modulos</div><div class="value">{{ modulos|length }}</div></div>
+      <div class="card"><div class="label">Viagens do lote</div><div class="value">{{ envios|length }}</div></div>
+      <div class="card"><div class="label">Planos</div><div class="value">{{ preview.planos|length }}</div></div>
+    </div>
+  </div>
+
+  <div class="forms-grid">
+    <div class="form-panel">
+      <div class="section-title">Registrar Etapa da Peca</div>
+      <input id="evento-codigo" class="field mono" type="text" placeholder="Codigo da peca">
+      <select id="evento-etapa" class="select">
+        <option value="CORTE">Corte</option>
+        <option value="BORDA">Bordo</option>
+        <option value="USINAGEM">Usinagem</option>
+        <option value="FURACAO">Furacao</option>
+        <option value="DUP">Duplagem</option>
+        <option value="MCX">MCX</option>
+        <option value="MPE">MPE</option>
+        <option value="MAR">Marcenaria</option>
+        <option value="MEL">Montagem Eletrica</option>
+        <option value="XMAR">Marcenaria Especial</option>
+        <option value="XBOR">Borda Manual</option>
+        <option value="CQL">Qualidade</option>
+      </select>
+      <input id="evento-observacao" class="field" type="text" placeholder="Observacao opcional">
+      <button id="evento-submit" class="btn btn-primary" type="button">Registrar etapa</button>
+      <div id="evento-feedback" class="feedback muted"></div>
+    </div>
+
+    <div class="form-panel">
+      <div class="section-title">Separacao de Destinos</div>
+      <input id="destino-codigo" class="field mono" type="text" placeholder="Codigo da peca">
+      <button id="destino-submit" class="btn btn-primary" type="button">Registrar destino</button>
+      <div id="destino-feedback" class="feedback muted"></div>
+    </div>
+
+    <div class="form-panel">
+      <div class="section-title">Criar Viagem</div>
+      <input id="envio-codigo" class="field mono" type="text" placeholder="Codigo viagem (opcional)">
+      <input id="envio-descricao" class="field" type="text" placeholder="Descricao da carga">
+      <div class="split">
+        <input id="envio-motorista" class="field" type="text" placeholder="Motorista">
+        <input id="envio-ajudante" class="field" type="text" placeholder="Ajudante (opcional)">
+      </div>
+      <div class="split">
+        <input id="envio-destino-principal" class="field" type="text" placeholder="Destino principal">
+        <input id="envio-placa" class="field mono" type="text" placeholder="Placa">
+      </div>
+      <input id="envio-destinos-secundarios" class="field" type="text" placeholder="Destinos secundarios separados por virgula">
+      <input id="envio-transportadora" class="field" type="text" placeholder="Transportadora">
+      <button id="envio-create-submit" class="btn btn-primary" type="button">Criar viagem</button>
+      <div id="envio-create-feedback" class="feedback muted"></div>
+    </div>
+
+    <div class="form-panel">
+      <div class="section-title">Conferencia da Viagem</div>
+      <input id="envio-item-codigo" class="field mono" type="text" placeholder="Codigo viagem">
+      <input id="envio-item-peca" class="field mono" type="text" placeholder="Codigo da peca">
+      <input id="envio-item-modulo" class="field mono" type="text" placeholder="Codigo do modulo">
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button id="envio-add-item" class="btn" type="button">Adicionar peca</button>
+        <button id="envio-add-modulo" class="btn" type="button">Adicionar modulo</button>
+        <button id="envio-entrada" class="btn" type="button">Entrada expedicao</button>
+        <button id="envio-saida" class="btn btn-primary" type="button">Liberar viagem</button>
+      </div>
+      <div id="envio-item-feedback" class="feedback muted"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="section-title">Preenchimento do Modulo por Setor</div>
+    <div class="stack">
+      {% for modulo in modulos %}
+        <div class="module-card">
+          <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div>
+              <div class="muted mono">{{ modulo.codigo_modulo|default:"SEM-CODIGO" }}</div>
+              <div style="font-size:22px; font-weight:800;">{{ modulo.modulo }}</div>
+              <div class="muted">{{ modulo.ambiente }} · {{ modulo.cliente_nome }}</div>
+            </div>
+          </div>
+          <div class="sector-grid">
+            {% for setor in modulo.setores %}
+              <div class="sector-card">
+                <div style="display:flex; justify-content:space-between; gap:8px; align-items:center;">
+                  <strong>{{ setor.label }}</strong>
+                  {% if setor.status == 'concluido' %}
+                    <span class="badge badge-green">Concluido</span>
+                  {% elif setor.status == 'liberado' %}
+                    <span class="badge badge-blue">Liberado</span>
+                  {% elif setor.status == 'parcial' %}
+                    <span class="badge badge-yellow">Parcial</span>
+                  {% else %}
+                    <span class="badge badge-red">Aguardando</span>
+                  {% endif %}
+                </div>
+                <div class="progress-line">
+                  <div><div class="label">Previstas</div><div>{{ setor.total_previstas }}</div></div>
+                  <div><div class="label">Liberadas</div><div>{{ setor.liberadas }}</div></div>
+                  <div><div class="label">Concluidas</div><div>{{ setor.concluidas }}</div></div>
+                  <div><div class="label">Pendentes</div><div>{{ setor.pendentes }}</div></div>
+                </div>
+                {% if setor.pecas_prontas %}
+                  <div>
+                    <div class="label">Pecas prontas</div>
+                    <div class="chip-row">
+                      {% for peca in setor.pecas_prontas|slice:":5" %}
+                        <span class="chip mono">{{ peca.codigo_peca }}</span>
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endif %}
+                {% if setor.pecas_pendentes %}
+                  <div>
+                    <div class="label">Bloqueios</div>
+                    {% for peca in setor.pecas_pendentes|slice:":3" %}
+                      <div class="muted mono" style="margin-top:6px;">{{ peca.codigo_peca }} · {{ peca.pendencias|join:", " }}</div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% empty %}
+        <div class="muted">Nenhum modulo encontrado para este filtro.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="section-title">Auditoria de Pecas</div>
+    <div class="audit-grid">
+      {% for peca in auditoria_pecas %}
+        <div class="audit-card">
+          <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div>
+              <div class="mono" style="font-weight:800;">{{ peca.codigo_peca }}</div>
+              <div>{{ peca.descricao }}</div>
+              <div class="muted">{{ peca.ambiente }} · {{ peca.modulo }}</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="label">Proxima etapa</div>
+              <div style="font-weight:800;">{{ peca.proxima_etapa|default:"CONCLUIDA" }}</div>
+            </div>
+          </div>
+          <div class="timeline">
+            {% for etapa in peca.etapas %}
+              <span class="step {% if etapa.concluida %}done{% elif peca.proxima_etapa == etapa.etapa %}next{% endif %}">
+                {{ etapa.label }} {{ etapa.quantidade_concluida }}/{{ etapa.quantidade_planejada }}
+              </span>
+            {% endfor %}
+          </div>
+        </div>
+      {% empty %}
+        <div class="muted">Nenhuma peca encontrada para este filtro.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
+      <div class="section-title" style="margin:0;">Viagens Vinculadas ao Lote</div>
+      <a class="btn" href="{% url 'bipagem:pedido_detalhe' pid %}">Fluxo legado</a>
+    </div>
+    <div class="envio-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Codigo</th>
+            <th>Status</th>
+            <th>Descricao</th>
+            <th>Itens</th>
+            <th>Unidades</th>
+            <th>Recebido</th>
+            <th>Liberado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for envio in envios %}
+            <tr>
+              <td class="mono"><a href="{% url 'bipagem:viagem_detalhe' envio.codigo %}" style="color:inherit;">{{ envio.codigo }}</a></td>
+              <td>{{ envio.status }}</td>
+              <td>{{ envio.destino_principal|default:envio.descricao|default:"-" }}</td>
+              <td>{{ envio.total_itens }}</td>
+              <td>{{ envio.total_unidades }}</td>
+              <td class="mono">{{ envio.recebido_em|default:"-" }}</td>
+              <td class="mono">{{ envio.liberado_em|default:"-" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" class="muted">Nenhuma viagem criada para este lote.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const pid = '{{ pid }}';
+  const username = '{{ user.username|default:"OPERADOR" }}';
+
+  async function postJSON(url, body) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify(body),
+    });
+    const data = await response.json();
+    return { response, data };
+  }
+
+  function setFeedback(id, message, ok = true) {
+    const el = document.getElementById(id);
+    el.textContent = message;
+    el.style.color = ok ? '#9bf3d1' : '#fca5a5';
+  }
+
+  async function registrarEventoPeca() {
+    const codigo = document.getElementById('evento-codigo').value.trim();
+    const etapa = document.getElementById('evento-etapa').value;
+    const observacao = document.getElementById('evento-observacao').value.trim();
+    const { response, data } = await postJSON('/api/bipagem/operacional/eventos/peca/', {
+      pid,
+      codigo,
+      etapa,
+      quantidade: 1,
+      usuario: username,
+      localizacao: etapa,
+      observacao,
+    });
+    setFeedback('evento-feedback', data.mensagem || data.erro || 'Falha ao registrar etapa.', response.ok && data.sucesso !== false);
+    if (response.ok) window.location.reload();
+  }
+
+  async function registrarDestino() {
+    const codigo = document.getElementById('destino-codigo').value.trim();
+    const { response, data } = await postJSON('/api/bipagem/operacional/separacao-destinos/', {
+      pid,
+      codigo,
+      quantidade: 1,
+      usuario: username,
+      localizacao: 'SEPARACAO_DESTINOS',
+    });
+    setFeedback('destino-feedback', data.mensagem || data.erro || 'Falha ao registrar destino.', response.ok && data.sucesso !== false);
+    if (response.ok) window.location.reload();
+  }
+
+  async function criarEnvio() {
+    const codigo = document.getElementById('envio-codigo').value.trim();
+    const descricao = document.getElementById('envio-descricao').value.trim();
+    const motorista = document.getElementById('envio-motorista').value.trim();
+    const ajudante = document.getElementById('envio-ajudante').value.trim();
+    const destinoPrincipal = document.getElementById('envio-destino-principal').value.trim();
+    const destinosSecundarios = document.getElementById('envio-destinos-secundarios').value.trim();
+    const placaVeiculo = document.getElementById('envio-placa').value.trim();
+    const transportadora = document.getElementById('envio-transportadora').value.trim();
+    const { response, data } = await postJSON('/api/bipagem/operacional/viagens/', {
+      codigo,
+      descricao,
+      motorista,
+      ajudante,
+      destino_principal: destinoPrincipal,
+      destinos_secundarios: destinosSecundarios,
+      placa_veiculo: placaVeiculo,
+      transportadora,
+      usuario: username,
+    });
+    setFeedback('envio-create-feedback', data.mensagem || data.erro || 'Falha ao criar viagem.', response.ok && data.sucesso !== false);
+    if (response.ok) window.location.reload();
+  }
+
+  async function movimentarEnvio(tipo) {
+    const envioCodigo = document.getElementById('envio-item-codigo').value.trim();
+    const codigoPeca = document.getElementById('envio-item-peca').value.trim();
+    const codigoModulo = document.getElementById('envio-item-modulo').value.trim();
+    let endpoint = `/api/bipagem/operacional/viagens/${envioCodigo}/itens/`;
+    let payload = { pid, codigo: codigoPeca, quantidade: 1, usuario: username };
+
+    if (tipo === 'modulo') {
+      endpoint = `/api/bipagem/operacional/viagens/${envioCodigo}/modulos/`;
+      payload = { pid, codigo_modulo: codigoModulo, usuario: username };
+    }
+    if (tipo === 'entrada') {
+      endpoint = `/api/bipagem/operacional/viagens/${envioCodigo}/entrada/`;
+      payload = { usuario: username, localizacao: 'EXPEDICAO' };
+    } else if (tipo === 'saida') {
+      endpoint = `/api/bipagem/operacional/viagens/${envioCodigo}/saida/`;
+      payload = { usuario: username, localizacao: 'EXPEDICAO' };
+    }
+
+    const { response, data } = await postJSON(endpoint, payload);
+    setFeedback('envio-item-feedback', data.mensagem || data.erro || 'Falha na operacao do envio.', response.ok && data.sucesso !== false);
+    if (response.ok) window.location.reload();
+  }
+
+  document.getElementById('evento-submit').addEventListener('click', registrarEventoPeca);
+  document.getElementById('destino-submit').addEventListener('click', registrarDestino);
+  document.getElementById('envio-create-submit').addEventListener('click', criarEnvio);
+  document.getElementById('envio-add-item').addEventListener('click', () => movimentarEnvio('item'));
+  document.getElementById('envio-add-modulo').addEventListener('click', () => movimentarEnvio('modulo'));
+  document.getElementById('envio-entrada').addEventListener('click', () => movimentarEnvio('entrada'));
+  document.getElementById('envio-saida').addEventListener('click', () => movimentarEnvio('saida'));
+</script>
+{% endblock %}

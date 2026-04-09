@@ -1,0 +1,52 @@
+{% extends "bipagem/base.html" %}
+
+{% block title %}Viagens{% endblock %}
+
+{% block content %}
+<div class="grid">
+  <div class="panel">
+    <div style="display:flex; justify-content:space-between; gap:16px; align-items:end; flex-wrap:wrap;">
+      <div>
+        <h1 style="margin:0 0 8px;">Viagens de Expedicao</h1>
+        <div class="muted">Conferencia, chegada e liberacao final das cargas.</div>
+      </div>
+      <form method="get" style="display:flex; gap:10px; flex-wrap:wrap;">
+        <select class="select" name="status" style="min-width:220px;">
+          <option value="">Todos os status</option>
+          <option value="ABERTO" {% if status_filtro == 'ABERTO' %}selected{% endif %}>Aberta</option>
+          <option value="RECEBIDO" {% if status_filtro == 'RECEBIDO' %}selected{% endif %}>Recebida</option>
+          <option value="LIBERADO" {% if status_filtro == 'LIBERADO' %}selected{% endif %}>Liberada</option>
+        </select>
+        <button class="btn btn-primary" type="submit">Filtrar</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="cards">
+    {% for viagem in viagens %}
+      <a class="card" href="{% url 'bipagem:viagem_detalhe' viagem.codigo %}" style="text-decoration:none; color:inherit;">
+        <div style="display:flex; justify-content:space-between; gap:12px; align-items:start;">
+          <div>
+            <div class="label">Viagem</div>
+            <div class="value mono" style="font-size:26px;">{{ viagem.codigo }}</div>
+          </div>
+          {% if viagem.status == 'LIBERADO' %}
+            <span class="badge badge-green">Liberada</span>
+          {% elif viagem.status == 'RECEBIDO' %}
+            <span class="badge badge-blue">Recebida</span>
+          {% else %}
+            <span class="badge badge-yellow">Aberta</span>
+          {% endif %}
+        </div>
+        <div style="margin-top:12px; font-weight:700;">{{ viagem.destino_principal|default:"Sem destino principal" }}</div>
+        <div class="muted" style="margin-top:6px;">{{ viagem.motorista|default:"Sem motorista" }}{% if viagem.ajudante %} · {{ viagem.ajudante }}{% endif %}</div>
+        <div class="muted" style="margin-top:6px;">{{ viagem.total_itens }} itens · {{ viagem.total_unidades }} unidades</div>
+      </a>
+    {% empty %}
+      <div class="panel">
+        <div class="muted">Nenhuma viagem encontrada.</div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
