@@ -70,6 +70,12 @@ def _apps_disponiveis(user) -> list[dict[str, str]]:
 
 
 def entrada(request):
+    next_url = ""
+    if request.method == "POST":
+        next_url = request.POST.get("next", "").strip()
+    else:
+        next_url = request.GET.get("next", "").strip()
+
     if request.user.is_authenticated:
         apps = _apps_disponiveis(request.user)
         if len(apps) == 1:
@@ -87,7 +93,6 @@ def entrada(request):
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
             login(request, form.get_user())
-            next_url = request.POST.get("next", "").strip()
             if next_url:
                 return redirect(next_url)
             apps = _apps_disponiveis(request.user)
@@ -103,6 +108,7 @@ def entrada(request):
         {
             "form": form,
             "modo": "login",
+            "next_url": next_url,
             "default_redirect": settings.LOGIN_REDIRECT_URL,
         },
     )
@@ -110,4 +116,3 @@ def entrada(request):
 
 class EntradaLogoutView(LogoutView):
     next_page = "/"
-
