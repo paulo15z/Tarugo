@@ -24,8 +24,13 @@ mkdir -p media/pcp/outputs
 mkdir -p media
 
 if [ ! -f .env ]; then
-  echo "Arquivo .env não encontrado. Copie .env.example para .env e ajuste as credenciais."
-  exit 1
+  if [ -f .env.example ]; then
+    echo ".env não encontrado — copiando .env.example → .env (verifique e atualize credenciais sensíveis)."
+    cp .env.example .env
+  else
+    echo "Arquivo .env não encontrado e .env.example ausente. Crie .env manualmente."
+    exit 1
+  fi
 fi
 
 echo "Subindo apenas o banco para aguardar disponibilidade..."
