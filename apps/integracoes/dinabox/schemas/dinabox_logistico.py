@@ -7,7 +7,7 @@ Roteamento: apps/logistica/, apps/bipagem/ (para viagens)
 
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 
 class DinaboxBaseModel(BaseModel):
@@ -72,6 +72,8 @@ class DinaboxProjectLogistico(DinaboxBaseModel):
     project_status: str
     project_version: int
     project_description: str
+    project_author_id: Optional[int] = None
+    project_author_name: Optional[str] = None
     
     # Customer info (crítico para logística)
     customer: CustomerInfo = Field(...)
@@ -84,20 +86,25 @@ class DinaboxProjectLogistico(DinaboxBaseModel):
     
     # Metadata Tarugo
     imported_at: datetime = Field(default_factory=datetime.now)
-    
+
+    @model_validator(mode="before")
     @classmethod
-    def model_validate(cls, obj, **kwargs):
-        """Mapeia campos de cliente para estrutura interna"""
-        if isinstance(obj, dict):
-            # Mapear customer info
-            customer_data = {
-                "project_customer_id": obj.get("project_customer_id"),
-                "project_customer_name": obj.get("project_customer_name"),
-                "project_customer_address": obj.get("project_customer_address"),
-            }
-            obj["customer"] = customer_data
-        
-        return super().model_validate(obj, **kwargs)
+    def normalize_root(cls, obj):
+        """Monta o cliente e preserva o autor antes da validacao."""
+        if not isinstance(obj, dict):
+            return obj
+
+        data = dict(obj)
+        data["customer"] = {
+            "project_customer_id": data.get("project_customer_id"),
+            "project_customer_name": data.get("project_customer_name"),
+            "project_customer_address": data.get("project_customer_address"),
+        }
+
+        if "project_author_id" not in data and "project_author" in data:
+            data["project_author_id"] = data.get("project_author")
+
+        return data
     
     @property
     def total_modules(self) -> int:

@@ -7,7 +7,7 @@ Roteamento: apps/bipagem/
 
 from datetime import datetime
 from typing import List, Optional, Any
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 
 
 class DinaboxBaseModel(BaseModel):
@@ -91,21 +91,6 @@ class EdgeDetail(DinaboxBaseModel):
             except ValueError:
                 return None
         return None
-
-    @field_validator("perimeter", mode="before")
-    @classmethod
-    def parse_perimeter(cls, v: Any) -> Optional[float]:
-        if v is None:
-            return None
-        if isinstance(v, (int, float)):
-            return float(v)
-        if isinstance(v, str) and v.strip():
-            try:
-                return float(v.replace(",", "."))
-            except ValueError:
-                return None
-        return None
-
 
 class MaterialInfo(DinaboxBaseModel):
     """Material para processamento em fábrica."""
@@ -235,6 +220,40 @@ class ModuleOperacional(DinaboxBaseModel):
     
     parts: List[PartOperacional] = Field(default_factory=list)
     inputs: List[InputItemOperacional] = Field(default_factory=list)
+
+    @field_validator("parts", mode="before")
+    @classmethod
+    def normalize_parts(cls, parts: Any) -> Any:
+        """Prepara cada peca para a validacao aninhada."""
+        if not isinstance(parts, list):
+            return parts
+
+        normalized = []
+        for part in parts:
+            if not isinstance(part, dict):
+                normalized.append(part)
+                continue
+
+            data = dict(part)
+            material_data = {k: v for k, v in data.items() if k.startswith("material_")}
+            if material_data:
+                data["material"] = material_data
+
+            for side in ["left", "right", "top", "bottom"]:
+                edge_key = f"edge_{side}"
+                edge_value = data.get(edge_key)
+                if edge_value is None or isinstance(edge_value, str):
+                    data[edge_key] = {
+                        "name": edge_value if isinstance(edge_value, str) else None,
+                        "material_id": data.get(f"{edge_key}_id"),
+                        "perimeter": data.get(f"{edge_key}_perimeter"),
+                        "abs": data.get(f"{edge_key}_abs"),
+                        "factory_price": data.get(f"{edge_key}_factory"),
+                    }
+
+            normalized.append(data)
+
+        return normalized
     
     @property
     def total_parts(self) -> int:
@@ -278,8 +297,6 @@ class DinaboxProjectOperacional(DinaboxBaseModel):
     project_customer_name: str
     project_created: str
     project_last_modified: str
-    
-    # Author
     project_author_id: Optional[int] = None
     project_author_name: Optional[str] = None
     
@@ -289,6 +306,18 @@ class DinaboxProjectOperacional(DinaboxBaseModel):
     
     # Metadata Tarugo
     imported_at: datetime = Field(default_factory=datetime.now)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_root(cls, obj: Any) -> Any:
+        """Preserva o autor do projeto ao validar a raiz."""
+        if not isinstance(obj, dict):
+            return obj
+
+        data = dict(obj)
+        if "project_author_id" not in data and "project_author" in data:
+            data["project_author_id"] = data.get("project_author")
+        return data
     
     @property
     def total_modules(self) -> int:

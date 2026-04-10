@@ -7,7 +7,7 @@ Roteamento: apps/pcp/, apps/estoque/, apps/finanzeiro/
 
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 
 
 class DinaboxBaseModel(BaseModel):
@@ -114,6 +114,27 @@ class ModuleAdministrativo(DinaboxBaseModel):
     # Conteúdo para BOM
     parts: List[PartAdministrativo] = Field(default_factory=list)
     inputs: List[InputItemAdministrativo] = Field(default_factory=list)
+
+    @field_validator("parts", mode="before")
+    @classmethod
+    def normalize_parts(cls, parts: Any) -> Any:
+        """Monta o material aninhado antes da validacao."""
+        if not isinstance(parts, list):
+            return parts
+
+        normalized = []
+        for part in parts:
+            if not isinstance(part, dict):
+                normalized.append(part)
+                continue
+
+            data = dict(part)
+            material_data = {k: v for k, v in data.items() if k.startswith("material_")}
+            if material_data:
+                data["material"] = material_data
+            normalized.append(data)
+
+        return normalized
     
     @property
     def total_cost(self) -> float:
@@ -145,6 +166,18 @@ class DinaboxProjectAdministrativo(DinaboxBaseModel):
     
     # Metadata Tarugo
     imported_at: datetime = Field(default_factory=datetime.now)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_root(cls, obj: Any) -> Any:
+        """Preserva o autor do projeto ao validar a raiz."""
+        if not isinstance(obj, dict):
+            return obj
+
+        data = dict(obj)
+        if "project_author_id" not in data and "project_author" in data:
+            data["project_author_id"] = data.get("project_author")
+        return data
     
     @property
     def total_materials_cost(self) -> float:
