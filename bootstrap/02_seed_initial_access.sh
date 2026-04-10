@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-Trocar123!}"
+DEFAULT_PASSWORD="${DEFAULT_PASSWORD:?Defina DEFAULT_PASSWORD no .env}"
 RESET_PASSWORDS="${RESET_PASSWORDS:-0}"
 
 echo "[bootstrap] Garantindo grupos iniciais..."

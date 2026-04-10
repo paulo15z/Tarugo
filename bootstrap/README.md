@@ -1,31 +1,30 @@
 # Bootstrap (Deploy / Docker)
 
-Diretorio unico para scripts de inicializacao, ao lado do `manage.py`.
+Diretório dos scripts de inicialização, ao lado do `manage.py`.
 
 ## Scripts
 
-- `bootstrap/01_migrate.sh`
-  - Aplica migrations.
-- `bootstrap/02_seed_initial_access.sh`
-  - Garante grupos e usuarios iniciais.
-- `bootstrap/99_bootstrap_all.sh`
-  - Executa migrate + acesso.
-  - Opcionalmente executa seeds de estoque.
+- `bootstrap/01_migrate.sh` -> aplica migrations
+- `bootstrap/02_seed_initial_access.sh` -> cria grupos e usuários
+- `bootstrap/99_bootstrap_all.sh` -> migração + acesso + seeds opcionais
 
-## Variaveis de ambiente
+## Variáveis de ambiente
 
-- `DEFAULT_PASSWORD` (default: `Trocar123!`)
-- `RESET_PASSWORDS` (`0` ou `1`, default: `0`)
-- `RUN_ESTOQUE_SEEDS` (`0` ou `1`, default: `0`)
+- `DATABASE_URL` obrigatório no deploy com PostgreSQL
+- `SECRET_KEY` obrigatório no ambiente local/produção
+- `DEFAULT_PASSWORD` obrigatório para seed inicial
+- `RESET_PASSWORDS` (`0` ou `1`)
+- `RUN_ESTOQUE_SEEDS` (`0` ou `1`)
 
-## Execucao manual (container ou host Linux)
+## Execução manual
 
 ```sh
+cp .env.example .env
 sh ./bootstrap/99_bootstrap_all.sh
 ```
 
-Com reset de senha e seed de estoque:
+## Observações de segurança
 
-```sh
-DEFAULT_PASSWORD='SenhaForte123!' RESET_PASSWORDS=1 RUN_ESTOQUE_SEEDS=1 sh ./bootstrap/99_bootstrap_all.sh
-```
+- Não versionar `.env`
+- Não armazenar senhas reais em `docker-compose.yml`
+- Preferir variáveis de ambiente e exemplos sem segredos

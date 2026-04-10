@@ -1,22 +1,34 @@
-﻿services:
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: tarugo_db
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   web:
     build: .
     container_name: tarugo_web
-    environment:
-      DEFAULT_PASSWORD: "Renara.123"
-      RESET_PASSWORDS: "0"
-      RUN_ESTOQUE_SEEDS: "0"
-      PCP_BLOQUEAR_LIBERACAO_COM_RISCO_ESTOQUE: "0"
-      PCP_ESTOQUE_RISCO_JANELA_DIAS: "30"
-      DINABOX_BASE_URL: "https://www.dinabox.app"
-      DINABOX_SERVICE_USERNAME: "80385122"
-      DINABOX_SERVICE_PASSWORD: "abacatudo.renara.123"
-      DINABOX_TIMEOUT_SECONDS: "15"
-      DINABOX_VERIFY_SSL: "1"
+    env_file:
+      - .env
+    command: sh -c "python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
     ports:
       - "8000:8000"
     volumes:
-      - ./db.sqlite3:/app/db.sqlite3
       - ./media:/app/media
+      - static_data:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
+volumes:
+  postgres_data:
+  static_data:
