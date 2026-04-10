@@ -139,8 +139,8 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
                 nova['QUANTIDADE'] = '1'
 
                 nova['OBSERVAÇÃO'] = (
-                    f"TIRA {i+1}/{qtd_tiras} | "
-                    f"{total_pecas} PCS {int(altura_ripa)}mm | "
+                    f"TIRA {i+1}/{qtd_tiras} - "
+                    f"{total_pecas} PCS {int(altura_ripa)}mm - "
                     f"{max_por_tira} pcs/tira"
                 )
 
@@ -170,7 +170,7 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
             # ------------------------------------------------
 
             nova['OBSERVAÇÃO'] = (
-                f"RIPA FONTE | {total_pecas} PCS {int(largura_ripa)}x{int(altura_ripa)}mm"
+                f"RIPA FONTE - {total_pecas} PCS {int(largura_ripa)}x{int(altura_ripa)}mm"
             )
 
             novas_linhas.append(nova)

@@ -151,7 +151,7 @@ def consolidar_ripas(df: pd.DataFrame) -> pd.DataFrame:
 
             observacao_txt = (
                 f"TIRA {i + 1}/{qtd_tiras} -> "
-                f"{pecas_nesta_tira}/{total_pecas} PCS {int(altura_ripa)}mm | "
+                f"{pecas_nesta_tira}/{total_pecas} PCS {int(altura_ripa)}mm - "
                 f"{max_por_tira} pcs/tira"
             )
             if obs_col:
