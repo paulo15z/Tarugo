@@ -7,16 +7,8 @@ Roteamento: apps/bipagem/
 
 from datetime import datetime
 from typing import List, Optional, Any
-from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
-
-
-class DinaboxBaseModel(BaseModel):
-    """Base model com configuração comum."""
-    model_config = ConfigDict(
-        populate_by_name=True,
-        extra="allow",
-        arbitrary_types_allowed=True
-    )
+from pydantic import Field, field_validator, model_validator
+from .base import DinaboxBaseModel
 
 
 class HoleDetail(DinaboxBaseModel):
@@ -181,11 +173,6 @@ class PartOperacional(DinaboxBaseModel):
                     obj[edge_key] = edge_data
         
         return super().model_validate(obj, **kwargs)
-    
-    @property
-    def total_holes(self) -> int:
-        """Total de operações de usinagem nesta peça"""
-        return self.holes.total_holes if self.holes else 0
 
 
 class InputItemOperacional(DinaboxBaseModel):

@@ -7,16 +7,8 @@ Roteamento: apps/logistica/, apps/bipagem/ (para viagens)
 
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, Field, ConfigDict, model_validator
-
-
-class DinaboxBaseModel(BaseModel):
-    """Base model com configuração comum."""
-    model_config = ConfigDict(
-        populate_by_name=True,
-        extra="allow",
-        arbitrary_types_allowed=True
-    )
+from pydantic import Field, model_validator
+from .base import DinaboxBaseModel
 
 
 class CustomerInfo(DinaboxBaseModel):

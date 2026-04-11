@@ -7,16 +7,8 @@ Roteamento: apps/pcp/, apps/estoque/, apps/finanzeiro/
 
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
-
-
-class DinaboxBaseModel(BaseModel):
-    """Base model com configuração comum."""
-    model_config = ConfigDict(
-        populate_by_name=True,
-        extra="allow",
-        arbitrary_types_allowed=True
-    )
+from pydantic import Field, field_validator, model_validator
+from .base import DinaboxBaseModel
 
 
 class MaterialInfo(DinaboxBaseModel):
