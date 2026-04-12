@@ -1,0 +1,46 @@
+{% extends "comercial/base_comercial.html" %}
+{% block title %}Vincular cliente — Comercial{% endblock %}
+{% block comercial_inner %}
+<div class="c-head">
+  <div>
+    <h1>Vincular cliente existente</h1>
+    <p>Escolha um cliente já listado no índice Dinabox que ainda não tenha ficha comercial no Tarugo.</p>
+  </div>
+  <a href="{% url 'comercial:lista' %}?v=board" class="c-btn c-btn--ghost">Voltar ao quadro</a>
+</div>
+
+<form class="c-search" method="get" action="{% url 'comercial:vincular' %}" style="margin-bottom:1rem;">
+  <input type="text" name="q" value="{{ q }}" placeholder="Filtrar por nome…" />
+  <button type="submit" class="c-btn c-btn--ghost c-btn--sm">Filtrar</button>
+  {% if q %}<a href="{% url 'comercial:vincular' %}" class="c-btn c-btn--ghost c-btn--sm">Limpar</a>{% endif %}
+</form>
+
+<div class="c-table-wrap">
+  <table class="c-table">
+    <thead>
+      <tr>
+        <th>Nome (índice)</th>
+        <th>ID Dinabox</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in candidatos %}
+      <tr>
+        <td><strong>{{ c.customer_name|default:"—" }}</strong></td>
+        <td style="font-family:var(--c-mono);font-size:0.8rem;color:var(--c-text-dim);">{{ c.customer_id }}</td>
+        <td>
+          <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="customer_id" value="{{ c.customer_id }}" />
+            <button type="submit" class="c-btn c-btn--primary c-btn--sm">Vincular</button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3" class="c-empty-col" style="padding:2rem;">Nenhum candidato. Sincronize clientes em Integrações ou todos já têm ficha.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

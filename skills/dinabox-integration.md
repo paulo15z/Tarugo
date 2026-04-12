@@ -5,6 +5,15 @@
 Descrever a ideia, propósito e estrutura de dados para a integração com a API Dinabox.
 Este documento orienta como buscar clientes, listar seus ambientes/projetos, extrair módulos/assemblies e enumerar peças (parts/woodwork), normalizando os campos essenciais para uso em toda a aplicação.
 
+## Tarugo vs Dinabox — fonte de verdade
+
+- **Acompanhamento de processo** (comercial, etapas, observações ricas, orçamentos por ambiente, status internos, histórico para Projetos/PCP/produção/expedição): **integralmente no Tarugo** (PostgreSQL, models + services).
+- **API Dinabox**: usar de forma **pontual** para **entregar** e **trazer** dados que a indústria moveleira já trafega pelo ecossistema — em especial:
+  1. **Clientes** — criar/atualizar cadastro essencial e manter referência `customer_id` estável.
+  2. **Projetos** — listar/consultar detalhe de projeto (peças, módulos, metadados) para alimentar PCP, estoque, bipagem, etc.
+
+Não delegar ao Dinabox o fluxo operacional nem o registo fino do negócio; a Dinabox é fronteira de dados de desenho/cadastro, não sistema de gestão do Tarugo.
+
 ## Fluxo recomendado
 
 1. Autenticar conta técnica (token) e capturar/armazenar expiry.

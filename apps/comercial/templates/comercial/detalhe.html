@@ -1,0 +1,145 @@
+{% extends "comercial/base_comercial.html" %}
+{% block title %}{% if dinabox %}{{ dinabox.customer_name|default:"Cliente" }}{% else %}Cliente{% endif %} — Comercial{% endblock %}
+{% block comercial_inner %}
+<div class="c-head">
+  <div>
+    <h1>{% if dinabox %}{{ dinabox.customer_name|default:"Cliente" }}{% else %}Cliente {{ cliente.customer_id }}{% endif %}</h1>
+    <p>
+      <span class="c-badge">{{ cliente.get_status_display }}</span>
+      <span style="margin-left:0.5rem;font-family:var(--c-mono);font-size:0.8rem;color:var(--c-text-dim);">ID {{ cliente.customer_id }}</span>
+    </p>
+  </div>
+  <div class="c-actions">
+    <a href="{% url 'comercial:lista' %}?v=board" class="c-btn c-btn--ghost">Quadro</a>
+    <a href="{% url 'comercial:lista' %}?v=lista" class="c-btn c-btn--ghost">Tabela</a>
+    {% if pode_editar %}
+    <a href="{% url 'comercial:editar_dinabox' cliente.pk %}" class="c-btn c-btn--ghost"><i class="fas fa-database"></i> Cadastro Dinabox</a>
+    {% endif %}
+    {% if pode_excluir %}
+    <form method="post" action="{% url 'comercial:excluir_post' cliente.pk %}" style="display:inline;" onsubmit="return confirm('Excluir na Dinabox e apagar toda a ficha no Tarugo?');">
+      {% csrf_token %}
+      <button type="submit" class="c-btn c-btn--danger c-btn--sm"><i class="fas fa-trash"></i> Excluir</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{% if dinabox %}
+<section class="c-panel">
+  <h2>Dados no índice Dinabox</h2>
+  <p class="c-muted">Somente referência sincronizada; observações e orçamentos ficam abaixo (Tarugo).</p>
+  <div class="c-form-row" style="margin:0;gap:1.5rem;">
+    <div><span class="c-muted" style="font-size:0.72rem;text-transform:uppercase;">Tipo</span><br><strong>{{ dinabox.customer_type|default:"—" }}</strong></div>
+    <div><span class="c-muted" style="font-size:0.72rem;text-transform:uppercase;">Status Dinabox</span><br><strong>{{ dinabox.customer_status|default:"—" }}</strong></div>
+  </div>
+  <p style="margin-top:0.85rem;font-size:0.9rem;"><strong>E-mails:</strong> {{ dinabox.customer_emails_text|default:"—" }}</p>
+  <p style="font-size:0.9rem;"><strong>Telefones:</strong> {{ dinabox.customer_phones_text|default:"—" }}</p>
+</section>
+{% else %}
+<div class="c-alert-inline"><i class="fas fa-plug"></i> Índice local ausente — sincronize clientes em Integrações Dinabox.</div>
+{% endif %}
+
+{% if pode_editar %}
+<section class="c-panel">
+  <h2>Etapa no pipeline</h2>
+  <p class="c-muted">Altera a coluna do quadro comercial (não confundir com status ativo/inativo na Dinabox).</p>
+  <form method="post" action="{% url 'comercial:status_post' cliente.pk %}" class="c-form-row" style="align-items:flex-end;">
+    {% csrf_token %}
+    <div class="c-field c-field--grow">
+      <label for="id-status">Etapa</label>
+      <select id="id-status" name="status">
+        {% for val,label in status_choices %}
+        <option value="{{ val }}" {% if cliente.status == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="c-btn c-btn--primary">Atualizar etapa</button>
+  </form>
+</section>
+{% endif %}
+
+<section class="c-panel">
+  <h2>Observações</h2>
+  <p class="c-muted">Detalhes para Projetos, PCP e outros setores — mantido integralmente no Tarugo.</p>
+  {% if pode_editar %}
+  <form method="post" action="{% url 'comercial:observacao_post' cliente.pk %}">
+    {% csrf_token %}
+    <div class="c-field c-field--full" style="margin-bottom:0.65rem;">
+      <label for="id-obs">Nova observação</label>
+      <textarea id="id-obs" name="texto" rows="3" required placeholder="Ambientes, acabamentos, medições…"></textarea>
+    </div>
+    <button type="submit" class="c-btn c-btn--primary">Registrar</button>
+  </form>
+  {% endif %}
+  <div style="margin-top:1.25rem;">
+    {% for o in cliente.observacoes.all %}
+    <div class="c-obs">
+      <p>{{ o.texto }}</p>
+      <span class="c-obs-meta">{{ o.autor|default:"—" }} · {{ o.criado_em|date:"d/m/Y H:i" }}</span>
+    </div>
+    {% empty %}
+    <p class="c-muted" style="margin:0;">Nenhuma observação.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="c-panel">
+  <h2>Ambientes e valores orçados</h2>
+  <p class="c-muted">Texto livre por ambiente; valores em R$ (use formato brasileiro se preferir).</p>
+  {% if pode_editar %}
+  <form method="post" action="{% url 'comercial:ambiente_novo_post' cliente.pk %}" class="c-form-row">
+    {% csrf_token %}
+    <div class="c-field">
+      <label for="id-nome-amb">Ambiente</label>
+      <input id="id-nome-amb" name="nome_ambiente" required placeholder="Ex.: Cozinha" />
+    </div>
+    <div class="c-field">
+      <label for="id-valor">Valor (R$)</label>
+      <input id="id-valor" name="valor_orcado" placeholder="45000 ou 45.000,00" />
+    </div>
+    <button type="submit" class="c-btn c-btn--ghost">Adicionar</button>
+  </form>
+  {% endif %}
+
+  {% if pode_editar %}
+    {% for a in cliente.ambientes.all %}
+    <div class="c-ambiente-block">
+      <form method="post" action="{% url 'comercial:ambiente_editar_post' cliente.pk a.pk %}" class="c-form-row" style="margin:0;">
+        {% csrf_token %}
+        <div class="c-field c-field--grow">
+          <label for="amb-{{ a.pk }}-nome">Ambiente</label>
+          <input id="amb-{{ a.pk }}-nome" name="nome_ambiente" value="{{ a.nome_ambiente }}" />
+        </div>
+        <div class="c-field">
+          <label for="amb-{{ a.pk }}-valor">Valor</label>
+          <input id="amb-{{ a.pk }}-valor" name="valor_orcado" value="{% if a.valor_orcado %}{{ a.valor_orcado }}{% endif %}" />
+        </div>
+        <button type="submit" class="c-btn c-btn--primary c-btn--sm">Salvar</button>
+      </form>
+      <form method="post" action="{% url 'comercial:ambiente_excluir_post' cliente.pk a.pk %}" style="margin-top:0.5rem;display:inline;" onsubmit="return confirm('Remover esta linha?');">
+        {% csrf_token %}
+        <button type="submit" class="c-btn c-btn--danger c-btn--sm">Remover</button>
+      </form>
+    </div>
+    {% empty %}
+    <p class="c-muted" style="margin:0;">Nenhum ambiente cadastrado.</p>
+    {% endfor %}
+  {% else %}
+  <div class="c-table-wrap">
+    <table class="c-table">
+      <thead><tr><th>Ambiente</th><th>Valor</th></tr></thead>
+      <tbody>
+        {% for a in cliente.ambientes.all %}
+        <tr>
+          <td>{{ a.nome_ambiente }}</td>
+          <td>{% if a.valor_orcado %}R$ {{ a.valor_orcado }}{% else %}—{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="2" class="c-muted" style="padding:1.5rem;">Nenhum ambiente.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

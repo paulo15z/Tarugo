@@ -7,6 +7,8 @@ from django.contrib.auth.views import LogoutView
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
+from apps.comercial.permissions import pode_ver_comercial
+
 
 def _group_names(user) -> set[str]:
     if not user or not user.is_authenticated:
@@ -63,6 +65,16 @@ def _apps_disponiveis(user) -> list[dict[str, str]]:
                 "descricao": "Conexao com API Dinabox para consulta.",
                 "url": reverse("integracoes:dinabox-conectar"),
                 "setor": "Integracoes",
+            }
+        )
+
+    if user.is_superuser or pode_ver_comercial(user):
+        apps.append(
+            {
+                "nome": "Comercial",
+                "descricao": "Clientes, observacoes e orcamentos por ambiente.",
+                "url": reverse("comercial:lista") + "?v=board",
+                "setor": "Comercial",
             }
         )
 

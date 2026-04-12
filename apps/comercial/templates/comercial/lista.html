@@ -1,0 +1,98 @@
+{% extends "comercial/base_comercial.html" %}
+{% block title %}Comercial — Pipeline{% endblock %}
+{% block comercial_inner %}
+<div class="c-head">
+  <div>
+    <h1>Comercial</h1>
+    <p>Pipeline por etapa (Tarugo). Cartões agrupam clientes; cadastro essencial continua na Dinabox.</p>
+  </div>
+  <div class="c-actions">
+    <nav class="c-viewtabs" aria-label="Vista">
+      <a href="{% url 'comercial:lista' %}?v=board{% if q %}&q={{ q|urlencode }}{% endif %}" class="{% if view_mode == 'board' %}is-active{% endif %}">Quadro</a>
+      <a href="{% url 'comercial:lista' %}?v=lista{% if q %}&q={{ q|urlencode }}{% endif %}" class="{% if view_mode == 'lista' %}is-active{% endif %}">Tabela</a>
+    </nav>
+    {% if pode_editar %}
+    <a href="{% url 'comercial:novo' %}" class="c-btn c-btn--primary"><i class="fas fa-plus"></i> Novo cliente</a>
+    <a href="{% url 'comercial:vincular' %}" class="c-btn c-btn--ghost"><i class="fas fa-link"></i> Vincular</a>
+    {% endif %}
+  </div>
+</div>
+
+<form class="c-search" method="get" action="{% url 'comercial:lista' %}">
+  <input type="hidden" name="v" value="{{ view_mode }}" />
+  <input type="text" name="q" value="{{ q }}" placeholder="Buscar por nome ou ID Dinabox…" autocomplete="off" />
+  <button type="submit" class="c-btn c-btn--ghost c-btn--sm">Buscar</button>
+  {% if q %}
+  <a href="{% url 'comercial:lista' %}?v={{ view_mode }}" class="c-btn c-btn--ghost c-btn--sm">Limpar</a>
+  {% endif %}
+</form>
+
+{% if view_mode == "board" %}
+<div class="c-kanban" role="list" aria-label="Colunas por status">
+  {% for col in board_columns %}
+  <section class="c-col" data-status="{{ col.status }}" role="listitem">
+    <header class="c-col__head">
+      <span class="c-col__title">{{ col.label }}</span>
+      <span class="c-col__count">{{ col.items|length }}</span>
+    </header>
+    <div class="c-col__body">
+      {% for row in col.items %}
+      <article class="c-card">
+        <a class="c-card__link" href="{% url 'comercial:detalhe' row.cliente.pk %}">
+          <div class="c-card__name">{{ row.dinabox.customer_name|default:"Sem nome no índice" }}</div>
+          <div class="c-card__id">{{ row.cliente.customer_id }}</div>
+        </a>
+        {% if pode_editar %}
+        <form class="c-card__move" method="post" action="{% url 'comercial:status_post' row.cliente.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="return" value="board" />
+          <label class="visually-hidden" for="move-{{ row.cliente.pk }}">Mover para etapa</label>
+          <select id="move-{{ row.cliente.pk }}" name="status" aria-label="Mover para etapa">
+            {% for val, label in status_choices %}
+            <option value="{{ val }}" {% if row.cliente.status == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="c-btn c-btn--primary c-btn--sm" title="Aplicar etapa"><i class="fas fa-check"></i></button>
+        </form>
+        {% endif %}
+      </article>
+      {% empty %}
+      <p class="c-empty-col">Nenhum cliente nesta etapa.</p>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% else %}
+<div class="c-table-wrap" style="margin-top:1rem;">
+  <table class="c-table">
+    <thead>
+      <tr>
+        <th>Cliente</th>
+        <th>ID Dinabox</th>
+        <th>Etapa</th>
+        <th>Atualizado</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td><strong>{{ row.dinabox.customer_name|default:"—" }}</strong></td>
+        <td class="mono" style="font-family:var(--c-mono);font-size:0.8rem;color:var(--c-text-dim);">{{ row.cliente.customer_id }}</td>
+        <td><span class="c-badge">{{ row.cliente.get_status_display }}</span></td>
+        <td style="font-size:0.85rem;color:var(--c-text-muted);">{{ row.cliente.atualizado_em|date:"d/m/Y H:i" }}</td>
+        <td><a href="{% url 'comercial:detalhe' row.cliente.pk %}" class="c-btn c-btn--ghost c-btn--sm">Abrir</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="c-empty-col" style="padding:2rem;">Nenhuma ficha comercial.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<style>
+.visually-hidden { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
+</style>
+{% endblock %}

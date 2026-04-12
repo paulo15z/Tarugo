@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     'apps.pcp',
     'apps.bipagem',
     'apps.integracoes',
+    'apps.comercial',
 ]
 
 MIDDLEWARE = [

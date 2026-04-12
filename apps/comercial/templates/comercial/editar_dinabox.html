@@ -1,0 +1,60 @@
+{% extends "comercial/base_comercial.html" %}
+{% block title %}Cadastro Dinabox — Comercial{% endblock %}
+{% block comercial_inner %}
+<div class="c-head">
+  <div>
+    <h1>Cadastro essencial (Dinabox)</h1>
+    <p>Cliente <span style="font-family:var(--c-mono);color:var(--c-text-muted);">{{ cliente.customer_id }}</span></p>
+  </div>
+  <a href="{% url 'comercial:detalhe' cliente.pk %}" class="c-btn c-btn--ghost">Voltar à ficha</a>
+</div>
+
+<section class="c-panel">
+  <h2>Campos enviados à API</h2>
+  <p class="c-muted">Observações longas e pipeline comercial editam-se na ficha Tarugo, não aqui.</p>
+  <form method="post" class="c-grid-form">
+    {% csrf_token %}
+    <div class="c-field c-field--full">
+      <label for="e-nome">Nome *</label>
+      <input id="e-nome" name="customer_name" required value="{{ initial.customer_name }}" />
+    </div>
+    <div class="c-field">
+      <label for="e-tipo">Tipo</label>
+      <select id="e-tipo" name="customer_type">
+        <option value="pf" {% if initial.customer_type == 'pf' %}selected{% endif %}>PF</option>
+        <option value="pj" {% if initial.customer_type == 'pj' %}selected{% endif %}>PJ</option>
+      </select>
+    </div>
+    <div class="c-field">
+      <label for="e-st">Status Dinabox</label>
+      <select id="e-st" name="customer_status">
+        <option value="on" {% if initial.customer_status == 'on' %}selected{% endif %}>Ativo</option>
+        <option value="off" {% if initial.customer_status == 'off' %}selected{% endif %}>Inativo</option>
+      </select>
+    </div>
+    <div class="c-field c-field--grow">
+      <label for="e-em">E-mails</label>
+      <input id="e-em" name="customer_emails" value="{{ initial.customer_emails }}" />
+    </div>
+    <div class="c-field c-field--grow">
+      <label for="e-tel">Telefones</label>
+      <input id="e-tel" name="customer_phones" value="{{ initial.customer_phones }}" />
+    </div>
+    <div class="c-field">
+      <label for="e-cpf">CPF (PF)</label>
+      <input id="e-cpf" name="customer_cpf" />
+    </div>
+    <div class="c-field">
+      <label for="e-cnpj">CNPJ (PJ)</label>
+      <input id="e-cnpj" name="customer_cnpj" />
+    </div>
+    <div class="c-field c-field--full">
+      <label for="e-note">Nota curta Dinabox</label>
+      <input id="e-note" name="customer_note" />
+    </div>
+    <div class="c-field c-field--full" style="margin-top:0.5rem;">
+      <button type="submit" class="c-btn c-btn--primary">Salvar na Dinabox</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

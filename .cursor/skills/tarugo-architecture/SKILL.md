@@ -36,13 +36,6 @@ Request → DRF Serializer → Service (Pydantic) → Selector/Model → Banco �
 
 **Nunca** coloque regra de negócio em views, api/views ou serializers.
 
-## Dinabox e acompanhamento
-
-- **Acompanhamento** (comercial, status, notas, ambientes, handoff entre setores): vive no **Tarugo** — models e services dos apps de domínio (`comercial`, futuros `projetos`, etc.).
-- **Dinabox (API)**: pontos de **entrada/saída** de dados já naturais na moveleira — sobretudo **cadastro de clientes** e **consulta de projetos** — via `integracoes` / cliente HTTP; não é repositório do processo Tarugo.
-
-Ver também `skills/dinabox-integration.md` (secção *Tarugo vs Dinabox*).
-
 ## Módulos Atuais e Status
 
 | App              | Responsabilidade                              | Status               | Padrão |
@@ -51,8 +44,7 @@ Ver também `skills/dinabox-integration.md` (secção *Tarugo vs Dinabox*).
 | `estoque`        | Produtos, movimentações, categorias           | ✅ MVP maduro         | **Melhor exemplo** |
 | `pcp`            | Roteiros Dinabox, ripas, planos de corte      | ✅ Em produção        | Parcial (ainda tem legado) |
 | `bipagem`        | Scanner + controle de produção                | ✅ Em produção        | Bom |
-| `integracoes`    | Cliente API Dinabox; sync mínimo (ex. índice clientes) | ✅ Em evolução | Bom |
-| `comercial`      | Ficha comercial, observações, ambientes/valores, status | ✅ Em evolução | Alinhar com Service + Pydantic |
+| `integracoes`    | Importação Dinabox                            | ✅ Em evolução        | Bom |
 
 **Referência**: App `estoque` é o que mais segue o padrão ideal atualmente.
 
@@ -75,7 +67,7 @@ Veja o template completo em `templates/app_structure_template.md`.
 
 ---
 
-**Última atualização**: 12 de abril de 2026
+**Última atualização**: 03 de abril de 2026
 
 **Próximos passos recomendados**:
 - Refatorar PCP para seguir 100% o padrão Service + Pydantic (ver `references/pcp-refatoracao.md`)

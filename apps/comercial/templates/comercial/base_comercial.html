@@ -1,0 +1,10 @@
+{% extends "base/base.html" %}
+{% load static %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'comercial/comercial.css' %}">
+{% endblock %}
+{% block content %}
+<div class="comercial-app">
+{% block comercial_inner %}{% endblock %}
+</div>
+{% endblock %}

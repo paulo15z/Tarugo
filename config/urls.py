@@ -25,6 +25,9 @@ urlpatterns = [
 
     # Integracoes
     path("integracoes/", include(("apps.integracoes.urls", "integracoes"), namespace="integracoes")),
+
+    # Comercial
+    path("comercial/", include(("apps.comercial.urls", "comercial"), namespace="comercial")),
 ]
 
 if settings.DEBUG:

@@ -189,3 +189,28 @@ class DinaboxClienteService:
         return DinaboxClienteIndex.objects.filter(
             customer_name_normalized__icontains=query_normalized
         ).order_by('customer_name')[:limit]
+
+    @staticmethod
+    def refresh_from_remote(customer_id: str) -> DinaboxClienteIndex:
+        """
+        Busca o cliente na API Dinabox e atualiza o índice local (DinaboxClienteIndex).
+        """
+        from apps.integracoes.dinabox.client import DinaboxAPIClient
+
+        cid = str(customer_id or "").strip()
+        if not cid:
+            raise ValueError("customer_id é obrigatório")
+
+        raw = DinaboxAPIClient().get_customer(cid)
+        if not isinstance(raw, dict):
+            raise ValueError("Resposta inválida da API Dinabox.")
+
+        normalized = {
+            "customer_id": str(raw.get("customer_id") or cid),
+            "customer_name": raw.get("customer_name"),
+            "customer_type": raw.get("customer_type"),
+            "customer_status": raw.get("customer_status"),
+            "customer_emails": raw.get("customer_emails"),
+            "customer_phones": raw.get("customer_phones"),
+        }
+        return DinaboxClienteService.sincronizar_cliente({**raw, **normalized})

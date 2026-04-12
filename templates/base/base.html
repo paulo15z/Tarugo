@@ -335,6 +335,9 @@
             <a href="{% url 'pcp:index' %}" class="nav-link {% if 'pcp' in request.path %}active{% endif %}">PCP</a>
             <a href="{% url 'bipagem:index' %}" class="nav-link {% if 'bipagem' in request.path %}active{% endif %}">Bipagem</a>
             <a href="{% url 'integracoes:dinabox-conectar' %}" class="nav-link {% if 'integracoes/dinabox' in request.path %}active{% endif %}">Dinabox</a>
+            {% if perms.comercial.view_clientecomercial %}
+            <a href="{% url 'comercial:lista' %}?v=board" class="nav-link {% if '/comercial/' in request.path %}active{% endif %}">Comercial</a>
+            {% endif %}
         </nav>
 
         <div class="user-meta">

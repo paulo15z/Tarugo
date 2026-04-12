@@ -42,64 +42,56 @@ Características obrigatórias:
   --text-muted: #a3a3a3;
   --border: #3f3f46;
 }
-Tipografia
+```
 
-Headings: Fonte com personalidade (Satoshi, Space Grotesk ou Inter Display — peso 600/700)
-Body / Textos: Inter ou system sans-serif (peso 400/500)
-Tamanhos generosos:
-Base: 16px
-Headings: 20–28px
-Labels e textos pequenos: 14px
+### Tipografia
 
+- **Headings**: Satoshi, Space Grotesk ou Inter Display — peso 600/700
+- **Body**: Inter ou system sans-serif — peso 400/500
+- **Tamanhos**: base 16px; headings 20–28px; labels e pequenos 14px
 
-Princípios de Layout
+### Princípios de layout
 
-Cards grandes e bem espaçados (especialmente para progresso de lotes e módulos)
-Tabelas com status coloridos e legíveis
-Área de bipagem com feedback gigante (sucesso/erro)
-Sidebar de navegação limpa
-Muito espaço negativo (breathing room)
-Suporte a modo escuro como padrão (melhor para fábrica)
+- Cards grandes e bem espaçados (progresso de lotes e módulos)
+- Tabelas com status coloridos e legíveis
+- Área de bipagem com feedback grande (sucesso/erro)
+- Sidebar de navegação limpa; muito espaço negativo
+- Modo escuro como padrão (contexto de fábrica)
 
-Motion & Interações
+### Motion e interações
 
-Transições suaves (200–300ms)
-Feedback imediato na bipagem (scale + cor + ícone)
-Loading states claros e não intrusivos
-Hover states sutis em botões e cards
-Animações de entrada com stagger apenas quando agrega valor
+- Transições 200–300ms
+- Bipagem: feedback imediato (scale + cor + ícone)
+- Loading claro e não intrusivo; hovers sutis
+- Stagger na entrada só quando agregar valor
 
-Componentes Mais Usados
+### Componentes mais usados
 
-Card de Progresso (Pedido / Lote / Módulo)
-Tela de Bipagem (foco total)
-Tabela de Peças com status
-Dashboard por lote base
-Formulários simples e grandes
+- Card de progresso (pedido / lote / módulo)
+- Tela de bipagem (foco total)
+- Tabela de peças com status
+- Dashboard por lote
+- Formulários simples e grandes
 
+## Como criar interfaces com este skill
 
-Como Criar Interfaces com Este Skill
+1. Escolher tipo de tela/componente e objetivo principal (ex.: bipar rápido).
+2. Aplicar paleta Industrial Clean e hierarquia clara.
+3. Incluir estados: vazio, loading, sucesso, erro.
+4. Validar legibilidade em fundo escuro.
 
-Escolha o tipo de tela/componente
-Defina o objetivo principal (ex: "usuário precisa bipar rápido")
-Aplique a paleta Industrial Clean
-Garanta hierarquia clara (informação crítica em destaque)
-Inclua estados: vazio, loading, sucesso, erro
-Teste legibilidade em fundo escuro
+**Exemplos de prompts:**
 
-Exemplos de prompts bons:
+- "Crie a tela principal de bipagem com feedback grande"
+- "Melhore o dashboard de lotes mantendo estilo industrial clean"
+- "Desenvolva o card de progresso de módulo"
 
-"Crie a tela principal de bipagem com feedback grande"
-"Melhore o dashboard de lotes mantendo estilo industrial clean"
-"Desenvolva o card de progresso de módulo"
+## Referências complementares
 
-Referências Complementares
+- [references/component-examples.md](references/component-examples.md) — exemplos de componentes
+- [references/color-system.md](references/color-system.md) — paleta detalhada
+- [templates/](templates/) — boilerplates
 
-Veja references/component-examples.md para exemplos de código de componentes comuns
-Veja references/color-system.md para paleta detalhada e casos de uso
-Veja templates/ para boilerplates prontos
+**Última atualização:** 03 de abril de 2026
 
-
-Última atualização: 03 de abril de 2026
-Regra de Ouro:
-"Deve parecer um sistema profissional de fábrica — confiável, rápido e sem frescuras, nunca um dashboard bonito de startup."
+**Regra de ouro:** Deve parecer um sistema profissional de fábrica — confiável, rápido e sem frescuras, nunca um dashboard bonito de startup.

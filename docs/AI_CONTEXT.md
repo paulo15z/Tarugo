@@ -17,7 +17,7 @@ Tarugo é uma plataforma web em Django voltada para indústrias moveleiras.
 
 - `core` -> autenticação e base
 - `estoque` -> produtos e movimentações
-- `integracoes` -> APIs externas
+- `integracoes` -> API Dinabox (clientes/projetos); acompanhamento de processo fica nos apps Tarugo
 - `pcp` -> legado funcional, em estabilização
 - `scripts` e `orcamentos` -> planejados
 

@@ -1,0 +1,60 @@
+{% extends "comercial/base_comercial.html" %}
+{% block title %}Novo cliente — Comercial{% endblock %}
+{% block comercial_inner %}
+<div class="c-head">
+  <div>
+    <h1>Novo cliente</h1>
+    <p>Cria o cadastro essencial na Dinabox e abre a ficha comercial no Tarugo.</p>
+  </div>
+  <a href="{% url 'comercial:lista' %}?v=board" class="c-btn c-btn--ghost">Voltar ao quadro</a>
+</div>
+
+<section class="c-panel">
+  <h2>Dados para a Dinabox</h2>
+  <p class="c-muted">Nota curta na Dinabox é opcional; o detalhamento fica nas observações do Tarugo após criar.</p>
+  <form method="post" class="c-grid-form">
+    {% csrf_token %}
+    <div class="c-field c-field--full">
+      <label for="id-nome">Nome *</label>
+      <input id="id-nome" name="customer_name" required placeholder="Nome do cliente" />
+    </div>
+    <div class="c-field">
+      <label for="id-tipo">Tipo</label>
+      <select id="id-tipo" name="customer_type">
+        <option value="pf">PF</option>
+        <option value="pj">PJ</option>
+      </select>
+    </div>
+    <div class="c-field">
+      <label for="id-st-dbx">Status Dinabox</label>
+      <select id="id-st-dbx" name="customer_status">
+        <option value="on">Ativo</option>
+        <option value="off">Inativo</option>
+      </select>
+    </div>
+    <div class="c-field c-field--grow">
+      <label for="id-emails">E-mails</label>
+      <input id="id-emails" name="customer_emails" placeholder="a@x.com; b@x.com" />
+    </div>
+    <div class="c-field c-field--grow">
+      <label for="id-fones">Telefones</label>
+      <input id="id-fones" name="customer_phones" />
+    </div>
+    <div class="c-field">
+      <label for="id-cpf">CPF (PF)</label>
+      <input id="id-cpf" name="customer_cpf" />
+    </div>
+    <div class="c-field">
+      <label for="id-cnpj">CNPJ (PJ)</label>
+      <input id="id-cnpj" name="customer_cnpj" />
+    </div>
+    <div class="c-field c-field--full">
+      <label for="id-note">Nota curta Dinabox (opcional)</label>
+      <input id="id-note" name="customer_note" />
+    </div>
+    <div class="c-field c-field--full" style="margin-top:0.5rem;">
+      <button type="submit" class="c-btn c-btn--primary"><i class="fas fa-check"></i> Criar cliente</button>
+    </div>
+  </form>
+</section>
+{% endblock %}
