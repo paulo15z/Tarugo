@@ -44,5 +44,10 @@ urlpatterns = [
         views.ambiente_atualizar_observacoes_post,
         name="ambiente_atualizar_observacoes_post",
     ),
+    path(
+        "<int:pk>/ambiente/<int:ambiente_id>/excluir/",
+        views.ambiente_excluir_post,
+        name="ambiente_excluir_post",
+    ),
     path("<int:pk>/excluir/", views.excluir_post, name="excluir_post"),
 ]
