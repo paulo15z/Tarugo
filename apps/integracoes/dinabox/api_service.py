@@ -4,7 +4,9 @@ from django.db import transaction
 
 from apps.integracoes.models import DinaboxClienteIndex
 from apps.integracoes.dinabox.client import DinaboxAPIClient, DinaboxRequestError
+from apps.integracoes.dinabox.parsers.customer_detail import parse_customer_detail
 from apps.integracoes.dinabox.schemas.api import (
+    DinaboxCustomerDetail,
     DinaboxCustomerListResponse,
     DinaboxGroupDetail,
     DinaboxGroupListResponse,
@@ -63,8 +65,21 @@ class DinaboxApiService:
         payload = self.client.get_customers(page=page, search=search)
         return DinaboxCustomerListResponse(**payload)
 
-    def get_customer_detail(self, customer_id: str) -> dict:
-        return self.client.get_customer(customer_id=customer_id)
+    def get_customer_detail(self, customer_id: str) -> DinaboxCustomerDetail:
+        """
+        Busca detalhe de um cliente na API Dinabox e retorna estrutura tipada.
+        
+        Args:
+            customer_id: ID do cliente no Dinabox
+            
+        Returns:
+            DinaboxCustomerDetail com dados validados e normalizados
+            
+        Raises:
+            DinaboxRequestError: Se a requisição falhar
+        """
+        payload = self.client.get_customer(customer_id=customer_id)
+        return DinaboxCustomerDetail(**payload)
 
     def create_customer(
         self,

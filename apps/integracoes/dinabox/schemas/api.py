@@ -34,6 +34,26 @@ class DinaboxGroupDetail(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+class DinaboxCustomerDetail(BaseModel):
+    """Dados estruturados de um cliente Dinabox (GET /api/v1/customer)."""
+    model_config = ConfigDict(extra="allow")
+
+    customer_id: str
+    customer_name: str
+    customer_type: str | None = None  # "pf" ou "pj" ou None
+    customer_status: str | None = None  # "on" ou "off" ou None
+    customer_emails: list[str] | list[dict] | str | None = None
+    customer_phones: list[str] | list[dict] | str | None = None
+    customer_note: str | None = None
+    customer_addresses: list[dict[str, Any]] | None = None
+    customer_pf_data: dict[str, Any] | None = None
+    customer_pj_data: dict[str, Any] | None = None
+    custom_fields: list[Any] | dict[str, Any] | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    actions: list[str] | None = None
+
+
 class DinaboxCustomerListResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
 

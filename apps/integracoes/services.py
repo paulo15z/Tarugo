@@ -193,24 +193,52 @@ class DinaboxClienteService:
     @staticmethod
     def refresh_from_remote(customer_id: str) -> DinaboxClienteIndex:
         """
-        Busca o cliente na API Dinabox e atualiza o índice local (DinaboxClienteIndex).
+        Busca o cliente na API Dinabox, processa via parser e atualiza o índice local.
+        
+        Fluxo:
+        1. DinaboxApiService.get_customer_detail() → DinaboxCustomerDetail tipado
+        2. parse_customer_detail() → estrutura normalizada (emails, phones, addresses)
+        3. sincronizar_cliente() → atualiza DinaboxClienteIndex com payload bruto
+        
+        Args:
+            customer_id: ID do cliente no Dinabox
+            
+        Returns:
+            DinaboxClienteIndex atualizado
+            
+        Raises:
+            ValueError: Se customer_id inválido ou resposta da API inválida
         """
-        from apps.integracoes.dinabox.client import DinaboxAPIClient
+        from apps.integracoes.dinabox.api_service import DinaboxApiService
+        from apps.integracoes.dinabox.parsers.customer_detail import parse_customer_detail
 
         cid = str(customer_id or "").strip()
         if not cid:
             raise ValueError("customer_id é obrigatório")
 
-        raw = DinaboxAPIClient().get_customer(cid)
-        if not isinstance(raw, dict):
-            raise ValueError("Resposta inválida da API Dinabox.")
+        # Busca na API com tipagem
+        try:
+            api_service = DinaboxApiService()
+            customer_detail = api_service.get_customer_detail(cid)
+        except Exception as e:
+            raise ValueError(f"Erro ao buscar cliente {cid} na API Dinabox: {str(e)}")
 
+        # Converte para dict se Pydantic
+        raw_payload = customer_detail.model_dump() if hasattr(customer_detail, "model_dump") else dict(customer_detail)
+        
+        # Processa com parser
+        parsed = parse_customer_detail(raw_payload)
+
+        # Prepara dados normalizados para índice
         normalized = {
-            "customer_id": str(raw.get("customer_id") or cid),
-            "customer_name": raw.get("customer_name"),
-            "customer_type": raw.get("customer_type"),
-            "customer_status": raw.get("customer_status"),
-            "customer_emails": raw.get("customer_emails"),
-            "customer_phones": raw.get("customer_phones"),
+            "customer_id": parsed.get("customer_id") or cid,
+            "customer_name": parsed.get("customer_name") or "",
+            "customer_type": parsed.get("customer_type") or "pf",
+            "customer_status": parsed.get("customer_status") or "on",
+            "customer_emails": ", ".join(parsed.get("emails") or []),
+            "customer_phones": ", ".join(parsed.get("phones") or []),
         }
-        return DinaboxClienteService.sincronizar_cliente({**raw, **normalized})
+
+        # Sincroniza para índice, preservando payload completo
+        index = DinaboxClienteService.sincronizar_cliente({**raw_payload, **normalized})
+        return index
