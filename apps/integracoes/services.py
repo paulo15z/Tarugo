@@ -221,7 +221,9 @@ class DinaboxClienteService:
             api_service = DinaboxApiService()
             customer_detail = api_service.get_customer_detail(cid)
         except Exception as e:
-            raise ValueError(f"Erro ao buscar cliente {cid} na API Dinabox: {str(e)}")
+            import json
+            error_msg = f"Erro ao buscar cliente {cid} na API Dinabox: {str(e)}"
+            raise ValueError(error_msg)
 
         # Converte para dict se Pydantic
         raw_payload = customer_detail.model_dump() if hasattr(customer_detail, "model_dump") else dict(customer_detail)

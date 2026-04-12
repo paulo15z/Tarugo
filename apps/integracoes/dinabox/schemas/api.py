@@ -38,8 +38,8 @@ class DinaboxCustomerDetail(BaseModel):
     """Dados estruturados de um cliente Dinabox (GET /api/v1/customer)."""
     model_config = ConfigDict(extra="allow")
 
-    customer_id: str
-    customer_name: str
+    customer_id: str | None = None
+    customer_name: str | None = None
     customer_type: str | None = None  # "pf" ou "pj" ou None
     customer_status: str | None = None  # "on" ou "off" ou None
     customer_emails: list[str] | list[dict] | str | None = None
