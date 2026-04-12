@@ -275,6 +275,109 @@ def ambiente_excluir_post(request, pk: int, ambiente_id: int):
     return redirect("comercial:detalhe", pk=pk)
 
 
+@comercial_editar_requerido
+def ambiente_detalhes(request, pk: int, ambiente_id: int):
+    """Página de edição de detalhes de um ambiente (acabamentos, eletrodomésticos, observações)."""
+    cliente = get_object_or_404(ClienteComercial, pk=pk)
+    ambiente = get_object_or_404(AmbienteOrcamento, pk=ambiente_id, cliente=cliente)
+    idx = ComercialSelector.dinabox_index_por_customer_id(cliente.customer_id)
+    
+    return render(
+        request,
+        "comercial/ambiente_detalhes.html",
+        {
+            "cliente": cliente,
+            "ambiente": ambiente,
+            "dinabox": idx,
+            "pode_editar": True,
+        },
+    )
+
+
+@comercial_editar_requerido
+def ambiente_adicionar_acabamento_post(request, pk: int, ambiente_id: int):
+    if request.method != "POST":
+        return redirect("comercial:ambiente_detalhes", pk=pk, ambiente_id=ambiente_id)
+    cliente = get_object_or_404(ClienteComercial, pk=pk)
+    ambiente = get_object_or_404(AmbienteOrcamento, pk=ambiente_id, cliente=cliente)
+    try:
+        from .schemas.cliente import AmbienteDetalhesInputSchema
+        acabamento = request.POST.get("acabamento", "").strip()
+        if acabamento:
+            ClienteComercialService.adicionar_acabamento(ambiente, acabamento)
+            messages.success(request, f"Acabamento '{acabamento}' adicionado.")
+        else:
+            messages.warning(request, "Acabamento não pode estar vazio.")
+    except (ValidationError, ValueError) as exc:
+        messages.error(request, str(exc))
+    return redirect("comercial:ambiente_detalhes", pk=pk, ambiente_id=ambiente_id)
+
+
+@comercial_editar_requerido
+def ambiente_remover_acabamento_post(request, pk: int, ambiente_id: int):
+    if request.method != "POST":
+        return redirect("comercial:ambiente_detalhes", pk=pk, ambiente_id=ambiente_id)
+    cliente = get_object_or_404(ClienteComercial, pk=pk)
+    ambiente = get_object_or_404(AmbienteOrcamento, pk=ambiente_id, cliente=cliente)
+    try:
+        acabamento = request.POST.get("acabamento", "").strip()
+        ClienteComercialService.remover_acabamento(ambiente, acabamento)
+        messages.success(request, "Acabamento removido.")
+    except (ValidationError, ValueError) as exc:
+        messages.error(request, str(exc))
+    return redirect("comercial:ambiente_detalhes", pk=pk, ambiente_id=ambiente_id)
+
+
+@comercial_editar_requerido
+def ambiente_adicionar_eletrodomestico_post(request, pk: int, ambiente_id: int):
+    if request.method != "POST":
+        return redirect("comercial:ambiente_detalhes", pk=pk, ambiente_id=ambiente_id)
+    cliente = get_object_or_404(ClienteComercial, pk=pk)
+    ambiente = get_object_or_404(AmbienteOrcamento, pk=ambiente_id, cliente=cliente)
+    try:
+        eletro = request.POST.get("eletrodomestico", "").strip()
+        if eletro:
+            ClienteComercialService.adicionar_eletrodomestico(ambiente, eletro)
+            messages.success(request, f"Eletrodoméstico '{eletro}' adicionado.")
+        else:
+            messages.warning(request, "Eletrodoméstico não pode estar vazio.")
+    except (ValidationError, ValueError) as exc:
+        messages.error(request, str(exc))
+    return redirect("comercial:ambiente_detalhes", pk=pk, ambiente_id=ambiente_id)
+
+
+@comercial_editar_requerido
+def ambiente_remover_eletrodomestico_post(request, pk: int, ambiente_id: int):
+    if request.method != "POST":
+        return redirect("comercial:ambiente_detalhes", pk=pk, ambiente_id=ambiente_id)
+    cliente = get_object_or_404(ClienteComercial, pk=pk)
+    ambiente = get_object_or_404(AmbienteOrcamento, pk=ambiente_id, cliente=cliente)
+    try:
+        eletro = request.POST.get("eletrodomestico", "").strip()
+        ClienteComercialService.remover_eletrodomestico(ambiente, eletro)
+        messages.success(request, "Eletrodoméstico removido.")
+    except (ValidationError, ValueError) as exc:
+        messages.error(request, str(exc))
+    return redirect("comercial:ambiente_detalhes", pk=pk, ambiente_id=ambiente_id)
+
+
+@comercial_editar_requerido
+def ambiente_atualizar_observacoes_post(request, pk: int, ambiente_id: int):
+    if request.method != "POST":
+        return redirect("comercial:ambiente_detalhes", pk=pk, ambiente_id=ambiente_id)
+    cliente = get_object_or_404(ClienteComercial, pk=pk)
+    ambiente = get_object_or_404(AmbienteOrcamento, pk=ambiente_id, cliente=cliente)
+    try:
+        observacoes = request.POST.get("observacoes_especiais", "").strip()
+        from .schemas.cliente import AmbienteDetalhesInputSchema
+        schema = AmbienteDetalhesInputSchema(observacoes_especiais=observacoes)
+        ClienteComercialService.atualizar_observacoes_especiais(ambiente, schema)
+        messages.success(request, "Observações especiais atualizadas.")
+    except (ValidationError, ValueError) as exc:
+        messages.error(request, str(exc))
+    return redirect("comercial:ambiente_detalhes", pk=pk, ambiente_id=ambiente_id)
+
+
 @comercial_excluir_requerido
 def excluir_post(request, pk: int):
     if request.method != "POST":

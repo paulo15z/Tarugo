@@ -1,0 +1,114 @@
+{% extends "comercial/base_comercial.html" %}
+{% block title %}{{ ambiente.nome_ambiente }} — Detalhes — Comercial{% endblock %}
+{% block comercial_inner %}
+<div class="c-head">
+  <div>
+    <h1>{{ ambiente.nome_ambiente }}</h1>
+    <p>
+      {% if dinabox %}{{ dinabox.customer_name|default:"Cliente" }}{% else %}Cliente {{ cliente.customer_id }}{% endif %}
+    </p>
+  </div>
+  <div class="c-actions">
+    <a href="{% url 'comercial:detalhe' cliente.pk %}" class="c-btn c-btn--ghost">Voltar à ficha</a>
+  </div>
+</div>
+
+{% if messages %}
+<div style="margin-bottom: 1rem;">
+  {% for message in messages %}
+  <div class="c-alert-inline" style="background: {% if message.tags == 'error' %}rgba(220, 38, 38, 0.1){% elif message.tags == 'success' %}rgba(34, 197, 94, 0.1){% else %}rgba(59, 130, 246, 0.1){% endif %}; border-color: {% if message.tags == 'error' %}rgba(220, 38, 38, 0.35){% elif message.tags == 'success' %}rgba(34, 197, 94, 0.35){% else %}rgba(59, 130, 246, 0.35){% endif %}; color: {% if message.tags == 'error' %}#dc2626{% elif message.tags == 'success' %}#22c55e{% else %}#3b82f6{% endif %};">
+    {{ message }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# Acabamentos #}
+<section class="c-panel">
+  <h2>Acabamentos</h2>
+  <p class="c-muted">Materiais, cores, dimensões e outras especificidades.</p>
+  
+  {% if ambiente.acabamentos %}
+  <div style="margin-bottom: 1rem;">
+    {% for acabamento in ambiente.acabamentos %}
+    <div class="c-ambiente-block" style="display: flex; justify-content: space-between; align-items: center;">
+      <span>{{ acabamento }}</span>
+      <form method="post" action="{% url 'comercial:ambiente_remover_acabamento_post' cliente.pk ambiente.pk %}" style="display: inline;">
+        {% csrf_token %}
+        <input type="hidden" name="acabamento" value="{{ acabamento }}">
+        <button type="submit" class="c-btn c-btn--danger c-btn--sm">Remover</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="c-muted" style="margin: 0; margin-bottom: 1rem;">Nenhum acabamento registrado.</p>
+  {% endif %}
+  
+  <form method="post" action="{% url 'comercial:ambiente_adicionar_acabamento_post' cliente.pk ambiente.pk %}" class="c-form-row">
+    {% csrf_token %}
+    <div class="c-field c-field--grow">
+      <input type="text" name="acabamento" placeholder="Ex.: Granito Preto, Azulejo 20x20..." required />
+    </div>
+    <button type="submit" class="c-btn c-btn--ghost">Adicionar</button>
+  </form>
+</section>
+
+{# Eletrodomésticos #}
+<section class="c-panel">
+  <h2>Eletrodomésticos</h2>
+  <p class="c-muted">Marca, modelo, capacidade e especificações.</p>
+  
+  {% if ambiente.eletrodomesticos %}
+  <div style="margin-bottom: 1rem;">
+    {% for eletro in ambiente.eletrodomesticos %}
+    <div class="c-ambiente-block" style="display: flex; justify-content: space-between; align-items: center;">
+      <span>{{ eletro }}</span>
+      <form method="post" action="{% url 'comercial:ambiente_remover_eletrodomestico_post' cliente.pk ambiente.pk %}" style="display: inline;">
+        {% csrf_token %}
+        <input type="hidden" name="eletrodomestico" value="{{ eletro }}">
+        <button type="submit" class="c-btn c-btn--danger c-btn--sm">Remover</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="c-muted" style="margin: 0; margin-bottom: 1rem;">Nenhum eletrodoméstico registrado.</p>
+  {% endif %}
+  
+  <form method="post" action="{% url 'comercial:ambiente_adicionar_eletrodomestico_post' cliente.pk ambiente.pk %}" class="c-form-row">
+    {% csrf_token %}
+    <div class="c-field c-field--grow">
+      <input type="text" name="eletrodomestico" placeholder="Ex.: Fogão Consul 5 bocas, Geladeira Brastemp..." required />
+    </div>
+    <button type="submit" class="c-btn c-btn--ghost">Adicionar</button>
+  </form>
+</section>
+
+{# Observações Especiais #}
+<section class="c-panel">
+  <h2>Observações Especiais</h2>
+  <p class="c-muted">Detalhes que a Engenharia/Projetos deve considerar (ex.: "Bicama na suite", "Dobradiça especial").</p>
+  
+  <form method="post" action="{% url 'comercial:ambiente_atualizar_observacoes_post' cliente.pk ambiente.pk %}">
+    {% csrf_token %}
+    <div class="c-field c-field--full" style="margin-bottom: 0.65rem;">
+      <textarea name="observacoes_especiais" rows="4" placeholder="Ex.: Bicama na SUITE ANA, instalação de ar em janela específica...">{{ ambiente.observacoes_especiais }}</textarea>
+    </div>
+    <button type="submit" class="c-btn c-btn--primary">Salvar observações</button>
+  </form>
+</section>
+
+{# Resumo #}
+<section class="c-panel" style="background: var(--c-surface-1); border-left: 4px solid var(--c-primary);">
+  <h3>Resumo para Projetos</h3>
+  <p class="c-muted" style="margin-bottom: 0.5rem;">Os dados acima serão enviados estruturados para o setor de Projetos.</p>
+  <div style="background: var(--c-surface-2); padding: 0.85rem; border-radius: var(--c-radius-sm); font-family: var(--c-mono); font-size: 0.85rem;">
+    <strong>Ambiente:</strong> {{ ambiente.nome_ambiente }}<br>
+    <strong>Acabamentos:</strong> {{ ambiente.acabamentos|length }} itens<br>
+    <strong>Eletrodomésticos:</strong> {{ ambiente.eletrodomesticos|length }} itens<br>
+    <strong>Valor orçado:</strong> {% if ambiente.valor_orcado %}R$ {{ ambiente.valor_orcado }}{% else %}Não informado{% endif %}
+  </div>
+</section>
+
+{% endblock %}

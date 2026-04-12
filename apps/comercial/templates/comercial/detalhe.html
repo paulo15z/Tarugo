@@ -116,10 +116,13 @@
         </div>
         <button type="submit" class="c-btn c-btn--primary c-btn--sm">Salvar</button>
       </form>
-      <form method="post" action="{% url 'comercial:ambiente_excluir_post' cliente.pk a.pk %}" style="margin-top:0.5rem;display:inline;" onsubmit="return confirm('Remover esta linha?');">
-        {% csrf_token %}
-        <button type="submit" class="c-btn c-btn--danger c-btn--sm">Remover</button>
-      </form>
+      <div style="margin-top:0.5rem;display:flex;gap:0.5rem;">
+        <a href="{% url 'comercial:ambiente_detalhes' cliente.pk a.pk %}" class="c-btn c-btn--ghost c-btn--sm"><i class="fas fa-pencil"></i> Detalhes</a>
+        <form method="post" action="{% url 'comercial:ambiente_excluir_post' cliente.pk a.pk %}" style="display:inline;" onsubmit="return confirm('Remover esta linha?');">
+          {% csrf_token %}
+          <button type="submit" class="c-btn c-btn--danger c-btn--sm">Remover</button>
+        </form>
+      </div>
     </div>
     {% empty %}
     <p class="c-muted" style="margin:0;">Nenhum ambiente cadastrado.</p>

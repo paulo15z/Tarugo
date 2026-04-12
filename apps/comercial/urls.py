@@ -15,9 +15,34 @@ urlpatterns = [
     path("<int:pk>/ambiente/", views.ambiente_novo_post, name="ambiente_novo_post"),
     path("<int:pk>/ambiente/<int:ambiente_id>/", views.ambiente_editar_post, name="ambiente_editar_post"),
     path(
-        "<int:pk>/ambiente/<int:ambiente_id>/excluir/",
-        views.ambiente_excluir_post,
-        name="ambiente_excluir_post",
+        "<int:pk>/ambiente/<int:ambiente_id>/detalhes/",
+        views.ambiente_detalhes,
+        name="ambiente_detalhes",
+    ),
+    path(
+        "<int:pk>/ambiente/<int:ambiente_id>/acabamento/",
+        views.ambiente_adicionar_acabamento_post,
+        name="ambiente_adicionar_acabamento_post",
+    ),
+    path(
+        "<int:pk>/ambiente/<int:ambiente_id>/acabamento/remover/",
+        views.ambiente_remover_acabamento_post,
+        name="ambiente_remover_acabamento_post",
+    ),
+    path(
+        "<int:pk>/ambiente/<int:ambiente_id>/eletrodomestico/",
+        views.ambiente_adicionar_eletrodomestico_post,
+        name="ambiente_adicionar_eletrodomestico_post",
+    ),
+    path(
+        "<int:pk>/ambiente/<int:ambiente_id>/eletrodomestico/remover/",
+        views.ambiente_remover_eletrodomestico_post,
+        name="ambiente_remover_eletrodomestico_post",
+    ),
+    path(
+        "<int:pk>/ambiente/<int:ambiente_id>/observacoes/",
+        views.ambiente_atualizar_observacoes_post,
+        name="ambiente_atualizar_observacoes_post",
     ),
     path("<int:pk>/excluir/", views.excluir_post, name="excluir_post"),
 ]

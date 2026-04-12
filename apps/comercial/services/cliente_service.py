@@ -241,6 +241,13 @@ class ClienteComercialService:
         return ambiente
 
     @staticmethod
+    def atualizar_observacoes_especiais(ambiente: AmbienteOrcamento, schema: AmbienteDetalhesInputSchema) -> AmbienteOrcamento:
+        """Atualizar observações especiais."""
+        ambiente.observacoes_especiais = schema.observacoes_especiais
+        ambiente.save(update_fields=["observacoes_especiais", "atualizado_em"])
+        return ambiente
+
+    @staticmethod
     @transaction.atomic
     def remover_ambiente(ambiente: AmbienteOrcamento) -> None:
         ambiente.delete()
