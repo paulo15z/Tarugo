@@ -42,15 +42,15 @@
     </div>
     <div class="c-field">
       <label for="e-cpf">CPF (PF)</label>
-      <input id="e-cpf" name="customer_cpf" />
+      <input id="e-cpf" name="customer_cpf" value="{{ initial.customer_cpf }}" />
     </div>
     <div class="c-field">
       <label for="e-cnpj">CNPJ (PJ)</label>
-      <input id="e-cnpj" name="customer_cnpj" />
+      <input id="e-cnpj" name="customer_cnpj" value="{{ initial.customer_cnpj }}" />
     </div>
     <div class="c-field c-field--full">
       <label for="e-note">Nota curta Dinabox</label>
-      <input id="e-note" name="customer_note" />
+      <input id="e-note" name="customer_note" value="{{ initial.customer_note }}" />
     </div>
     <div class="c-field c-field--full" style="margin-top:0.5rem;">
       <button type="submit" class="c-btn c-btn--primary">Salvar na Dinabox</button>

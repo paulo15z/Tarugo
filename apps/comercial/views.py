@@ -177,12 +177,20 @@ def editar_dinabox(request, pk: int):
         except DinaboxRequestError as exc:
             messages.error(request, f"Erro na API Dinabox: {exc}")
 
+    # Extrair dados do raw_payload para preencher CPF, CNPJ e Nota
+    raw = idx.raw_payload if idx else {}
+    pf_data = raw.get("customer_pf_data") or {}
+    pj_data = raw.get("customer_pj_data") or {}
+
     initial = {
         "customer_name": idx.customer_name if idx else "",
         "customer_type": (idx.customer_type if idx else "pf") or "pf",
         "customer_status": (idx.customer_status if idx else "on") or "on",
         "customer_emails": idx.customer_emails_text if idx else "",
         "customer_phones": idx.customer_phones_text if idx else "",
+        "customer_cpf": pf_data.get("customer_cpf") or "",
+        "customer_cnpj": pj_data.get("customer_cnpj") or "",
+        "customer_note": raw.get("customer_note") or "",
     }
     return render(
         request,

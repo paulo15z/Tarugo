@@ -34,6 +34,21 @@
   </div>
   <p style="margin-top:0.85rem;font-size:0.9rem;"><strong>E-mails:</strong> {{ dinabox.customer_emails_text|default:"—" }}</p>
   <p style="font-size:0.9rem;"><strong>Telefones:</strong> {{ dinabox.customer_phones_text|default:"—" }}</p>
+  
+  {% with raw=dinabox.raw_payload %}
+    {% if raw.customer_pf_data.customer_cpf %}
+      <p style="font-size:0.9rem;"><strong>CPF:</strong> {{ raw.customer_pf_data.customer_cpf }}</p>
+    {% elif raw.customer_pj_data.customer_cnpj %}
+      <p style="font-size:0.9rem;"><strong>CNPJ:</strong> {{ raw.customer_pj_data.customer_cnpj }}</p>
+    {% endif %}
+    
+    {% if raw.customer_note %}
+      <div style="margin-top:0.85rem; padding:0.75rem; background:var(--c-bg-alt); border-radius:4px; font-size:0.9rem;">
+        <strong>Nota Dinabox:</strong><br>
+        {{ raw.customer_note|linebreaksbr }}
+      </div>
+    {% endif %}
+  {% endwith %}
 </section>
 {% else %}
 <div class="c-alert-inline"><i class="fas fa-plug"></i> Índice local ausente — sincronize clientes em Integrações Dinabox.</div>

@@ -194,6 +194,7 @@ class DinaboxClienteService:
     def refresh_from_remote(customer_id: str) -> DinaboxClienteIndex:
         """
         Busca o cliente na API Dinabox e atualiza o índice local (DinaboxClienteIndex).
+        Garante que o detalhe completo seja salvo no raw_payload.
         """
         from apps.integracoes.dinabox.client import DinaboxAPIClient
 
@@ -205,6 +206,7 @@ class DinaboxClienteService:
         if not isinstance(raw, dict):
             raise ValueError("Resposta inválida da API Dinabox.")
 
+        # Normalização para garantir compatibilidade com o método sincronizar_cliente
         normalized = {
             "customer_id": str(raw.get("customer_id") or cid),
             "customer_name": raw.get("customer_name"),
@@ -213,4 +215,5 @@ class DinaboxClienteService:
             "customer_emails": raw.get("customer_emails"),
             "customer_phones": raw.get("customer_phones"),
         }
+        # O raw aqui já é o detalhe completo vindo de get_customer(cid)
         return DinaboxClienteService.sincronizar_cliente({**raw, **normalized})
