@@ -11,7 +11,7 @@ def forwards(apps, schema_editor):
     ct_ids = list(
         ContentType.objects.filter(
             app_label="comercial",
-            model__in=["clientecomercial", "observacaocomercial", "ambienteorcamento"],
+            model__in=["clientecomercial", "observacaocomercial", "ambienteoramento"],
         ).values_list("id", flat=True)
     )
     if len(ct_ids) != 3:
