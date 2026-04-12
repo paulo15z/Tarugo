@@ -120,3 +120,5 @@ backups/
 features/
 dinabox samples/
 dinabox-samples/
+
+apps/pcp/*.exe
