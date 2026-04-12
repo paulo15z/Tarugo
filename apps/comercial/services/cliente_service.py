@@ -11,6 +11,8 @@ from apps.integracoes.services import DinaboxClienteService
 from ..models import AmbienteOrcamento, ClienteComercial, ObservacaoComercial, StatusClienteComercial
 from ..schemas.cliente import (
     AmbienteOrcamentoInputSchema,
+    AmbienteOrcamentoAtualizarSchema,
+    AmbienteDetalhesInputSchema,
     ClienteComercialAtualizarDinaboxSchema,
     ClienteComercialCriarDinaboxSchema,
 )
@@ -159,6 +161,83 @@ class ClienteComercialService:
         ambiente.nome_ambiente = schema.nome_ambiente
         ambiente.valor_orcado = schema.valor_orcado
         ambiente.save(update_fields=["nome_ambiente", "valor_orcado", "atualizado_em"])
+        return ambiente
+
+    @staticmethod
+    @transaction.atomic
+    def atualizar_detalhes_ambiente(
+        ambiente: AmbienteOrcamento,
+        schema: AmbienteDetalhesInputSchema,
+    ) -> AmbienteOrcamento:
+        """Atualizar apenas os detalhes do ambiente (acabamentos, eletros, obs)."""
+        ambiente.acabamentos = schema.acabamentos or []
+        ambiente.eletrodomesticos = schema.eletrodomesticos or []
+        ambiente.observacoes_especiais = schema.observacoes_especiais or ""
+        ambiente.save(update_fields=["acabamentos", "eletrodomesticos", "observacoes_especiais", "atualizado_em"])
+        return ambiente
+
+    @staticmethod
+    @transaction.atomic
+    def atualizar_ambiente_completo(
+        ambiente: AmbienteOrcamento,
+        schema: AmbienteOrcamentoAtualizarSchema,
+    ) -> AmbienteOrcamento:
+        """Atualizar ambiente com todos os campos (nome, valor, detalhes)."""
+        if schema.nome_ambiente is not None:
+            ambiente.nome_ambiente = schema.nome_ambiente
+        if schema.valor_orcado is not None:
+            ambiente.valor_orcado = schema.valor_orcado
+        if schema.acabamentos is not None:
+            ambiente.acabamentos = schema.acabamentos
+        if schema.eletrodomesticos is not None:
+            ambiente.eletrodomesticos = schema.eletrodomesticos
+        if schema.observacoes_especiais is not None:
+            ambiente.observacoes_especiais = schema.observacoes_especiais
+        
+        ambiente.save(update_fields=[
+            "nome_ambiente", "valor_orcado", "acabamentos",
+            "eletrodomesticos", "observacoes_especiais", "atualizado_em"
+        ])
+        return ambiente
+
+    @staticmethod
+    def adicionar_acabamento(ambiente: AmbienteOrcamento, acabamento: str) -> AmbienteOrcamento:
+        """Adicionar um acabamento à lista."""
+        acc = (acabamento or "").strip()
+        if not acc:
+            raise ValueError("Acabamento não pode ser vazio.")
+        if acc not in ambiente.acabamentos:
+            ambiente.acabamentos.append(acc)
+            ambiente.save(update_fields=["acabamentos", "atualizado_em"])
+        return ambiente
+
+    @staticmethod
+    def remover_acabamento(ambiente: AmbienteOrcamento, acabamento: str) -> AmbienteOrcamento:
+        """Remover um acabamento da lista."""
+        acc = (acabamento or "").strip()
+        if acc in ambiente.acabamentos:
+            ambiente.acabamentos.remove(acc)
+            ambiente.save(update_fields=["acabamentos", "atualizado_em"])
+        return ambiente
+
+    @staticmethod
+    def adicionar_eletrodomestico(ambiente: AmbienteOrcamento, eletro: str) -> AmbienteOrcamento:
+        """Adicionar um eletrodoméstico à lista."""
+        el = (eletro or "").strip()
+        if not el:
+            raise ValueError("Eletrodoméstico não pode ser vazio.")
+        if el not in ambiente.eletrodomesticos:
+            ambiente.eletrodomesticos.append(el)
+            ambiente.save(update_fields=["eletrodomesticos", "atualizado_em"])
+        return ambiente
+
+    @staticmethod
+    def remover_eletrodomestico(ambiente: AmbienteOrcamento, eletro: str) -> AmbienteOrcamento:
+        """Remover um eletrodoméstico da lista."""
+        el = (eletro or "").strip()
+        if el in ambiente.eletrodomesticos:
+            ambiente.eletrodomesticos.remove(el)
+            ambiente.save(update_fields=["eletrodomesticos", "atualizado_em"])
         return ambiente
 
     @staticmethod

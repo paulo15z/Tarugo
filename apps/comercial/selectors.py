@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from django.db.models import Prefetch, QuerySet
 
@@ -56,3 +56,80 @@ class ComercialSelector:
             n = DinaboxClienteIndex._normalize(q)
             qs = qs.filter(customer_name_normalized__icontains=n)
         return qs[:limit]
+
+    @staticmethod
+    def get_info_para_projetos(cliente_id: int) -> Optional[dict[str, Any]]:
+        """
+        Retorna estrutura completa do cliente e seus ambientes para consumo por Projetos.
+        
+        Formato:
+        {
+            "cliente_id": 123,
+            "customer_id": "2539939",
+            "nome_cliente": "WAGNER LEMOS",
+            "status": "em_orcamento",
+            "total_ambientes": 3,
+            "valor_total_orcado": 15000.00,
+            "ambientes": [
+                {
+                    "id": 456,
+                    "nome": "COZINHA",
+                    "valor": 5000.00,
+                    "acabamentos": ["Pintura branca", "Piso porcelanato"],
+                    "eletrodomesticos": ["Geladeira Brastemp 500L"],
+                    "observacoes": "Nicho no fundo da cozinha"
+                },
+                ...
+            ],
+            "observacoes_comerciais": [
+                {"texto": "Cliente indeciso", "autor": "João", "data": "2026-04-12"}
+            ]
+        }
+        """
+        cliente = ComercialSelector.get_cliente(cliente_id)
+        if not cliente:
+            return None
+        
+        # Busca índice do cliente para dados essenciais
+        idx = ComercialSelector.dinabox_index_por_customer_id(cliente.customer_id)
+        
+        # Monta estrutura de ambientes
+        ambientes = []
+        valor_total = 0
+        for amb in cliente.ambientes.all():
+            valor_amb = float(amb.valor_orcado or 0)
+            valor_total += valor_amb
+            
+            ambientes.append({
+                "id": amb.id,
+                "nome": amb.nome_ambiente,
+                "valor": valor_amb,
+                "acabamentos": amb.acabamentos or [],
+                "eletrodomesticos": amb.eletrodomesticos or [],
+                "observacoes": amb.observacoes_especiais or "",
+            })
+        
+        # Monta observações comerciais
+        observacoes = []
+        for obs in cliente.observacoes.all():
+            observacoes.append({
+                "texto": obs.texto,
+                "autor": obs.autor.get_full_name() if obs.autor else "Desconhecido",
+                "data": obs.criado_em.isoformat(),
+            })
+        
+        return {
+            "cliente_id": cliente.id,
+            "customer_id": cliente.customer_id,
+            "nome_cliente": idx.customer_name if idx else "",
+            "status": cliente.get_status_display(),
+            "total_ambientes": cliente.ambientes.count(),
+            "valor_total_orcado": valor_total,
+            "ambientes": ambientes,
+            "observacoes_comerciais": observacoes,
+            "metadata": {
+                "criado_em": cliente.criado_em.isoformat(),
+                "atualizado_em": cliente.atualizado_em.isoformat(),
+                "criado_por": cliente.criado_por.get_full_name() if cliente.criado_por else "Desconhecido",
+            }
+        }

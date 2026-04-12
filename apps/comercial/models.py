@@ -81,7 +81,16 @@ class ObservacaoComercial(models.Model):
 
 class AmbienteOrcamento(models.Model):
     """
-    Ambiente como texto livre (ex.: COZINHA) e valor orçado; atualizável até fechamento do contrato.
+    Ambiente com detalhes comerciais: acabamentos, eletrodomésticos e observações.
+    Dados estruturados para facilitar handoff para Projetos.
+    
+    Exemplo desejável em Projetos:
+    - qual cliente
+    - Quantos ambientes
+    - Quais ambientes
+    - Quais eletros nos ambientes
+    - Quais acabamentos (confirmados)
+    - Itens especiais "Bicama na SUITE ANA"
     """
 
     cliente = models.ForeignKey(
@@ -97,8 +106,44 @@ class AmbienteOrcamento(models.Model):
         blank=True,
         verbose_name="Valor orçado",
     )
+    
+    # Acabamentos: lista de strings simples ou dicts com detalhes
+    # Ex: ["Pintura branca fosca", "Piso porcelanato 60x60", "Rodapé MDF 15cm"]
+    acabamentos = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Acabamentos",
+        help_text="Lista de acabamentos (materiais, cores, dimensões, etc)"
+    )
+    
+    # Eletrodomésticos: lista de strings simples ou dicts com marca/modelo
+    # Ex: ["Geladeira Brastemp 500L", "Fogão 5 bocas Consul", "Microondas Electrolux"]
+    eletrodomesticos = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Eletrodomésticos",
+        help_text="Lista de eletrodomésticos (marca, modelo, capacidade)"
+    )
+    
+    # Observações especiais para atenção em Projetos
+    # Ex: "Bicama na SUITE ANA", "Nicho no fundo da cozinha", "Painel TV na sala"
+    observacoes_especiais = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Observações especiais",
+        help_text="Itens que precisam atenção especial na Engenharia"
+    )
+    
     ordem = models.PositiveIntegerField(default=0)
     atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Ambiente (orçamento)"
+        verbose_name_plural = "Ambientes (orçamento)"
+        ordering = ["ordem", "pk"]
+
+    def __str__(self) -> str:
+        return f"{self.nome_ambiente} ({self.cliente_id})"
 
     class Meta:
         verbose_name = "Ambiente (orçamento)"
