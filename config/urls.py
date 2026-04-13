@@ -28,6 +28,9 @@ urlpatterns = [
 
     # Comercial
     path("comercial/", include(("apps.comercial.urls", "comercial"), namespace="comercial")),
+
+    # Pedidos
+    path("pedidos/", include(("apps.pedidos.urls", "pedidos"), namespace="pedidos")),
 ]
 
 if settings.DEBUG:

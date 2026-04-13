@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}{{ ambiente.nome_ambiente }} - Tarugo{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <h1>{{ ambiente.nome_ambiente }}</h1>
+            <p class="text-muted">Pedido: <a href="{% url 'pedidos:pedido_detail' ambiente.pedido.numero_pedido %}">{{ ambiente.pedido.numero_pedido }}</a></p>
+        </div>
+        <div class="col-md-4 text-end">
+            <span class="badge bg-info fs-6">{{ ambiente.get_status_display }}</span>
+        </div>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    Comercial
+                </div>
+                <div class="card-body">
+                    {% if ambiente.acabamentos %}
+                    <p><strong>Acabamentos:</strong></p>
+                    <ul>
+                        {% for acabamento in ambiente.acabamentos %}
+                        <li>{{ acabamento }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                    {% if ambiente.eletrodomesticos %}
+                    <p><strong>Eletrodomésticos:</strong></p>
+                    <ul>
+                        {% for eletro in ambiente.eletrodomesticos %}
+                        <li>{{ eletro }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                    {% if ambiente.observacoes_especiais %}
+                    <p><strong>Observações:</strong> {{ ambiente.observacoes_especiais }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    Engenharia
+                </div>
+                <div class="card-body">
+                    {% if ambiente.dados_engenharia %}
+                    <pre>{{ ambiente.dados_engenharia|safe }}</pre>
+                    {% else %}
+                    <p class="text-muted">Aguardando dados de engenharia...</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PCP e Operacional -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    PCP
+                </div>
+                <div class="card-body">
+                    {% if ambiente.metricas_pcp_resumo %}
+                    <p><strong>Total de Peças:</strong> {{ ambiente.num_pecas_pcp }}</p>
+                    <pre>{{ ambiente.metricas_pcp_resumo|safe }}</pre>
+                    {% else %}
+                    <p class="text-muted">Aguardando métricas de PCP...</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    Operacional
+                </div>
+                <div class="card-body">
+                    {% if ambiente.dados_operacionais_resumo %}
+                    <p><strong>Peças Bipadas:</strong> {{ ambiente.num_pecas_bipadas }}/{{ ambiente.num_pecas_pcp }}</p>
+                    <div class="progress mb-3" style="height: 24px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {% widthratio ambiente.num_pecas_bipadas ambiente.num_pecas_pcp 100 %}%">
+                            {% widthratio ambiente.num_pecas_bipadas ambiente.num_pecas_pcp 100 %}%
+                        </div>
+                    </div>
+                    <pre>{{ ambiente.dados_operacionais_resumo|safe }}</pre>
+                    {% else %}
+                    <p class="text-muted">Aguardando dados operacionais...</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lotes PCP -->
+    {% if ambiente.lotes_pcp.all %}
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h5>Lotes PCP Associados</h5>
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Data Criação</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lote in ambiente.lotes_pcp.all %}
+                    <tr>
+                        <td>{{ lote.id }}</td>
+                        <td>{{ lote.data_criacao|date:"d/m/Y H:i" }}</td>
+                        <td><span class="badge bg-secondary">{{ lote.status }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Datas -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <p><strong>Criado em:</strong> {{ ambiente.data_criacao|date:"d/m/Y H:i" }}</p>
+                    <p><strong>Atualizado em:</strong> {{ ambiente.data_atualizacao|date:"d/m/Y H:i" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{{ request.META.HTTP_REFERER|default:'#' }}" class="btn btn-secondary">Voltar</a>
+</div>
+{% endblock %}

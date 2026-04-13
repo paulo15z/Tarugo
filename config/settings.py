@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'apps.bipagem',
     'apps.integracoes',
     'apps.comercial',
+    'apps.pedidos',
 ]
 
 MIDDLEWARE = [

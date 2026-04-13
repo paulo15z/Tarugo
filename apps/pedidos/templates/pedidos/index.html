@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Pedidos - Tarugo{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>Dashboard de Pedidos</h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'pedidos:buscar_pedidos' %}" class="btn btn-primary">Buscar Pedidos</a>
+        </div>
+    </div>
+
+    {% if page_obj %}
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Número</th>
+                    <th>Cliente</th>
+                    <th>Status</th>
+                    <th>Conclusão</th>
+                    <th>Entrega</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pedido in page_obj %}
+                <tr>
+                    <td><strong>{{ pedido.numero_pedido }}</strong></td>
+                    <td>{{ pedido.cliente_nome }}</td>
+                    <td>
+                        <span class="badge bg-{% if pedido.status == 'CONCLUIDO' %}success{% elif pedido.status == 'CANCELADO' %}danger{% elif pedido.status == 'EXPEDICAO' %}info{% else %}warning{% endif %}">
+                            {{ pedido.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ pedido.percentual_conclusao }}%">
+                                {{ pedido.percentual_conclusao|floatformat:0 }}%
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ pedido.data_entrega_prevista|default:"—" }}</td>
+                    <td>
+                        <a href="{% url 'pedidos:pedido_detail' pedido.numero_pedido %}" class="btn btn-sm btn-info">Ver</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Paginação -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Paginação" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1">Primeira</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+            </li>
+            {% endif %}
+
+            <li class="page-item active">
+                <span class="page-link">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            </li>
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="alert alert-info">
+        Nenhum pedido encontrado.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
