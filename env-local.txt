@@ -1,0 +1,27 @@
+# ════════════════════════════════════════════════════════════════════════
+# DESENVOLVIMENTO LOCAL - SQLite
+# ════════════════════════════════════════════════════════════════════════
+# Use este arquivo para desenvolvimento local:
+#   cp .env.local .env
+# Isso vai usar SQLite em vez do PostgreSQL remoto
+
+DEBUG=1
+DJANGO_SETTINGS_MODULE=config.settings
+SECRET_KEY=desenvolvimento_local_chave_temporaria_123456789
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+
+# ❌ NÃO defina DATABASE_URL para usar SQLite automaticamente
+# Se você comentar a linha abaixo, Django usará: db.sqlite3
+# DATABASE_URL=
+
+DEFAULT_PASSWORD=senha123
+RESET_PASSWORDS=0
+RUN_ESTOQUE_SEEDS=0
+PCP_BLOQUEAR_LIBERACAO_COM_RISCO_ESTOQUE=0
+PCP_ESTOQUE_RISCO_JANELA_DIAS=30
+
+DINABOX_BASE_URL=https://www.dinabox.app
+DINABOX_SERVICE_USERNAME=
+DINABOX_SERVICE_PASSWORD=
+DINABOX_TIMEOUT_SECONDS=15
+DINABOX_VERIFY_SSL=1
