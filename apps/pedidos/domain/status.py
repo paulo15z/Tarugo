@@ -12,6 +12,7 @@ class PedidoStatus(models.TextChoices):
     """Status do Pedido no ciclo de vida completo."""
 
     CONTRATO_FECHADO = "CONTRATO_FECHADO", "Contrato Fechado"
+    ENVIADO_PARA_PROJETOS = "ENVIADO_PARA_PROJETOS", "Enviado para Projetos"
     EM_ENGENHARIA = "EM_ENGENHARIA", "Em Engenharia"
     EM_PRODUCAO = "EM_PRODUCAO", "Em Produção"
     EXPEDICAO = "EXPEDICAO", "Expedição"
@@ -24,6 +25,7 @@ class AmbienteStatus(models.TextChoices):
     """Status do Ambiente (sub-unidade de produção dentro de um Pedido)."""
 
     PENDENTE = "PENDENTE", "Pendente"
+    PENDENTE_PROJETOS = "PENDENTE_PROJETOS", "Pendente Projetos"
     EM_ENGENHARIA = "EM_ENGENHARIA", "Em Engenharia"
     AGUARDANDO_PCP = "AGUARDANDO_PCP", "Aguardando PCP"
     EM_INDUSTRIA = "EM_INDUSTRIA", "Em Indústria"

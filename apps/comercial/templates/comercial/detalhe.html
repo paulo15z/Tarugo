@@ -58,6 +58,38 @@
 </section>
 {% endif %}
 
+{% if pode_editar %}
+<section class="c-panel">
+  <h2>Pedido comercial</h2>
+  <p class="c-muted">Este numero nasce no Comercial e sera reutilizado no handoff para Projetos.</p>
+  <form method="post" action="{% url 'comercial:numero_pedido_post' cliente.pk %}" class="c-form-row" style="align-items:flex-end;">
+    {% csrf_token %}
+    <div class="c-field">
+      <label for="id-numero-pedido">Numero do pedido</label>
+      <input id="id-numero-pedido" name="numero_pedido" value="{{ cliente.numero_pedido }}" placeholder="Ex.: 573" />
+    </div>
+    <button type="submit" class="c-btn c-btn--ghost">Salvar numero</button>
+  </form>
+  <div style="margin-top:0.9rem;display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;">
+    <span class="c-muted">Pronto para Projetos quando houver numero e ambientes cadastrados.</span>
+    <form method="post" action="{% url 'comercial:enviar_para_projetos_post' cliente.pk %}" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit" class="c-btn c-btn--primary">Enviar para Projetos</button>
+    </form>
+  </div>
+  {% if cliente.pedidos.all %}
+  <div style="margin-top:1rem;">
+    {% for pedido in cliente.pedidos.all %}
+    <div class="c-obs">
+      <p><strong>Pedido {{ pedido.numero_pedido }}</strong> · {{ pedido.get_status_display }}</p>
+      <span class="c-obs-meta">Criado em {{ pedido.data_criacao|date:"d/m/Y H:i" }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
 <section class="c-panel">
   <h2>Observações</h2>
   <p class="c-muted">Detalhes para Projetos, PCP e outros setores — mantido integralmente no Tarugo.</p>

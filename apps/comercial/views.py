@@ -22,9 +22,11 @@ from .schemas.cliente import (
     AmbienteOrcamentoInputSchema,
     ClienteComercialAtualizarDinaboxSchema,
     ClienteComercialCriarDinaboxSchema,
+    ClienteComercialNumeroPedidoSchema,
 )
 from .selectors import ComercialSelector
 from .services import ClienteComercialService
+from apps.pedidos.services import PedidoService
 
 
 def _parse_decimal_br(raw: str) -> Decimal | None:
@@ -113,6 +115,10 @@ def novo(request):
                 customer_cnpj=request.POST.get("customer_cnpj"),
             )
             cliente = ClienteComercialService.criar_na_dinabox_e_local(schema, request.user)
+            numero_schema = ClienteComercialNumeroPedidoSchema(
+                numero_pedido=request.POST.get("numero_pedido"),
+            )
+            ClienteComercialService.atualizar_numero_pedido(cliente, numero_schema)
             messages.success(request, "Cliente criado na Dinabox e ficha comercial aberta.")
             return redirect("comercial:detalhe", pk=cliente.pk)
         except ValidationError as exc:
@@ -133,6 +139,10 @@ def vincular(request):
         cid = (request.POST.get("customer_id") or "").strip()
         try:
             cliente = ClienteComercialService.vincular_cliente_existente(cid, request.user)
+            numero_schema = ClienteComercialNumeroPedidoSchema(
+                numero_pedido=request.POST.get("numero_pedido"),
+            )
+            ClienteComercialService.atualizar_numero_pedido(cliente, numero_schema)
             messages.success(request, "Cliente vinculado à ficha comercial.")
             return redirect("comercial:detalhe", pk=cliente.pk)
         except ValueError as exc:
@@ -207,6 +217,40 @@ def status_post(request, pk: int):
         return redirect(f"{reverse('comercial:lista')}?v=board")
     if nxt == "lista":
         return redirect(f"{reverse('comercial:lista')}?v=lista")
+    return redirect("comercial:detalhe", pk=pk)
+
+
+@comercial_editar_requerido
+def numero_pedido_post(request, pk: int):
+    if request.method != "POST":
+        return redirect("comercial:detalhe", pk=pk)
+    cliente = get_object_or_404(ClienteComercial, pk=pk)
+    try:
+        schema = ClienteComercialNumeroPedidoSchema(
+            numero_pedido=request.POST.get("numero_pedido"),
+        )
+        ClienteComercialService.atualizar_numero_pedido(cliente, schema)
+        messages.success(request, "Numero do pedido comercial atualizado.")
+    except (ValidationError, ValueError) as exc:
+        messages.error(request, str(exc))
+    return redirect("comercial:detalhe", pk=pk)
+
+
+@comercial_editar_requerido
+def enviar_para_projetos_post(request, pk: int):
+    if request.method != "POST":
+        return redirect("comercial:detalhe", pk=pk)
+    cliente = get_object_or_404(ClienteComercial, pk=pk)
+    try:
+        pedido = PedidoService.criar_pedido_do_comercial(
+            cliente_comercial=cliente,
+            numero_pedido=cliente.numero_pedido,
+            usuario=request.user,
+        )
+        messages.success(request, f"Pedido {pedido.numero_pedido} enviado para Projetos.")
+        return redirect("pedidos:api-pedido-detail", numero_pedido=pedido.numero_pedido)
+    except ValueError as exc:
+        messages.error(request, str(exc))
     return redirect("comercial:detalhe", pk=pk)
 
 

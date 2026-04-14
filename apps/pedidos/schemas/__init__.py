@@ -15,6 +15,7 @@ class PedidoStatusEnum(str, Enum):
     """Enum de status de pedido para validation."""
 
     CONTRATO_FECHADO = "CONTRATO_FECHADO"
+    ENVIADO_PARA_PROJETOS = "ENVIADO_PARA_PROJETOS"
     EM_ENGENHARIA = "EM_ENGENHARIA"
     EM_PRODUCAO = "EM_PRODUCAO"
     EXPEDICAO = "EXPEDICAO"
@@ -27,6 +28,7 @@ class AmbienteStatusEnum(str, Enum):
     """Enum de status de ambiente para validation."""
 
     PENDENTE = "PENDENTE"
+    PENDENTE_PROJETOS = "PENDENTE_PROJETOS"
     EM_ENGENHARIA = "EM_ENGENHARIA"
     AGUARDANDO_PCP = "AGUARDANDO_PCP"
     EM_INDUSTRIA = "EM_INDUSTRIA"

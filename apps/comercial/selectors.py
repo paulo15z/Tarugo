@@ -32,6 +32,7 @@ class ComercialSelector:
                     "ambientes",
                     queryset=AmbienteOrcamento.objects.order_by("ordem", "pk"),
                 ),
+                "pedidos",
             )
             .first()
         )
@@ -121,6 +122,7 @@ class ComercialSelector:
         return {
             "cliente_id": cliente.id,
             "customer_id": cliente.customer_id,
+            "numero_pedido": cliente.numero_pedido,
             "nome_cliente": idx.customer_name if idx else "",
             "status": cliente.get_status_display(),
             "total_ambientes": cliente.ambientes.count(),

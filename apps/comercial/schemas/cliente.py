@@ -47,6 +47,18 @@ class ClienteComercialAtualizarDinaboxSchema(BaseModel):
         return s or None
 
 
+class ClienteComercialNumeroPedidoSchema(BaseModel):
+    numero_pedido: Optional[str] = Field(default=None, max_length=50)
+
+    @field_validator("numero_pedido", mode="before")
+    @classmethod
+    def strip_numero(cls, v):
+        if v is None:
+            return None
+        s = str(v).strip()
+        return s or None
+
+
 class AmbienteOrcamentoInputSchema(BaseModel):
     nome_ambiente: str = Field(..., min_length=1, max_length=200)
     valor_orcado: Optional[Decimal] = None

@@ -11,7 +11,8 @@ from typing import Optional
 
 from apps.pedidos.domain.status import PedidoStatus, AmbienteStatus
 from apps.pedidos.models import Pedido, AmbientePedido, HistoricoStatusPedido
-from apps.comercial.models import ClienteComercial, AmbienteOrcamento
+from apps.comercial.models import ClienteComercial, AmbienteOrcamento, StatusClienteComercial
+from apps.comercial.selectors import ComercialSelector
 
 
 class PedidoService:
@@ -46,17 +47,31 @@ class PedidoService:
         Returns:
             Instância do Pedido criado
         """
+        numero_pedido = str(numero_pedido or cliente_comercial.numero_pedido or "").strip()
+        if not numero_pedido:
+            raise ValueError("Cliente comercial sem numero de pedido definido.")
+        if cliente_comercial.status != StatusClienteComercial.CONTRATO_FECHADO:
+            raise ValueError("Cliente comercial precisa estar em 'Contrato fechado' antes do envio para Projetos.")
+        if not str(cliente_comercial.customer_id or "").strip():
+            raise ValueError("Cliente comercial sem customer_id Dinabox.")
+        if not cliente_comercial.ambientes.exists():
+            raise ValueError("Cadastre ao menos um ambiente antes de enviar para Projetos.")
         if Pedido.objects.filter(numero_pedido=numero_pedido).exists():
             raise ValueError(f"Número de pedido {numero_pedido} já existe.")
+
+        idx = ComercialSelector.dinabox_index_por_customer_id(cliente_comercial.customer_id)
+        cliente_nome = (idx.customer_name if idx else "").strip()
+        if not cliente_nome:
+            cliente_nome = f"Cliente {cliente_comercial.customer_id}"
 
         # Criar Pedido
         pedido = Pedido.objects.create(
             numero_pedido=numero_pedido,
             customer_id=cliente_comercial.customer_id,
-            cliente_nome=cliente_comercial.nome_cliente,
+            cliente_nome=cliente_nome,
             cliente_comercial=cliente_comercial,
-            status=PedidoStatus.CONTRATO_FECHADO,
-            data_contrato=cliente_comercial.data_contrato,
+            status=PedidoStatus.ENVIADO_PARA_PROJETOS,
+            data_contrato=getattr(cliente_comercial, "data_contrato", None),
             criado_por=usuario,
         )
 
@@ -64,8 +79,8 @@ class PedidoService:
         HistoricoStatusPedido.objects.create(
             pedido=pedido,
             status_anterior="",
-            status_novo=PedidoStatus.CONTRATO_FECHADO,
-            motivo="Criação do pedido a partir do fechamento de contrato no Comercial.",
+            status_novo=PedidoStatus.ENVIADO_PARA_PROJETOS,
+            motivo="Pedido enviado para Projetos a partir da ficha comercial.",
             usuario=usuario,
         )
 
@@ -74,11 +89,11 @@ class PedidoService:
             AmbientePedido.objects.create(
                 pedido=pedido,
                 nome_ambiente=ambiente_orcamento.nome_ambiente,
-                descricao=ambiente_orcamento.descricao,
+                descricao=getattr(ambiente_orcamento, "descricao", "") or "",
                 acabamentos=ambiente_orcamento.acabamentos,
                 eletrodomesticos=ambiente_orcamento.eletrodomesticos,
                 observacoes_especiais=ambiente_orcamento.observacoes_especiais,
-                status=AmbienteStatus.PENDENTE,
+                status=AmbienteStatus.PENDENTE_PROJETOS,
             )
 
         return pedido
@@ -173,7 +188,10 @@ class PedidoService:
         ).count()
 
         # Se não há ambientes em status anterior, atualizar pedido
-        if ambientes_nao_aguardando == 0 and pedido.status == PedidoStatus.CONTRATO_FECHADO:
+        if ambientes_nao_aguardando == 0 and pedido.status in {
+            PedidoStatus.CONTRATO_FECHADO,
+            PedidoStatus.ENVIADO_PARA_PROJETOS,
+        }:
             PedidoService.atualizar_status_pedido(
                 pedido,
                 PedidoStatus.EM_ENGENHARIA,

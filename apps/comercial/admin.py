@@ -16,9 +16,9 @@ class AmbienteOrcamentoInline(admin.TabularInline):
 
 @admin.register(ClienteComercial)
 class ClienteComercialAdmin(admin.ModelAdmin):
-    list_display = ("customer_id", "status", "criado_por", "atualizado_em")
+    list_display = ("customer_id", "numero_pedido", "status", "criado_por", "atualizado_em")
     list_filter = ("status",)
-    search_fields = ("customer_id",)
+    search_fields = ("customer_id", "numero_pedido")
     inlines = (ObservacaoComercialInline, AmbienteOrcamentoInline)
 
 

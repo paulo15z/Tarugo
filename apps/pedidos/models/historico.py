@@ -24,12 +24,12 @@ class HistoricoStatusPedido(models.Model):
     )
 
     status_anterior = models.CharField(
-        max_length=20,
+        max_length=32,
         blank=True,
         verbose_name="Status Anterior",
     )
     status_novo = models.CharField(
-        max_length=20,
+        max_length=32,
         verbose_name="Status Novo",
     )
 

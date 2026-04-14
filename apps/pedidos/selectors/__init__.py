@@ -95,7 +95,7 @@ class PedidoSelector:
         from datetime import date
 
         return Pedido.objects.filter(
-            Q(status__in=[PedidoStatus.CONTRATO_FECHADO, PedidoStatus.EM_ENGENHARIA, PedidoStatus.EM_PRODUCAO])
+            Q(status__in=[PedidoStatus.CONTRATO_FECHADO, PedidoStatus.ENVIADO_PARA_PROJETOS, PedidoStatus.EM_ENGENHARIA, PedidoStatus.EM_PRODUCAO])
             & Q(data_entrega_prevista__lt=date.today())
         ).order_by("data_entrega_prevista")
 

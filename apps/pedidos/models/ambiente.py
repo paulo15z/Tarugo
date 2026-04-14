@@ -98,7 +98,7 @@ class AmbientePedido(models.Model):
     status = models.CharField(
         max_length=20,
         choices=AmbienteStatus.choices,
-        default=AmbienteStatus.PENDENTE,
+        default=AmbienteStatus.PENDENTE_PROJETOS,
         db_index=True,
         verbose_name="Status",
     )

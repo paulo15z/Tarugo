@@ -45,7 +45,7 @@ class Pedido(models.Model):
 
     # Status do Pedido (ciclo de vida)
     status = models.CharField(
-        max_length=20,
+        max_length=32,
         choices=PedidoStatus.choices,
         default=PedidoStatus.CONTRATO_FECHADO,
         db_index=True,

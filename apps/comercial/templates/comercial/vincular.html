@@ -33,6 +33,7 @@
           <form method="post" style="display:inline;">
             {% csrf_token %}
             <input type="hidden" name="customer_id" value="{{ c.customer_id }}" />
+            <input type="text" name="numero_pedido" placeholder="Numero pedido" style="margin-right:0.5rem;padding:0.45rem 0.55rem;border:1px solid var(--c-border);border-radius:0.6rem;" />
             <button type="submit" class="c-btn c-btn--primary c-btn--sm">Vincular</button>
           </form>
         </td>

@@ -26,6 +26,14 @@ class ClienteComercial(models.Model):
         db_index=True,
         verbose_name="ID cliente Dinabox",
     )
+    numero_pedido = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        db_index=True,
+        verbose_name="Numero do Pedido",
+        help_text="Numero comercial definido antes do handoff para Projetos.",
+    )
     status = models.CharField(
         max_length=32,
         choices=StatusClienteComercial.choices,
@@ -48,6 +56,7 @@ class ClienteComercial(models.Model):
         ordering = ["-atualizado_em"]
         indexes = [
             models.Index(fields=["status", "atualizado_em"], name="comercial_cli_st_upd_idx"),
+            models.Index(fields=["numero_pedido"], name="comercial_cli_pedido_idx"),
         ]
 
     def __str__(self) -> str:

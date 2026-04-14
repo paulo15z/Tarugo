@@ -720,3 +720,11 @@ grep -r "from apps.pcp.exporters import" --include="*.py"
 
 **ETA**: Dinabox GO em ~2-3 dias após confirmar specs
 
+## MVP Confirmado - Pedido para Projetos
+
+- O `numero_pedido` nasce no `ClienteComercial` e precisa existir mesmo quando o cliente nao virar `Pedido`.
+- O handoff para Projetos cria `Pedido` reutilizando exatamente esse numero comercial.
+- `Pedido.status` no envio inicial: `ENVIADO_PARA_PROJETOS`.
+- `AmbientePedido.status` ao clonar do comercial: `PENDENTE_PROJETOS`.
+- O retorno da Dinabox acontece por ambiente, em tempos diferentes, usando `customer_id` + `project_description`.
+- Cada `response.json` parcial deve localizar o `Pedido` e o `AmbientePedido` corretos, preencher `dados_engenharia` e mover o ambiente para `AGUARDANDO_PCP`.

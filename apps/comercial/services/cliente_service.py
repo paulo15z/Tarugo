@@ -15,6 +15,7 @@ from ..schemas.cliente import (
     AmbienteDetalhesInputSchema,
     ClienteComercialAtualizarDinaboxSchema,
     ClienteComercialCriarDinaboxSchema,
+    ClienteComercialNumeroPedidoSchema,
 )
 
 
@@ -126,6 +127,30 @@ class ClienteComercialService:
             raise ValueError("Status inválido.")
         cliente.status = status
         cliente.save(update_fields=["status", "atualizado_em"])
+        return cliente
+
+    @staticmethod
+    @transaction.atomic
+    def atualizar_numero_pedido(
+        cliente: ClienteComercial,
+        schema: ClienteComercialNumeroPedidoSchema,
+    ) -> ClienteComercial:
+        numero_pedido = schema.numero_pedido or ""
+        if numero_pedido:
+            if (
+                ClienteComercial.objects.exclude(pk=cliente.pk)
+                .filter(numero_pedido=numero_pedido)
+                .exists()
+            ):
+                raise ValueError("Este numero de pedido ja esta vinculado a outro cliente comercial.")
+
+            from apps.pedidos.models import Pedido
+
+            if Pedido.objects.exclude(cliente_comercial=cliente).filter(numero_pedido=numero_pedido).exists():
+                raise ValueError("Este numero de pedido ja existe no app Pedidos.")
+
+        cliente.numero_pedido = numero_pedido
+        cliente.save(update_fields=["numero_pedido", "atualizado_em"])
         return cliente
 
     @staticmethod
