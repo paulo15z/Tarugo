@@ -11,6 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'base/frontend-polish.css' %}">
     
     <style>
         :root {
@@ -313,14 +314,14 @@
         /* ── RESPONSIVE ── */
         @media (max-width: 768px) {
             header { padding: 0 1rem; }
-            .nav-main { display: none; }
+            .nav-main { display: flex; }
             .main-content { padding: 1rem; }
             .page-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
         }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body class="{% if '/integracoes/' in request.path %}app-integracoes{% elif '/comercial/' in request.path %}app-comercial{% else %}app-root{% endif %}">
 
 <header>
     <div class="header-container">

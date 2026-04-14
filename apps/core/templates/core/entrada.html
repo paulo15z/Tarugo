@@ -190,6 +190,13 @@
       display: flex;
       flex-direction: column;
       gap: 0.55rem;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+
+    .app-card:hover {
+      transform: translateY(-2px);
+      border-color: #bcc6d3;
+      box-shadow: 0 10px 24px rgba(20, 25, 35, 0.08);
     }
 
     .app-setor {
@@ -240,8 +247,19 @@
 
     .logout:hover { color: #b52f0f; border-color: #e2b1a6; }
 
+    .btn:focus-visible,
+    .logout:focus-visible,
+    input:focus-visible {
+      outline: 2px solid rgba(200, 64, 26, 0.45);
+      outline-offset: 2px;
+    }
+
     @media (max-width: 860px) {
       .login-grid { grid-template-columns: 1fr; }
+      .entry-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
     }
   </style>
 </head>
@@ -253,7 +271,7 @@
           <span class="brand-dot"></span>
           <span>Tarugo</span>
         </div>
-        <div class="sub">Entrada do sistema · IP:8000</div>
+        <div class="sub">Entrada do sistema - IP:8000</div>
       </div>
       {% if user.is_authenticated %}
       <div style="text-align: right;">
@@ -292,7 +310,7 @@
           <h1 style="font-size: 1.2rem;">Direcionamento por setor</h1>
           <p class="muted">Após o login, o sistema mostra os apps liberados para seu perfil:</p>
           <div class="empty">
-            Estoque · PCP · Bipagem · Dinabox<br>
+            Estoque - PCP - Bipagem - Dinabox<br>
             O acesso depende do seu grupo/permissão.
           </div>
         </div>

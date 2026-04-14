@@ -1,0 +1,130 @@
+/* Cross-app frontend polish: root + integracoes + comercial */
+
+/* Base shell */
+body.app-root .main-content,
+body.app-integracoes .main-content,
+body.app-comercial .main-content {
+  animation: fade-in-up 200ms ease;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header and nav improvements */
+.nav-main {
+  max-width: 100%;
+}
+
+@media (max-width: 980px) {
+  header {
+    height: auto;
+    min-height: var(--header-height);
+    padding: 0.75rem 1rem;
+  }
+
+  .header-container {
+    align-items: stretch;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .nav-main {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: thin;
+    padding-bottom: 0.2rem;
+  }
+
+  .nav-link {
+    flex: 0 0 auto;
+  }
+}
+
+/* Integracoes visual consistency */
+body.app-integracoes .page-header {
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+body.app-integracoes .page-header .user-meta {
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+body.app-integracoes .card {
+  border-radius: 10px;
+}
+
+body.app-integracoes .card h2,
+body.app-integracoes .card h3 {
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+body.app-integracoes input[type="text"],
+body.app-integracoes input[type="email"],
+body.app-integracoes input[type="number"],
+body.app-integracoes input[type="password"],
+body.app-integracoes select,
+body.app-integracoes textarea {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.58rem 0.62rem;
+  background: #fff;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.92rem;
+}
+
+body.app-integracoes input:focus,
+body.app-integracoes select:focus,
+body.app-integracoes textarea:focus {
+  outline: none;
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 3px rgba(26, 29, 35, 0.08);
+}
+
+body.app-integracoes .table-container {
+  overflow: auto;
+}
+
+body.app-integracoes .table-container table {
+  min-width: 860px;
+}
+
+/* Comercial ergonomic tweaks */
+body.app-comercial .comercial-app .c-head {
+  margin-bottom: 1.1rem;
+}
+
+body.app-comercial .comercial-app .c-panel {
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+body.app-comercial .comercial-app .c-table-wrap {
+  overflow: auto;
+}
+
+body.app-comercial .comercial-app .c-table {
+  min-width: 820px;
+}
+
+@media (max-width: 900px) {
+  body.app-comercial .comercial-app .c-actions {
+    width: 100%;
+  }
+
+  body.app-comercial .comercial-app .c-actions .c-btn {
+    flex: 1 1 auto;
+  }
+}
