@@ -6,6 +6,7 @@ Padrão: Centralizar todas as queries aqui.
 """
 
 from typing import Optional, List
+import unicodedata
 from django.db.models import QuerySet, Q, Prefetch
 
 from apps.pedidos.models import Pedido, AmbientePedido, HistoricoStatusPedido
@@ -163,6 +164,44 @@ class AmbienteSelector:
             .select_related("pedido")
             .order_by("pedido", "nome_ambiente")
         )
+
+    @staticmethod
+    def get_ambiente_por_cliente_e_nome(customer_id: str, nome_ambiente: str) -> Optional[AmbientePedido]:
+        """Localiza um AmbientePedido pelo customer_id e descrição do ambiente."""
+
+        def _normalize(value: str) -> str:
+            base = unicodedata.normalize("NFKD", str(value or "").strip().upper())
+            return "".join(
+                ch for ch in base
+                if not unicodedata.combining(ch) and (ch.isalnum() or ch in {" ", "_", "-"})
+            ).replace("_", " ").replace("-", " ")
+
+        nome_norm = " ".join(_normalize(nome_ambiente).split())
+
+        candidatos = list(
+            AmbientePedido.objects.filter(
+                pedido__customer_id=str(customer_id).strip(),
+                pedido__status__in=[
+                    PedidoStatus.CONTRATO_FECHADO,
+                    PedidoStatus.ENVIADO_PARA_PROJETOS,
+                    PedidoStatus.EM_ENGENHARIA,
+                    PedidoStatus.EM_PRODUCAO,
+                ],
+            )
+            .select_related("pedido")
+            .order_by("-pedido__data_criacao", "nome_ambiente")
+        )
+
+        encontrados = [
+            ambiente
+            for ambiente in candidatos
+            if " ".join(_normalize(ambiente.nome_ambiente).split()) == nome_norm
+        ]
+        if len(encontrados) > 1:
+            raise ValueError(
+                f"Ambiente ambiguo para customer_id={customer_id} e descricao={nome_ambiente}."
+            )
+        return encontrados[0] if encontrados else None
 
 
 class HistoricoStatusSelector:

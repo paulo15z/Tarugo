@@ -131,3 +131,63 @@ class DinaboxClienteIndex(models.Model):
 
     def __str__(self):
         return f"{self.customer_id} - {self.customer_name}"
+
+
+class StatusImportacaoProjeto(models.TextChoices):
+    PENDENTE = "PENDENTE", "Pendente"
+    PROCESSANDO = "PROCESSANDO", "Processando"
+    CONCLUIDO = "CONCLUIDO", "Concluido"
+    ERRO = "ERRO", "Erro"
+
+
+class DinaboxImportacaoProjeto(models.Model):
+    """
+    Fila persistente de importacao de projetos/ambientes Dinabox.
+
+    O item representa uma solicitacao de buscar um `project_id` na Dinabox
+    e integrar o retorno ao Pedido local.
+    """
+
+    project_id = models.CharField(max_length=64, db_index=True, verbose_name="Project ID")
+    project_customer_id = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        db_index=True,
+        verbose_name="Customer ID",
+    )
+    project_description = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        db_index=True,
+        verbose_name="Descricao do Projeto",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=StatusImportacaoProjeto.choices,
+        default=StatusImportacaoProjeto.PENDENTE,
+        db_index=True,
+    )
+    tentativas = models.PositiveIntegerField(default=0)
+    prioridade = models.PositiveSmallIntegerField(default=100, db_index=True)
+    origem = models.CharField(max_length=64, blank=True, default="", verbose_name="Origem")
+    payload_bruto = models.JSONField(default=dict, blank=True)
+    resultado_resumo = models.JSONField(default=dict, blank=True)
+    ultimo_erro = models.TextField(blank=True, default="")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    iniciado_em = models.DateTimeField(null=True, blank=True)
+    concluido_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Importacao Projeto Dinabox"
+        verbose_name_plural = "Importacoes de Projetos Dinabox"
+        ordering = ["prioridade", "criado_em"]
+        indexes = [
+            models.Index(fields=["status", "prioridade", "criado_em"], name="din_imp_st_pr_cr_idx"),
+            models.Index(fields=["project_id", "status"], name="din_imp_proj_st_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.project_id} ({self.get_status_display()})"

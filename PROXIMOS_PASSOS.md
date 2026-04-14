@@ -728,3 +728,28 @@ grep -r "from apps.pcp.exporters import" --include="*.py"
 - `AmbientePedido.status` ao clonar do comercial: `PENDENTE_PROJETOS`.
 - O retorno da Dinabox acontece por ambiente, em tempos diferentes, usando `customer_id` + `project_description`.
 - Cada `response.json` parcial deve localizar o `Pedido` e o `AmbientePedido` corretos, preencher `dados_engenharia` e mover o ambiente para `AGUARDANDO_PCP`.
+## Atualização 2026-04-14 - Ingestão Async Dinabox -> Pedido
+
+- [x] `ClienteComercial.numero_pedido` passou a ser a fonte de verdade do número comercial, mesmo quando o cliente ainda não virou `Pedido`
+- [x] Handoff Comercial -> Projetos cria `Pedido` com status `ENVIADO_PARA_PROJETOS`
+- [x] `AmbientePedido` nasce com status `PENDENTE_PROJETOS`
+- [x] Criado schema mínimo para retorno Dinabox por ambiente em `apps/integracoes/dinabox/schemas/pedido_receiver.py`
+- [x] Criada fila persistida `DinaboxImportacaoProjeto` para tirar o peso da API Dinabox do caminho do PCP
+- [x] Criado worker leve via management command: `python manage.py processar_importacoes_dinabox --limit 10 --concorrencia 2`
+- [x] Importação integra `project_id` -> `Pedido/AmbientePedido` via `project_customer_id + project_description`
+- [x] `dados_engenharia` agora preserva payload bruto + metadata + `woodwork` + `holes_summary`
+- [x] Testes cobrindo enfileiramento, integração ao pedido e processamento async básico
+
+### Decisão Atual
+
+- O custo pesado da Dinabox deve acontecer na entrada, quando Projetos concluir o ambiente
+- PCP e etapas seguintes devem consultar somente dados já persistidos no Tarugo
+- `response.json` pequeno por ambiente continua sendo a estratégia preferida
+- Async fica concentrado no fetch remoto; gravação ORM continua controlada e curta
+
+### Próximo Passo Imediato
+
+- [ ] Ligar `DinaboxImportacaoProjetoService.enfileirar_importacao(...)` ao evento real de "Projeto concluído"
+- [ ] Criar endpoint/view explícita para receber esse disparo do setor Projetos
+- [ ] Exibir fila/status de importação no admin ou em tela simples de acompanhamento
+- [ ] Decidir se o worker vai rodar por agendamento, supervisord, cron ou loop dedicado

@@ -13,7 +13,7 @@ from .models import MapeamentoMaterial, DinaboxClienteIndex
 from .dinabox.schemas import (
     DinaboxProjectOperacional,
     DinaboxProjectLogistico,
-    DinaboxProjectAdministrativo
+    DinaboxProjectAdministrativo,
 )
 
 
