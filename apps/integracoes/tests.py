@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import json
 from unittest.mock import patch
 
 from asgiref.sync import async_to_sync
 from django.test import TestCase
+from django.contrib.auth.models import Group, User
+from django.urls import reverse
 
 from apps.comercial.models import AmbienteOrcamento, ClienteComercial, StatusClienteComercial
 from apps.integracoes.models import (
@@ -128,3 +131,53 @@ class DinaboxImportacaoProjetoServiceTests(TestCase):
         self.assertEqual(len(resultados), 1)
         self.assertFalse(isinstance(resultados[0], Exception))
         self.assertEqual(resultados[0]["project_description"], "COZINHA")
+
+    def test_enfileira_importacao_por_evento(self):
+        item = DinaboxImportacaoProjetoService.enfileirar_importacao_por_evento(
+            {
+                "project_id": "0310366465",
+                "project_customer_id": "2539544",
+                "project_description": "COZINHA",
+                "origem": "projetos_webhook",
+                "prioridade": 20,
+            }
+        )
+
+        self.assertEqual(item.project_id, "0310366465")
+        self.assertEqual(item.project_customer_id, "2539544")
+        self.assertEqual(item.project_description, "COZINHA")
+        self.assertEqual(item.origem, "projetos_webhook")
+        self.assertEqual(item.prioridade, 20)
+
+
+class DinaboxEnfileirarProjetoConcluidoViewTests(TestCase):
+    def setUp(self):
+        self.url = reverse("integracoes:dinabox-enfileirar-projeto-concluido")
+        group, _ = Group.objects.get_or_create(name="PROJETOS")
+        self.user = User.objects.create_user(username="projetos-user", password="123")
+        self.user.groups.add(group)
+
+    def test_endpoint_enfileira_com_usuario_projetos(self):
+        payload = {
+            "project_id": "0310366465",
+            "project_customer_id": "2539544",
+            "project_description": "COZINHA",
+        }
+        self.client.force_login(self.user)
+        response = self.client.post(self.url, data=json.dumps(payload), content_type="application/json")
+
+        self.assertEqual(response.status_code, 202)
+        body = response.json()
+        self.assertTrue(body["sucesso"])
+        self.assertEqual(body["importacao"]["project_id"], "0310366465")
+        self.assertEqual(DinaboxImportacaoProjeto.objects.count(), 1)
+
+    def test_endpoint_bloqueia_sem_usuario_e_sem_token(self):
+        response = self.client.post(
+            self.url,
+            data=json.dumps({"project_id": "0310366465"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(DinaboxImportacaoProjeto.objects.count(), 0)

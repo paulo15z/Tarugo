@@ -51,3 +51,39 @@ class DinaboxProjetoPedidoSchema(DinaboxBaseModel):
         if not isinstance(value, list):
             return []
         return [item for item in value if isinstance(item, dict)]
+
+
+class DinaboxProjetoConcluidoEventoSchema(DinaboxBaseModel):
+    """Contrato minimo para enfileirar importacao ao concluir projeto no setor Projetos."""
+
+    project_id: str
+    project_customer_id: str = ""
+    project_description: str = ""
+    origem: str = "projetos_concluido"
+    prioridade: int = 100
+
+    @field_validator("project_id", mode="before")
+    @classmethod
+    def validate_project_id(cls, value: Any) -> str:
+        text = str(value or "").strip()
+        if not text:
+            raise ValueError("Campo obrigatorio vazio.")
+        return text
+
+    @field_validator("project_customer_id", "project_description", "origem", mode="before")
+    @classmethod
+    def validate_optional_text(cls, value: Any) -> str:
+        return str(value or "").strip()
+
+    @field_validator("prioridade", mode="before")
+    @classmethod
+    def validate_prioridade(cls, value: Any) -> int:
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return 100
+        if parsed < 1:
+            return 1
+        if parsed > 999:
+            return 999
+        return parsed

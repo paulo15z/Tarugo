@@ -1,17 +1,22 @@
 ﻿from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from pydantic import ValidationError
 
 from apps.integracoes.dinabox.api_service import DinaboxApiService
 from apps.integracoes.dinabox.client import DinaboxAPIClient, DinaboxAuthError, DinaboxRequestError
 from apps.integracoes.models import DinaboxClienteIndex
+from apps.integracoes.services_importacao import DinaboxImportacaoProjetoService
 from collections import defaultdict
 from datetime import datetime
 from apps.integracoes.dinabox.parsers.project_detail import parse_project_detail
@@ -23,6 +28,22 @@ def _user_pode_testar_integracoes(user) -> bool:
     if user.is_superuser or user.is_staff:
         return True
     return user.groups.filter(name__in=["PCP", "TI", "Gestao", "GESTAO"]).exists()
+
+
+def _user_pode_disparar_importacao_projetos(user) -> bool:
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser or user.is_staff:
+        return True
+    return user.groups.filter(name__in=["PROJETOS", "Projetos", "TI", "Gestao", "GESTAO"]).exists()
+
+
+def _token_disparo_projetos_valido(request: HttpRequest) -> bool:
+    configured = str(getattr(settings, "DINABOX_PROJETOS_TRIGGER_TOKEN", "") or "").strip()
+    if not configured:
+        return False
+    received = str(request.META.get("HTTP_X_TARUGO_TRIGGER_TOKEN", "") or "").strip()
+    return bool(received) and received == configured
 
 
 def _obter_servico_dinabox() -> DinaboxApiService:
@@ -47,6 +68,19 @@ def _normalize_json_dict(value) -> dict:
 
 def _normalize_json_list(value) -> list:
     return value if isinstance(value, list) else []
+
+
+def _extract_payload_dict(request: HttpRequest) -> dict:
+    content_type = str(request.content_type or "").lower()
+    if "application/json" in content_type:
+        raw = (request.body or b"").decode("utf-8").strip()
+        if not raw:
+            return {}
+        parsed = json.loads(raw)
+        if not isinstance(parsed, dict):
+            raise ValueError("Payload JSON deve ser um objeto.")
+        return parsed
+    return {k: v for k, v in request.POST.items()}
 
 
 def _build_customer_payload_from_request(request: HttpRequest) -> dict:
@@ -635,4 +669,50 @@ def dinabox_projeto_modulos_pecas(request: HttpRequest, project_id: str):
             "projeto": projeto,
             "materiais_unicos": list(materiais_unicos),
         },
+    )
+
+
+@csrf_exempt
+@require_POST
+def dinabox_enfileirar_projeto_concluido(request: HttpRequest):
+    permitido_por_token = _token_disparo_projetos_valido(request)
+    permitido_por_usuario = _user_pode_disparar_importacao_projetos(getattr(request, "user", None))
+    if not (permitido_por_token or permitido_por_usuario):
+        return JsonResponse(
+            {
+                "sucesso": False,
+                "erro": "Nao autorizado para enfileirar importacao de projeto concluido.",
+            },
+            status=403,
+        )
+
+    try:
+        payload = _extract_payload_dict(request)
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
+        return JsonResponse({"sucesso": False, "erro": str(exc)}, status=400)
+
+    try:
+        item = DinaboxImportacaoProjetoService.enfileirar_importacao_por_evento(payload)
+    except ValidationError as exc:
+        return JsonResponse(
+            {"sucesso": False, "erro": "Payload invalido.", "detalhes": exc.errors()},
+            status=400,
+        )
+    except ValueError as exc:
+        return JsonResponse({"sucesso": False, "erro": str(exc)}, status=400)
+
+    return JsonResponse(
+        {
+            "sucesso": True,
+            "importacao": {
+                "id": item.pk,
+                "project_id": item.project_id,
+                "project_customer_id": item.project_customer_id,
+                "project_description": item.project_description,
+                "status": item.status,
+                "origem": item.origem,
+                "prioridade": item.prioridade,
+            },
+        },
+        status=202,
     )

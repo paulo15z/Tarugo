@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from apps.integracoes.dinabox.schemas import (
     DinaboxProjectOperacional,
+    DinaboxProjetoConcluidoEventoSchema,
     DinaboxProjetoPedidoSchema,
 )
 from apps.integracoes.models import DinaboxImportacaoProjeto, StatusImportacaoProjeto
@@ -45,6 +46,18 @@ class DinaboxImportacaoProjetoService:
         except Exception:
             pass
         return dados
+
+    @staticmethod
+    @transaction.atomic
+    def enfileirar_importacao_por_evento(payload: dict[str, Any]) -> DinaboxImportacaoProjeto:
+        schema = DinaboxProjetoConcluidoEventoSchema.model_validate(payload or {})
+        return DinaboxImportacaoProjetoService.enfileirar_importacao(
+            project_id=schema.project_id,
+            project_customer_id=schema.project_customer_id,
+            project_description=schema.project_description,
+            origem=schema.origem or "projetos_concluido",
+            prioridade=schema.prioridade,
+        )
 
     @staticmethod
     @transaction.atomic

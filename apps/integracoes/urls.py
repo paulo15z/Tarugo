@@ -34,4 +34,9 @@ urlpatterns = [
     path("dinabox/etiquetas/", views.dinabox_etiquetas_list, name="dinabox-etiquetas-list"),
     path("dinabox/etiqueta/criar/", views.dinabox_etiqueta_criar, name="dinabox-etiqueta-criar"),
     path("dinabox/etiqueta/excluir/", views.dinabox_etiqueta_excluir, name="dinabox-etiqueta-excluir"),
+    path(
+        "dinabox/importacoes/projeto-concluido/",
+        views.dinabox_enfileirar_projeto_concluido,
+        name="dinabox-enfileirar-projeto-concluido",
+    ),
 ]
