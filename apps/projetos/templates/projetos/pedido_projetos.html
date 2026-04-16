@@ -1,0 +1,52 @@
+{% extends "base/base.html" %}
+
+{% block title %}Pedido {{ numero_pedido }} - Projetos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Pedido {{ numero_pedido }} em Projetos</h1>
+        <p class="page-subtitle">
+            {% if pedido_obj %}
+            {{ pedido_obj.cliente_nome }} · {{ pedido_obj.get_status_display }}
+            {% else %}
+            Nenhum projeto localizado para este pedido.
+            {% endif %}
+        </p>
+    </div>
+    <div class="user-meta" style="gap:0.5rem;">
+        <a href="{% url 'projetos:index' %}" class="btn btn-outline">Todos os projetos</a>
+    </div>
+</div>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>Ambiente</th>
+                <th>Projeto</th>
+                <th>Status</th>
+                <th>Projetista</th>
+                <th>Liberador</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for projeto in rows %}
+            <tr>
+                <td>{{ projeto.ambiente_pedido.nome_ambiente }}</td>
+                <td>{{ projeto.nome_projeto }}</td>
+                <td><span class="badge badge-neutral">{{ projeto.get_status_display }}</span></td>
+                <td>{{ projeto.projetista|default:"-" }}</td>
+                <td>{{ projeto.liberador_tecnico|default:"-" }}</td>
+                <td><a href="{% url 'projetos:projeto-detail' projeto.pk %}" class="btn btn-outline" style="padding:0.35rem 0.6rem;">Detalhes</a></td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="padding:2rem; text-align:center; color:var(--text-muted);">Nenhum projeto criado para este pedido.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -339,6 +339,7 @@
             {% if perms.comercial.view_clientecomercial %}
             <a href="{% url 'comercial:lista' %}?v=board" class="nav-link {% if '/comercial/' in request.path %}active{% endif %}">Comercial</a>
             {% endif %}
+            <a href="{% url 'projetos:index' %}" class="nav-link {% if '/projetos/' in request.path %}active{% endif %}">Projetos</a>
         </nav>
 
         <div class="user-meta">

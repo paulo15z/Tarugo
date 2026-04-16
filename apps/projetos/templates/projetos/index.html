@@ -1,0 +1,62 @@
+{% extends "base/base.html" %}
+
+{% block title %}Projetos - Tarugo{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Projetos</h1>
+        <p class="page-subtitle">Cada ambiente segue seu proprio fluxo de projeto.</p>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 1rem; padding: 1rem;">
+    <form method="get" style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:end;">
+        <div style="min-width:220px;">
+            <label for="id_pedido" style="display:block; margin-bottom:0.4rem; font-size:0.85rem; font-weight:600;">Pedido</label>
+            <input id="id_pedido" name="pedido" value="{{ pedido }}" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:0.55rem;">
+        </div>
+        <div style="min-width:220px;">
+            <label for="id_status" style="display:block; margin-bottom:0.4rem; font-size:0.85rem; font-weight:600;">Status</label>
+            <select id="id_status" name="status" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:0.55rem; background:#fff;">
+                <option value="">Todos</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button class="btn btn-primary" type="submit">Filtrar</button>
+    </form>
+</div>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>Pedido</th>
+                <th>Ambiente</th>
+                <th>Projeto</th>
+                <th>Status</th>
+                <th>Projetista</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for projeto in rows %}
+            <tr>
+                <td class="mono">{{ projeto.pedido.numero_pedido }}</td>
+                <td>{{ projeto.ambiente_pedido.nome_ambiente }}</td>
+                <td>{{ projeto.nome_projeto }}</td>
+                <td><span class="badge badge-neutral">{{ projeto.get_status_display }}</span></td>
+                <td>{{ projeto.projetista|default:"-" }}</td>
+                <td><a href="{% url 'projetos:projeto-detail' projeto.pk %}" class="btn btn-outline" style="padding:0.35rem 0.6rem;">Abrir</a></td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="padding:2rem; text-align:center; color:var(--text-muted);">Nenhum projeto encontrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -749,7 +749,7 @@ grep -r "from apps.pcp.exporters import" --include="*.py"
 
 ### Próximo Passo Imediato
 
-- [ ] Ligar `DinaboxImportacaoProjetoService.enfileirar_importacao(...)` ao evento real de "Projeto concluído"
+- [ ] Ligar `DinaboxImportacaoProjetoService.enfileirar_importacao(...)` à transição real `Projeto -> LIBERADO_PARA_PCP`
 - [x] Criar endpoint/view explícita para receber esse disparo do setor Projetos
 - [x] Exibir fila/status de importação no admin ou em tela simples de acompanhamento
 - [ ] Decidir se o worker vai rodar por agendamento, supervisord, cron ou loop dedicado
@@ -761,3 +761,11 @@ grep -r "from apps.pcp.exporters import" --include="*.py"
 - [x] Tela de acompanhamento em `/integracoes/dinabox/importacoes/` com filtros por status e busca
 - [x] `DinaboxImportacaoProjeto` registrado no Django admin para auditoria operacional
 - [x] Testes cobrindo enfileiramento por token e listagem da fila
+
+## Atualização 2026-04-16 - Bootstrap do app Projetos
+
+- [x] Criado app `apps/projetos` com `ProjetoStatus`, `Projeto`, `AnexoProjeto`, admin, telas e rotas básicas
+- [x] Decisão de modelagem do MVP: `1 Projeto` por `AmbientePedido`, permitindo ambientes do mesmo `Pedido` em setores/status diferentes
+- [x] Handoff Comercial -> Projetos agora cria `Pedido`, `AmbientePedido` e `Projeto` por ambiente no mesmo fluxo
+- [x] Redirect pós-handoff aponta para a visão operacional do setor em `/projetos/pedido/<numero_pedido>/`
+- [x] Testes cobrindo criação automática e transição básica de status em Projetos

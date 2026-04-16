@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     'apps.integracoes',
     'apps.comercial',
     'apps.pedidos',
+    'apps.projetos',
 ]
 
 MIDDLEWARE = [

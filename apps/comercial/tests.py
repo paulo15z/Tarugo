@@ -6,6 +6,7 @@ from apps.comercial.models import AmbienteOrcamento, ClienteComercial, StatusCli
 from apps.integracoes.models import DinaboxClienteIndex
 from apps.pedidos.domain.status import PedidoStatus
 from apps.pedidos.models import Pedido
+from apps.projetos.models import Projeto
 
 
 class ComercialEnviarParaProjetosViewTests(TestCase):
@@ -41,3 +42,5 @@ class ComercialEnviarParaProjetosViewTests(TestCase):
         pedido = Pedido.objects.get(numero_pedido="573")
         self.assertEqual(response.status_code, 302)
         self.assertEqual(pedido.status, PedidoStatus.ENVIADO_PARA_PROJETOS)
+        self.assertEqual(response.url, reverse("projetos:pedido-projetos", args=["573"]))
+        self.assertEqual(Projeto.objects.filter(pedido=pedido).count(), 1)

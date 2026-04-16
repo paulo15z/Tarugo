@@ -248,7 +248,7 @@ def enviar_para_projetos_post(request, pk: int):
             usuario=request.user,
         )
         messages.success(request, f"Pedido {pedido.numero_pedido} enviado para Projetos.")
-        return redirect("pedidos:api-pedido-detail", numero_pedido=pedido.numero_pedido)
+        return redirect("projetos:pedido-projetos", numero_pedido=pedido.numero_pedido)
     except ValueError as exc:
         messages.error(request, str(exc))
     return redirect("comercial:detalhe", pk=pk)

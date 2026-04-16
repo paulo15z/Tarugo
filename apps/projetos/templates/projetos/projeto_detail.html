@@ -1,0 +1,47 @@
+{% extends "base/base.html" %}
+
+{% block title %}{{ projeto.nome_projeto }} - Projetos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ projeto.nome_projeto }}</h1>
+        <p class="page-subtitle">Pedido {{ projeto.pedido.numero_pedido }} · Ambiente {{ projeto.ambiente_pedido.nome_ambiente }}</p>
+    </div>
+    <div class="user-meta" style="gap:0.5rem;">
+        <a href="{% url 'projetos:pedido-projetos' projeto.pedido.numero_pedido %}" class="btn btn-outline">Voltar ao pedido</a>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem;">
+        <div><strong>Status</strong><br><span class="badge badge-neutral" style="margin-top:0.35rem;">{{ projeto.get_status_display }}</span></div>
+        <div><strong>Projetista</strong><br>{{ projeto.projetista|default:"-" }}</div>
+        <div><strong>Liberador</strong><br>{{ projeto.liberador_tecnico|default:"-" }}</div>
+        <div><strong>Distribuidor</strong><br>{{ projeto.distribuidor|default:"-" }}</div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+    <h2 style="margin-bottom:0.75rem;">Transicao de status</h2>
+    <form method="post" action="{% url 'projetos:projeto-status-post' projeto.pk %}" style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:end;">
+        {% csrf_token %}
+        <div style="min-width:260px;">
+            <label for="id_status" style="display:block; margin-bottom:0.4rem; font-size:0.85rem; font-weight:600;">Novo status</label>
+            <select id="id_status" name="status" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:0.55rem; background:#fff;">
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if projeto.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button class="btn btn-primary" type="submit">Atualizar</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2 style="margin-bottom:0.75rem;">Contexto do ambiente</h2>
+    <p><strong>Acabamentos:</strong> {{ projeto.ambiente_pedido.acabamentos|default:"[]" }}</p>
+    <p><strong>Eletrodomesticos:</strong> {{ projeto.ambiente_pedido.eletrodomesticos|default:"[]" }}</p>
+    <p><strong>Observacoes:</strong> {{ projeto.ambiente_pedido.observacoes_especiais|default:"-" }}</p>
+</div>
+{% endblock %}

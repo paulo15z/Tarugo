@@ -11,7 +11,7 @@ from typing import Optional
 
 from apps.pedidos.domain.status import PedidoStatus, AmbienteStatus
 from apps.pedidos.models import Pedido, AmbientePedido, HistoricoStatusPedido
-from apps.comercial.models import ClienteComercial, AmbienteOrcamento, StatusClienteComercial
+from apps.comercial.models import ClienteComercial, StatusClienteComercial
 from apps.comercial.selectors import ComercialSelector
 
 
@@ -96,6 +96,9 @@ class PedidoService:
                 status=AmbienteStatus.PENDENTE_PROJETOS,
             )
 
+        from apps.projetos.services import ProjetoService
+
+        ProjetoService.criar_projetos_iniciais_do_pedido(pedido, usuario=usuario)
         return pedido
 
     @staticmethod

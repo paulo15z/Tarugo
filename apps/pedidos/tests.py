@@ -4,6 +4,7 @@ from apps.comercial.models import AmbienteOrcamento, ClienteComercial, StatusCli
 from apps.integracoes.models import DinaboxClienteIndex
 from apps.pedidos.domain.status import AmbienteStatus, PedidoStatus
 from apps.pedidos.services import PedidoService
+from apps.projetos.models import Projeto
 
 
 class PedidoServiceFromComercialTests(TestCase):
@@ -47,6 +48,7 @@ class PedidoServiceFromComercialTests(TestCase):
         ambientes = list(pedido.ambientes.order_by("nome_ambiente"))
         self.assertEqual(len(ambientes), 2)
         self.assertTrue(all(a.status == AmbienteStatus.PENDENTE_PROJETOS for a in ambientes))
+        self.assertEqual(Projeto.objects.filter(pedido=pedido).count(), 2)
 
     def test_so_move_pedido_para_engenharia_quando_todos_ambientes_chegarem(self):
         pedido = PedidoService.criar_pedido_do_comercial(self.cliente, self.cliente.numero_pedido)

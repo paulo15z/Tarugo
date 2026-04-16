@@ -31,6 +31,7 @@ urlpatterns = [
 
     # Pedidos
     path("pedidos/", include(("apps.pedidos.urls", "pedidos"), namespace="pedidos")),
+    path("projetos/", include(("apps.projetos.urls", "projetos"), namespace="projetos")),
 ]
 
 if settings.DEBUG:
