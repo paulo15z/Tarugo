@@ -750,6 +750,14 @@ grep -r "from apps.pcp.exporters import" --include="*.py"
 ### Próximo Passo Imediato
 
 - [ ] Ligar `DinaboxImportacaoProjetoService.enfileirar_importacao(...)` ao evento real de "Projeto concluído"
-- [ ] Criar endpoint/view explícita para receber esse disparo do setor Projetos
-- [ ] Exibir fila/status de importação no admin ou em tela simples de acompanhamento
+- [x] Criar endpoint/view explícita para receber esse disparo do setor Projetos
+- [x] Exibir fila/status de importação no admin ou em tela simples de acompanhamento
 - [ ] Decidir se o worker vai rodar por agendamento, supervisord, cron ou loop dedicado
+
+## Atualização 2026-04-16 - Observabilidade da fila Dinabox
+
+- [x] Endpoint receptor para `Projeto concluído` exposto em `/integracoes/dinabox/importacoes/projeto-concluido/`
+- [x] Autorização dupla no endpoint: usuário do grupo `PROJETOS` ou header `X-TARUGO-TRIGGER-TOKEN`
+- [x] Tela de acompanhamento em `/integracoes/dinabox/importacoes/` com filtros por status e busca
+- [x] `DinaboxImportacaoProjeto` registrado no Django admin para auditoria operacional
+- [x] Testes cobrindo enfileiramento por token e listagem da fila

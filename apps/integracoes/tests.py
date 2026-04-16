@@ -4,8 +4,8 @@ import json
 from unittest.mock import patch
 
 from asgiref.sync import async_to_sync
-from django.test import TestCase
 from django.contrib.auth.models import Group, User
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.comercial.models import AmbienteOrcamento, ClienteComercial, StatusClienteComercial
@@ -181,3 +181,54 @@ class DinaboxEnfileirarProjetoConcluidoViewTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertEqual(DinaboxImportacaoProjeto.objects.count(), 0)
+
+    @override_settings(DINABOX_PROJETOS_TRIGGER_TOKEN="segredo-projetos")
+    def test_endpoint_enfileira_com_token(self):
+        response = self.client.post(
+            self.url,
+            data=json.dumps({"project_id": "0310366465", "project_description": "COZINHA"}),
+            content_type="application/json",
+            HTTP_X_TARUGO_TRIGGER_TOKEN="segredo-projetos",
+        )
+
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(DinaboxImportacaoProjeto.objects.count(), 1)
+
+
+class DinaboxImportacoesListViewTests(TestCase):
+    def setUp(self):
+        self.url = reverse("integracoes:dinabox-importacoes-list")
+        group, _ = Group.objects.get_or_create(name="TI")
+        self.user = User.objects.create_user(username="ti-user", password="123")
+        self.user.groups.add(group)
+        DinaboxImportacaoProjeto.objects.create(
+            project_id="0310366465",
+            project_customer_id="2539544",
+            project_description="COZINHA",
+            status=StatusImportacaoProjeto.PENDENTE,
+            origem="projetos_concluido",
+        )
+        DinaboxImportacaoProjeto.objects.create(
+            project_id="0310366466",
+            project_customer_id="2539544",
+            project_description="SALA",
+            status=StatusImportacaoProjeto.CONCLUIDO,
+            origem="worker_manual",
+        )
+
+    def test_lista_importacoes_para_usuario_autorizado(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Fila de Importacoes Dinabox")
+        self.assertContains(response, "0310366465")
+        self.assertContains(response, "0310366466")
+
+    def test_filtra_por_status(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url, {"status": StatusImportacaoProjeto.PENDENTE})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "0310366465")
+        self.assertNotContains(response, "0310366466")

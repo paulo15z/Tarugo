@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
@@ -15,7 +15,7 @@ from pydantic import ValidationError
 
 from apps.integracoes.dinabox.api_service import DinaboxApiService
 from apps.integracoes.dinabox.client import DinaboxAPIClient, DinaboxAuthError, DinaboxRequestError
-from apps.integracoes.models import DinaboxClienteIndex
+from apps.integracoes.models import DinaboxClienteIndex, DinaboxImportacaoProjeto, StatusImportacaoProjeto
 from apps.integracoes.services_importacao import DinaboxImportacaoProjetoService
 from collections import defaultdict
 from datetime import datetime
@@ -668,6 +668,52 @@ def dinabox_projeto_modulos_pecas(request: HttpRequest, project_id: str):
         {
             "projeto": projeto,
             "materiais_unicos": list(materiais_unicos),
+        },
+    )
+
+
+@login_required
+def dinabox_importacoes_list(request: HttpRequest):
+    if not _user_pode_testar_integracoes(request.user):
+        messages.error(request, "Somente PCP, TI, Gestao ou admin podem acessar a fila Dinabox.")
+        return redirect("estoque:lista_produtos")
+
+    status = str(request.GET.get("status", "")).strip().upper()
+    search = str(request.GET.get("q", "")).strip()
+
+    queryset = DinaboxImportacaoProjeto.objects.all().order_by("status", "prioridade", "-criado_em")
+    if status in StatusImportacaoProjeto.values:
+        queryset = queryset.filter(status=status)
+    else:
+        status = ""
+
+    if search:
+        queryset = queryset.filter(
+            Q(project_id__icontains=search)
+            | Q(project_customer_id__icontains=search)
+            | Q(project_description__icontains=search)
+            | Q(origem__icontains=search)
+        )
+
+    summary_counts = {
+        item["status"]: item["total"]
+        for item in DinaboxImportacaoProjeto.objects.values("status").annotate(total=Count("id"))
+    }
+    status_summary = [
+        {"value": value, "label": label, "total": summary_counts.get(value, 0)}
+        for value, label in StatusImportacaoProjeto.choices
+    ]
+
+    return render(
+        request,
+        "integracoes/dinabox/importacoes_list.html",
+        {
+            "rows": list(queryset[:100]),
+            "search": search,
+            "status": status,
+            "status_choices": StatusImportacaoProjeto.choices,
+            "status_summary": status_summary,
+            "total_rows": queryset.count(),
         },
     )
 
