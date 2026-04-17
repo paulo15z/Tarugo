@@ -769,3 +769,35 @@ grep -r "from apps.pcp.exporters import" --include="*.py"
 - [x] Handoff Comercial -> Projetos agora cria `Pedido`, `AmbientePedido` e `Projeto` por ambiente no mesmo fluxo
 - [x] Redirect pós-handoff aponta para a visão operacional do setor em `/projetos/pedido/<numero_pedido>/`
 - [x] Testes cobrindo criação automática e transição básica de status em Projetos
+
+## Atualização 2026-04-16 - Próximos Passos Vigentes
+
+### Prioridade imediata
+
+- [ ] Rodar `python manage.py migrate` no banco local real
+- [ ] Validar manualmente o fluxo `/comercial/` -> enviar para Projetos -> `/projetos/pedido/<numero>/`
+- [ ] Ligar a transição real `Projeto -> LIBERADO_PARA_PCP` ao `DinaboxImportacaoProjetoService.enfileirar_importacao(...)`
+- [ ] Definir como o worker `processar_importacoes_dinabox` vai rodar fora do dev (`cron`, `supervisord`, loop dedicado)
+
+### Sprint atual real
+
+- [x] App `Pedidos` estruturado e operando no handoff comercial
+- [x] App `Projetos` iniciado com modelagem por ambiente
+- [x] Tela operacional básica de Projetos disponível
+- [x] Fila Dinabox com endpoint receptor, admin e tela de acompanhamento
+- [ ] Hook real Projetos -> Dinabox
+- [ ] Migração local aplicada
+- [ ] Teste manual de navegação e transição de status
+
+### Próxima frente depois disso
+
+- [ ] Projetos -> PCP: auto-criar `LotePCP` ao liberar ambiente
+- [ ] PCP -> Pedidos: chamar `vincular_lote_pcp()` com validação
+- [ ] Bipagem -> Pedidos: consolidar `atualizar_dados_operacionais()`
+- [ ] Limpeza do legado em `apps/pcp/`
+
+### Bloqueadores vigentes
+
+- [ ] Engenharia confirmar spec final da Dinabox para o gatilho real por ambiente
+- [ ] Definir regra operacional exata para considerar projeto/ambiente "LIBERADO_PARA_PCP"
+- [ ] PCP confirmar status `AGUARDANDO_VALIDACAO_PCP` e fluxo da validação
